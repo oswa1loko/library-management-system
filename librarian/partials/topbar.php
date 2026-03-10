@@ -1,5 +1,5 @@
 <?php
-$pageTitle = isset($pageTitle) ? (string) $pageTitle : 'Admin';
+$pageTitle = isset($pageTitle) ? (string) $pageTitle : 'Librarian';
 $pageSubtitle = isset($pageSubtitle) ? (string) $pageSubtitle : '';
 ?>
 <div class="topbar">

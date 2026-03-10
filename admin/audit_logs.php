@@ -61,21 +61,24 @@ $logs = $stmt->get_result();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audit Logs</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
-  <div class="topbar">
-    <div>
-      <h1>Audit Logs</h1>
-      <p>Critical action history and traceability</p>
-    </div>
-    <div class="topbar-nav">
-      <a href="dashboard.php">Dashboard</a>
-      <a href="/librarymanage/logout.php">Logout</a>
-    </div>
-  </div>
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-audit" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'audit';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
+    <?php
+    $pageTitle = 'Audit Logs';
+    $pageSubtitle = 'Critical action history and traceability';
+    require __DIR__ . '/partials/topbar.php';
+    ?>
 
   <div class="stack">
     <div class="panel">
@@ -84,7 +87,7 @@ $logs = $stmt->get_result();
           <p class="muted eyebrow-compact">Filter</p>
           <h3 class="heading-card">Audit stream</h3>
         </div>
-        <form method="get" class="toolbar grow">
+        <form method="get" class="toolbar grow admin-record-filters">
           <div class="grow">
             <label for="event">Event</label>
             <input id="event" name="event" value="<?php echo h($eventFilter); ?>" placeholder="event name contains">
@@ -94,8 +97,8 @@ $logs = $stmt->get_result();
             <div class="ui-select-shell">
               <select id="role" name="role" class="ui-select">
                 <option value="">All roles</option>
-                <?php foreach (['admin', 'student', 'faculty', 'custodian', 'system'] as $role): ?>
-                  <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(ucfirst($role)); ?></option>
+                <?php foreach (['admin', 'student', 'faculty', 'librarian', 'system'] as $role): ?>
+                  <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(role_label($role)); ?></option>
                 <?php endforeach; ?>
               </select>
               <span class="ui-select-caret" aria-hidden="true"></span>
@@ -129,7 +132,7 @@ $logs = $stmt->get_result();
                 <td><?php echo (int) $log['id']; ?></td>
                 <td><?php echo h($log['created_at']); ?></td>
                 <td><?php echo h($log['event_name']); ?></td>
-                <td><span class="badge"><?php echo h($log['actor_role']); ?></span></td>
+                <td><span class="badge"><?php echo h(role_label((string) $log['actor_role'])); ?></span></td>
                 <td><?php echo $log['actor_user_id'] !== null ? (int) $log['actor_user_id'] : '-'; ?></td>
                 <td><code><?php echo h((string) ($log['context_json'] ?? '')); ?></code></td>
               </tr>
@@ -150,6 +153,6 @@ $logs = $stmt->get_result();
     </div>
   </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>
-

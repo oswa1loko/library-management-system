@@ -101,11 +101,19 @@ if (isset($_POST['import_backup'])) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Backup and Restore</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-backup" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'backup';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
   <?php
   $pageTitle = 'Backup and Restore';
   $pageSubtitle = 'Export and restore the library database';
@@ -157,7 +165,9 @@ if (isset($_POST['import_backup'])) {
       </div>
     </div>
   </div>
+  </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 </body>
 </html>

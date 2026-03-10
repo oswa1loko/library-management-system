@@ -20,7 +20,7 @@ DEFAULT ADMIN (if seeded in your setup flow)
 
 MAIN MODULES
 - Admin: accounts, payments, penalties, complaints, analytics, audit logs, notifications, backup/restore
-- Custodian: books, active borrows, return confirmation, penalties
+- Librarian: books, active borrows, return confirmation, penalties
 - Student/Faculty: browse books, borrow/return requests, payment upload
 
 API (v1)
@@ -63,13 +63,12 @@ Role: student
 
 Password: admin123
 
-✅ Custodian
+✅ Librarian
 
-Email: custodian1@gmail.com
+Email: librarian1@gmail.com
 
-Username: custodian1
+Username: librarian1
 
-Role: custodian
+Role: librarian
 
 Password: admin123
-

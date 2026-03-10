@@ -8,7 +8,7 @@ global $conn;
 $limit = api_query_limit(30, 100);
 
 $stmt = $conn->prepare("
-    SELECT br.id, br.book_id, b.title, b.author, br.borrow_date, br.due_date, br.return_date, br.status, br.created_at
+    SELECT br.id, br.book_id, br.request_batch, br.return_batch, b.title, b.author, br.borrow_date, br.due_date, br.return_date, br.status, br.created_at
     FROM borrows br
     JOIN books b ON b.id = br.book_id
     WHERE br.user_id = ?
@@ -32,4 +32,3 @@ api_json([
     'count' => count($items),
     'items' => $items,
 ]);
-

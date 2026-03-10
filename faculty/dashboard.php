@@ -64,26 +64,70 @@ $penaltyStats->close();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Faculty Dashboard</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
-  <?php
-  $pageTitle = 'Faculty Dashboard';
-  $pageSubtitle = 'Signed in as ' . (string) ($_SESSION['username'] ?? '');
-  require __DIR__ . '/partials/topbar.php';
-  ?>
+<div class="site-shell member-shell js-member-sidebar" data-sidebar-key="faculty-dashboard">
+  <aside class="panel member-sidebar">
+    <div class="member-sidebar-head">
+      <button type="button" class="member-sidebar-toggle js-sidebar-toggle" aria-expanded="true" aria-label="Collapse sidebar">
+        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Main Menu</span>
+      </button>
+    </div>
+    <p class="member-sidebar-section member-sidebar-label">Main</p>
+    <nav class="member-sidebar-nav">
+      <a class="member-sidebar-link is-active" href="dashboard.php" data-tooltip="Dashboard">
+        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Dashboard</span>
+      </a>
+      <a class="member-sidebar-link" href="borrow_return.php" data-tooltip="Borrow and Return">
+        <span class="dashboard-icon icon-books" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Borrow and Return</span>
+      </a>
+      <a class="member-sidebar-link" href="payment_upload.php" data-tooltip="Payments">
+        <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Payments</span>
+      </a>
+      <a class="member-sidebar-link" href="books.php" data-tooltip="Catalog">
+        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Catalog</span>
+      </a>
+    </nav>
+    <p class="member-sidebar-section member-sidebar-label">Account</p>
+    <div class="topbar-nav member-sidebar-utilities">
+      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Home</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
+        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Logout</span>
+      </a>
+    </div>
+  </aside>
 
-  <div class="stack">
+  <div class="member-main">
+    <div class="topbar">
+      <div>
+        <h1>Faculty Dashboard</h1>
+        <p>Signed in as <?php echo h($_SESSION['username']); ?></p>
+      </div>
+    </div>
+
+    <div class="stack">
+
     <?php
     $noticeItems = [];
     if ($dueSoonBooks->num_rows > 0) {
         $dueAlerts = [];
         while ($dueBook = $dueSoonBooks->fetch_assoc()) {
-            $line = (string) $dueBook['title'] . ' is due on ' . (string) $dueBook['due_date'];
+            $line = (string) $dueBook['title'] . ' is due on ' . format_display_date((string) $dueBook['due_date']);
             if (($dueBook['status'] ?? '') === 'return_requested') {
-                $line .= ' and is waiting for custodian confirmation.';
+                $line .= ' and is waiting for librarian confirmation.';
             }
             $dueAlerts[] = $line;
         }
@@ -115,42 +159,6 @@ $penaltyStats->close();
       </div>
     </div>
 
-    <div class="grid cards member-dashboard-actions">
-      <div class="action-card member-action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-books" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Borrowing</span>
-            <h3 class="heading-top-md">Borrow and Return</h3>
-          </div>
-        </div>
-        <p>Borrow books and return active records using the shared member flow.</p>
-        <div class="row row-top"><a class="button" href="borrow_return.php">Open Borrowing</a></div>
-      </div>
-      <div class="action-card member-action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-payments" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Payments</span>
-            <h3 class="heading-top-md">Payments</h3>
-          </div>
-        </div>
-        <p>Submit full payment proof for outstanding penalties and check review status.</p>
-        <div class="row row-top"><a class="button" href="payment_upload.php">Open Payments</a></div>
-      </div>
-      <div class="action-card member-action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-books" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Catalog</span>
-            <h3 class="heading-top-md">Books Catalog</h3>
-          </div>
-        </div>
-        <p>See available titles, categories, and borrowing counts before requesting a book.</p>
-        <div class="row row-top"><a class="button" href="books.php">Open Catalog</a></div>
-      </div>
-    </div>
-
     <div class="grid cards member-dashboard-grid">
       <div class="panel member-dashboard-focus">
         <p class="muted eyebrow-compact stack-copy">Attention</p>
@@ -171,7 +179,9 @@ $penaltyStats->close();
         </div>
       </div>
     </div>
+    </div>
   </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>

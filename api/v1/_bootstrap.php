@@ -2,10 +2,6 @@
 require_once dirname(__DIR__, 2) . '/includes/config.php';
 require_once dirname(__DIR__, 2) . '/includes/helpers.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 function api_json($data, int $status = 200): void
 {
     http_response_code($status);
@@ -32,7 +28,7 @@ function api_user(): array
         'id' => (int) ($_SESSION['user_id'] ?? 0),
         'username' => (string) ($_SESSION['username'] ?? ''),
         'email' => (string) ($_SESSION['email'] ?? ''),
-        'role' => (string) ($_SESSION['role'] ?? ''),
+        'role' => canonical_role((string) ($_SESSION['role'] ?? '')),
     ];
 }
 
@@ -104,7 +100,7 @@ function api_user_from_token(string $token): ?array
         'id' => (int) $row['id'],
         'username' => (string) $row['username'],
         'email' => (string) $row['email'],
-        'role' => (string) $row['role'],
+        'role' => canonical_role((string) $row['role']),
         'scopes' => (string) ($row['scopes'] ?? 'read,write'),
     ];
 }
@@ -181,7 +177,7 @@ function api_require_session_login(): array
 function api_require_role(string $role): array
 {
     $user = api_require_login();
-    if ($user['role'] !== $role) {
+    if (!roles_match((string) $user['role'], $role)) {
         api_error('Forbidden.', 403);
     }
     return $user;

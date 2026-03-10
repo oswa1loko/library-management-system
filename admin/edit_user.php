@@ -116,8 +116,8 @@ if (isset($_POST['update'])) {
 
         <div class="inline-actions flow-top-md edit-user-summary">
           <span class="chip">User ID #<?php echo (int) $editUser['id']; ?></span>
-          <span class="chip">Role: <?php echo h(ucfirst($editUser['role'])); ?></span>
-          <span class="chip">Created: <?php echo h($editUser['created_at']); ?></span>
+          <span class="chip">Role: <?php echo h(role_label((string) $editUser['role'])); ?></span>
+          <span class="chip">Created: <?php echo h(format_display_date((string) $editUser['created_at'])); ?></span>
         </div>
 
         <?php if ($message !== ''): ?>
@@ -144,7 +144,7 @@ if (isset($_POST['update'])) {
               <div class="ui-select-shell">
                 <select id="role" name="role" class="ui-select" required>
                   <?php foreach ($rolesAllowed as $roleOption): ?>
-                    <option value="<?php echo h($roleOption); ?>" <?php echo $editUser['role'] === $roleOption ? 'selected' : ''; ?>><?php echo h(ucfirst($roleOption)); ?></option>
+                    <option value="<?php echo h($roleOption); ?>" <?php echo $editUser['role'] === $roleOption ? 'selected' : ''; ?>><?php echo h(role_label($roleOption)); ?></option>
                   <?php endforeach; ?>
                 </select>
                 <span class="ui-select-caret" aria-hidden="true"></span>

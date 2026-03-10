@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
-require_role('custodian');
+require_role('librarian');
 
 $stats = $conn->query("
     SELECT
@@ -99,22 +99,28 @@ $recentActivity = $conn->query("
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Custodian Dashboard</title>
+<title>Librarian Dashboard</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell librarian-shell member-shell js-member-sidebar" data-sidebar-key="librarian-dashboard" data-sidebar-default="expanded">
   <?php
-  $pageTitle = 'Custodian Dashboard';
+  $sidebarPage = 'dashboard';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
+  <?php
+  $pageTitle = 'Librarian Dashboard';
   $pageSubtitle = 'Signed in as ' . (string) ($_SESSION['username'] ?? '');
-  $topbarPrimaryHref = '/librarymanage/index.php';
-  $topbarPrimaryLabel = 'Home';
   require __DIR__ . '/partials/topbar.php';
   ?>
 
   <div class="stack">
-    <div class="panel custodian-dashboard-overview">
+    <div class="panel librarian-dashboard-overview">
       <p class="muted eyebrow-compact stack-copy">Overview</p>
       <h3 class="heading-panel">Library operations snapshot</h3>
       <div class="stat-grid">
@@ -145,59 +151,8 @@ $recentActivity = $conn->query("
       </div>
     </div>
 
-    <div class="grid cards custodian-dashboard-actions">
-      <div class="action-card custodian-action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-books" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Borrows</span>
-            <h3 class="heading-top-md">Active Borrowed Books</h3>
-          </div>
-        </div>
-        <p>See who currently has books checked out, including due dates, overdue records, and return actions.</p>
-        <div class="row row-top"><a class="button" href="manage_borrows.php">Open Active Borrows</a></div>
-      </div>
-      <div class="action-card custodian-action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-books" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Books</span>
-            <h3 class="heading-top-md">Manage Books</h3>
-          </div>
-        </div>
-        <p>Add titles, upload covers, update quantities, and keep inventory counts accurate.</p>
-        <div class="row row-top"><a class="button" href="manage_books.php">Open Book Manager</a></div>
-      </div>
-      <div class="action-card custodian-action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-penalties" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Penalties</span>
-            <h3 class="heading-top-md">Manage Penalties</h3>
-          </div>
-        </div>
-        <p>Review penalty records, focus on unsettled balances, and wait for admin payment decisions before marking balances cleared.</p>
-        <div class="row row-top"><a class="button" href="manage_penalties.php">Open Penalties</a></div>
-      </div>
-      <div class="action-card custodian-action-card custodian-action-card-wide">
-        <div class="card-head">
-          <div class="dashboard-icon icon-checklist" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Workboard</span>
-            <h3 class="heading-top-md">Daily Checklist</h3>
-          </div>
-        </div>
-        <p>Track returns, reconcile inventory, and clear unsettled penalties before the end of the day.</p>
-        <div class="row row-top">
-          <a class="button secondary" href="manage_borrows.php">Track Borrows</a>
-          <a class="button secondary" href="manage_books.php">Update Inventory</a>
-          <a class="button secondary" href="manage_penalties.php">Review Penalties</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid cards custodian-dashboard-grid">
-      <div class="panel custodian-dashboard-focus">
+    <div class="grid cards librarian-dashboard-grid">
+      <div class="panel librarian-dashboard-focus">
         <p class="muted eyebrow-compact stack-copy">Priority Work</p>
         <h3 class="stack-copy-md">Today&apos;s focus</h3>
         <div class="stack">
@@ -208,7 +163,7 @@ $recentActivity = $conn->query("
           <div class="empty-state">Available copies in stock: <strong><?php echo (int) ($stats['available_copies'] ?? 0); ?></strong></div>
         </div>
       </div>
-      <div class="panel custodian-dashboard-queue">
+      <div class="panel librarian-dashboard-queue">
         <p class="muted eyebrow-compact stack-copy">Recent Borrow Queue</p>
         <h3 class="stack-copy-md">Books still out</h3>
         <div class="stack">
@@ -218,14 +173,14 @@ $recentActivity = $conn->query("
           <?php while ($recent = $recentBorrows->fetch_assoc()): ?>
             <div class="empty-state">
               <strong class="label-block meta-top-sm"><?php echo h($recent['title']); ?></strong>
-              <span class="muted"><?php echo h($recent['username']); ?> | Due <?php echo h($recent['due_date']); ?></span>
+              <span class="muted"><?php echo h($recent['username']); ?> | Due <?php echo h(format_display_date((string) $recent['due_date'])); ?></span>
             </div>
           <?php endwhile; ?>
         </div>
       </div>
     </div>
 
-    <div class="panel custodian-dashboard-activity">
+    <div class="panel librarian-dashboard-activity">
       <p class="muted eyebrow-compact stack-copy">Recent Activity</p>
       <h3 class="stack-copy-md">Latest circulation and catalog updates</h3>
       <div class="activity-feed">
@@ -245,6 +200,8 @@ $recentActivity = $conn->query("
       </div>
     </div>
   </div>
+  </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>

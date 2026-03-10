@@ -25,7 +25,7 @@
           <p class="muted eyebrow-compact">Account Profile</p>
           <h2><?php echo h($singleUser['fullname']); ?></h2>
         </div>
-        <span class="badge"><?php echo h(ucfirst($singleUser['role'])); ?></span>
+        <span class="badge"><?php echo h(role_label((string) $singleUser['role'])); ?></span>
       </div>
       <div class="print-user-grid">
         <div class="print-user-field">
@@ -42,7 +42,7 @@
         </div>
         <div class="print-user-field">
           <span class="muted">Created At</span>
-          <strong><?php echo h($singleUser['created_at']); ?></strong>
+          <strong><?php echo h(format_display_date((string) $singleUser['created_at'])); ?></strong>
         </div>
       </div>
     </div>
@@ -69,8 +69,8 @@
               <td><?php echo h($user['fullname']); ?></td>
               <td><?php echo h($user['email']); ?></td>
               <td><?php echo h($user['username']); ?></td>
-              <td><?php echo h(ucfirst($user['role'])); ?></td>
-              <td><?php echo h($user['created_at']); ?></td>
+              <td><?php echo h(role_label((string) $user['role'])); ?></td>
+              <td><?php echo h(format_display_date((string) $user['created_at'])); ?></td>
             </tr>
           <?php endwhile; ?>
         </tbody>

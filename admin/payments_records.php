@@ -7,7 +7,7 @@ require_role('admin');
 
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
-$rolesAllowed = system_roles();
+$rolesAllowed = ['student', 'faculty'];
 $statusOptions = payment_statuses();
 $isValidStatusFilter = $statusFilter !== '' && in_array($statusFilter, $statusOptions, true);
 $isValidRoleFilter = $roleFilter !== '' && in_array($roleFilter, $rolesAllowed, true);
@@ -213,11 +213,19 @@ $payments = $paymentsStmt->get_result();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Payment Records</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-payments" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'payments';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
   <?php
   $pageTitle = 'Payment Records';
   $pageSubtitle = 'Review full payment proof submissions';
@@ -327,7 +335,7 @@ $payments = $paymentsStmt->get_result();
             </div>
           </div>
         </div>
-        <form method="get" class="toolbar grow">
+        <form method="get" class="toolbar grow admin-record-filters">
           <div>
             <label for="status_filter">Status</label>
             <div class="ui-select-shell">
@@ -346,7 +354,7 @@ $payments = $paymentsStmt->get_result();
               <select id="role_filter" name="role" class="ui-select">
                 <option value="">All roles</option>
                 <?php foreach ($rolesAllowed as $role): ?>
-                  <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(ucfirst($role)); ?></option>
+                  <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(role_label($role)); ?></option>
                 <?php endforeach; ?>
               </select>
               <span class="ui-select-caret" aria-hidden="true"></span>
@@ -403,7 +411,9 @@ $payments = $paymentsStmt->get_result();
                       </form>
                     </div>
                   <?php else: ?>
-                    <span class="muted">Reviewed</span>
+                    <span class="review-state review-state-<?php echo h($payment['status']); ?>">
+                      <?php echo $payment['status'] === 'rejected' ? 'Rejected by admin' : 'Reviewed'; ?>
+                    </span>
                   <?php endif; ?>
                 </td>
               </tr>
@@ -422,6 +432,8 @@ $payments = $paymentsStmt->get_result();
       </div>
     </div>
   </div>
+  </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>

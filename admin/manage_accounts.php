@@ -44,7 +44,7 @@ function manage_accounts_print_title(string $roleFilter, array $rolesAllowed, in
     }
 
     if ($roleFilter !== '' && in_array($roleFilter, $rolesAllowed, true)) {
-        return ucfirst($roleFilter) . ' Users';
+        return role_label($roleFilter) . ' Users';
     }
 
     return 'All Users';
@@ -176,7 +176,7 @@ $stats = $conn->query("
       COUNT(*) AS total_users,
       SUM(role = 'student') AS students,
       SUM(role = 'faculty') AS faculty,
-      SUM(role = 'custodian') AS custodians
+      SUM(role = 'librarian') AS librarians
     FROM users
 ")->fetch_assoc();
 
@@ -223,14 +223,24 @@ $filterQueryString = manage_accounts_filter_query($search, $roleFilter);
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Manage Accounts</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
+<?php if ($printMode): ?>
 <div class="site-shell">
-  <?php if ($printMode): ?>
     <?php require __DIR__ . '/partials/manage_accounts_print.php'; ?>
-  <?php else: ?>
+</div>
+<?php else: ?>
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-accounts" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'accounts';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
   <?php
   $pageTitle = 'Manage Accounts';
   $pageSubtitle = 'Admin account provisioning and maintenance';
@@ -251,9 +261,11 @@ $filterQueryString = manage_accounts_filter_query($search, $roleFilter);
 
     <?php require __DIR__ . '/partials/manage_accounts_directory.php'; ?>
   </div>
-<?php endif; ?>
+  </div>
 </div>
+<?php endif; ?>
 <?php if (!$printMode): ?>
+  <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
   <script src="/librarymanage/assets/admin_manage_accounts.js"></script>
 <?php endif; ?>
 </body>

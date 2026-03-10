@@ -39,6 +39,18 @@ function column_exists(mysqli $conn, string $table, string $column): bool
     return $result instanceof mysqli_result && $result->num_rows > 0;
 }
 
+function index_exists(mysqli $conn, string $table, string $index): bool
+{
+    if (!table_exists($conn, $table)) {
+        return false;
+    }
+
+    $safeTable = $conn->real_escape_string($table);
+    $safeIndex = $conn->real_escape_string($index);
+    $result = $conn->query("SHOW INDEX FROM `{$safeTable}` WHERE Key_name = '{$safeIndex}'");
+    return $result instanceof mysqli_result && $result->num_rows > 0;
+}
+
 function ensure_library_schema(mysqli $conn): void
 {
     $conn->query("
@@ -48,7 +60,7 @@ function ensure_library_schema(mysqli $conn): void
             email VARCHAR(100) NOT NULL UNIQUE,
             username VARCHAR(50) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
-            role ENUM('admin','student','faculty','custodian') NOT NULL,
+            role ENUM('admin','student','faculty','librarian') NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
@@ -72,15 +84,18 @@ function ensure_library_schema(mysqli $conn): void
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             book_id INT NOT NULL,
+            request_batch VARCHAR(40) DEFAULT NULL,
+            return_batch VARCHAR(40) DEFAULT NULL,
             borrow_date DATE NOT NULL,
             due_date DATE NOT NULL,
+            borrow_days INT NOT NULL DEFAULT 7,
             return_date DATE DEFAULT NULL,
-            status ENUM('borrowed','return_requested','returned') NOT NULL DEFAULT 'borrowed',
+            status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
 
-    $conn->query("ALTER TABLE borrows MODIFY status ENUM('borrowed','return_requested','returned') NOT NULL DEFAULT 'borrowed'");
+    $conn->query("ALTER TABLE borrows MODIFY status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending'");
 
     $conn->query("
         CREATE TABLE IF NOT EXISTS penalties (
@@ -175,7 +190,9 @@ function ensure_library_schema(mysqli $conn): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
 
-    $conn->query("ALTER TABLE users MODIFY role ENUM('admin','student','faculty','custodian') NOT NULL");
+    $conn->query("ALTER TABLE users MODIFY role ENUM('admin','student','faculty','custodian','librarian') NOT NULL");
+    $conn->query("UPDATE users SET role = 'librarian' WHERE role = 'custodian'");
+    $conn->query("ALTER TABLE users MODIFY role ENUM('admin','student','faculty','librarian') NOT NULL");
 
     if (column_exists($conn, 'books', 'book_title') && !column_exists($conn, 'books', 'title')) {
         $conn->query("ALTER TABLE books CHANGE book_title title VARCHAR(255) NOT NULL");
@@ -199,6 +216,45 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'books', 'qty_available')) {
         $conn->query("ALTER TABLE books ADD COLUMN qty_available INT NOT NULL DEFAULT 1 AFTER qty_total");
+    }
+
+    if (!column_exists($conn, 'borrows', 'borrow_days')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN borrow_days INT NOT NULL DEFAULT 7 AFTER due_date");
+    }
+
+    if (!column_exists($conn, 'borrows', 'request_batch')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN request_batch VARCHAR(40) DEFAULT NULL AFTER book_id");
+    }
+
+    if (!column_exists($conn, 'borrows', 'return_batch')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN return_batch VARCHAR(40) DEFAULT NULL AFTER request_batch");
+    }
+
+    if (!index_exists($conn, 'borrows', 'idx_borrows_request_batch')) {
+        $conn->query("CREATE INDEX idx_borrows_request_batch ON borrows (request_batch)");
+    }
+
+    if (!index_exists($conn, 'borrows', 'idx_borrows_return_batch')) {
+        $conn->query("CREATE INDEX idx_borrows_return_batch ON borrows (return_batch)");
+    }
+
+    if (column_exists($conn, 'borrows', 'request_batch')) {
+        $conn->query("
+            UPDATE borrows
+            SET request_batch = CONCAT('legacy-', id)
+            WHERE request_batch IS NULL OR request_batch = ''
+        ");
+    }
+
+    if (column_exists($conn, 'borrows', 'borrow_days')) {
+        $conn->query("
+            UPDATE borrows
+            SET borrow_days = CASE
+                WHEN due_date >= borrow_date THEN LEAST(GREATEST(DATEDIFF(due_date, borrow_date), 1), 30)
+                ELSE 7
+            END
+            WHERE borrow_days IS NULL OR borrow_days < 1 OR borrow_days > 30
+        ");
     }
 
     if (column_exists($conn, 'books', 'copies')) {

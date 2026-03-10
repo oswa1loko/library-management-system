@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
-require_role('custodian');
+require_role('librarian');
 
 $bookId = max(0, (int) ($_GET['id'] ?? $_POST['id'] ?? 0));
 $message = '';
@@ -41,9 +41,22 @@ if (isset($_POST['update'])) {
     $author = trim($_POST['author'] ?? '');
     $category = trim($_POST['category'] ?? '');
     $total = max(0, (int) ($_POST['qty_total'] ?? 1));
-    $available = max(0, min((int) ($_POST['qty_available'] ?? 1), $total));
+    $requestedAvailable = (int) ($_POST['qty_available'] ?? 1);
     $existingCoverPath = trim($_POST['existing_cover_path'] ?? '');
     $coverUpload = upload_book_cover($_FILES['cover'] ?? [], $existingCoverPath);
+    $borrowedCopiesStmt = $conn->prepare("
+        SELECT COUNT(*) AS borrowed_copies
+        FROM borrows
+        WHERE book_id = ?
+          AND status IN ('borrowed', 'return_requested')
+    ");
+    $borrowedCopiesStmt->bind_param('i', $bookId);
+    $borrowedCopiesStmt->execute();
+    $borrowedCopiesRow = $borrowedCopiesStmt->get_result()->fetch_assoc();
+    $borrowedCopiesStmt->close();
+    $borrowedCopies = (int) ($borrowedCopiesRow['borrowed_copies'] ?? 0);
+    $minimumAvailable = max(0, $total - $borrowedCopies);
+    $available = max($minimumAvailable, min($requestedAvailable, $total));
 
     if ($bookId <= 0 || $title === '') {
         $message = 'Book title is required.';
@@ -51,6 +64,10 @@ if (isset($_POST['update'])) {
         $message = 'Author is required.';
     } elseif ($category === '') {
         $message = 'Category is required.';
+    } elseif ($total < $borrowedCopies) {
+        $message = 'Total quantity cannot be lower than the number of copies currently borrowed (' . $borrowedCopies . ').';
+    } elseif ($requestedAvailable < $minimumAvailable) {
+        $message = 'Available quantity cannot hide borrowed copies. Minimum allowed right now is ' . $minimumAvailable . '.';
     } elseif ($coverUpload['error'] !== '') {
         $message = $coverUpload['error'];
     } else {
@@ -81,17 +98,23 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edit Book</title>
+<title><?php echo h(page_title('librarian', 'Book Editor')); ?></title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell librarian-shell member-shell js-member-sidebar" data-sidebar-key="librarian-books" data-sidebar-default="expanded">
   <?php
-  $pageTitle = 'Edit Book';
+  $sidebarPage = 'books';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
+  <?php
+  $pageTitle = 'Librarian Book Editor';
   $pageSubtitle = 'Separate editor for catalog updates';
-  $topbarPrimaryHref = 'manage_books.php';
-  $topbarPrimaryLabel = 'Manage Books';
   require __DIR__ . '/partials/topbar.php';
   ?>
 
@@ -110,7 +133,7 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
       require __DIR__ . '/partials/notices.php';
       ?>
 
-      <div class="panel custodian-edit-book-overview">
+      <div class="panel librarian-edit-book-overview">
         <div class="card-head">
           <div class="dashboard-icon icon-tools" aria-hidden="true"></div>
           <div>
@@ -143,8 +166,8 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
         </div>
       </div>
 
-      <div class="grid cards custodian-edit-book-grid">
-        <div class="panel custodian-edit-book-main">
+      <div class="grid cards librarian-edit-book-grid">
+        <div class="panel librarian-edit-book-main">
           <div class="card-head">
             <div class="dashboard-icon icon-edit" aria-hidden="true"></div>
             <div>
@@ -154,7 +177,7 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
             </div>
           </div>
 
-          <form method="post" enctype="multipart/form-data" class="stack flow-top-md custodian-edit-book-form">
+          <form method="post" enctype="multipart/form-data" class="stack flow-top-md librarian-edit-book-form">
             <input type="hidden" name="id" value="<?php echo (int) $book['id']; ?>">
             <input type="hidden" name="existing_cover_path" value="<?php echo h($book['cover_path'] ?? ''); ?>">
 
@@ -188,11 +211,11 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
               </div>
             </div>
 
-            <div class="inline-actions custodian-edit-book-actions">
+            <div class="inline-actions librarian-edit-book-actions">
               <button type="submit" name="update" value="1">Save Changes</button>
               <a class="button secondary" href="manage_books.php">Back to Books</a>
             </div>
-            <div class="inline-actions custodian-edit-book-chips">
+            <div class="inline-actions librarian-edit-book-chips">
               <span class="chip">Borrowed out: <?php echo $borrowedCopies; ?></span>
               <span class="chip">Available now: <?php echo (int) $book['qty_available']; ?></span>
               <span class="chip">Category: <?php echo h($book['category']); ?></span>
@@ -200,7 +223,7 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
           </form>
         </div>
 
-        <div class="panel custodian-edit-book-side">
+        <div class="panel librarian-edit-book-side">
           <div class="card-head">
             <div class="dashboard-icon icon-view" aria-hidden="true"></div>
             <div>
@@ -237,7 +260,9 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
       </div>
     <?php endif; ?>
   </div>
+  </div>
 </div>
-<script src="/librarymanage/assets/custodian_edit_book.js"></script>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+<script src="/librarymanage/assets/librarian_edit_book.js"></script>
 </body>
 </html>

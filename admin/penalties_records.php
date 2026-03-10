@@ -28,7 +28,7 @@ if (isset($_POST['run_penalty_sync'])) {
 
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
-$rolesAllowed = system_roles();
+$rolesAllowed = ['student', 'faculty'];
 $statusOptions = penalty_statuses();
 $isValidStatusFilter = $statusFilter !== '' && in_array($statusFilter, $statusOptions, true);
 $isValidRoleFilter = $roleFilter !== '' && in_array($roleFilter, $rolesAllowed, true);
@@ -85,11 +85,19 @@ $penalties = $stmt->get_result();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Penalty Records</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-penalties" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'penalties';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
   <?php
   $pageTitle = 'Penalty Records';
   $pageSubtitle = 'All penalty entries across the library system';
@@ -205,7 +213,7 @@ $penalties = $stmt->get_result();
         <form method="post" data-confirm="Run penalty sync now?">
           <button type="submit" name="run_penalty_sync" value="1">Run Penalty Sync Now</button>
         </form>
-        <form method="get" class="toolbar grow">
+        <form method="get" class="toolbar grow admin-record-filters">
           <div>
             <label for="status_filter">Status</label>
             <div class="ui-select-shell">
@@ -224,7 +232,7 @@ $penalties = $stmt->get_result();
               <select id="role_filter" name="role" class="ui-select">
                 <option value="">All roles</option>
                 <?php foreach ($rolesAllowed as $role): ?>
-                  <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(ucfirst($role)); ?></option>
+                  <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(role_label($role)); ?></option>
                 <?php endforeach; ?>
               </select>
               <span class="ui-select-caret" aria-hidden="true"></span>
@@ -268,7 +276,7 @@ $penalties = $stmt->get_result();
                 <td><?php echo h(format_currency($penalty['amount'])); ?></td>
                 <td><span class="badge"><span class="status-dot <?php echo h($penalty['status']); ?>"></span><?php echo h($penalty['status']); ?></span></td>
                 <td><?php echo h($penalty['reason']); ?></td>
-                <td><?php echo h($penalty['created_at']); ?></td>
+                <td><?php echo h(format_display_date((string) $penalty['created_at'])); ?></td>
               </tr>
             <?php endwhile; ?>
           </tbody>
@@ -276,7 +284,9 @@ $penalties = $stmt->get_result();
       </div>
     </div>
   </div>
+  </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 </body>
 </html>

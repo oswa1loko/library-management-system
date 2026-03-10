@@ -1,7 +1,7 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/session.php';
+
+app_start_session();
 
 function h($value): string
 {
@@ -10,13 +10,13 @@ function h($value): string
 
 function redirect_to_dashboard(?string $role = null): void
 {
-    $role = $role ?? ($_SESSION['role'] ?? '');
+    $role = canonical_role($role ?? ($_SESSION['role'] ?? ''));
 
     $map = [
         'admin' => '/librarymanage/admin/dashboard.php',
         'student' => '/librarymanage/student/dashboard.php',
         'faculty' => '/librarymanage/faculty/dashboard.php',
-        'custodian' => '/librarymanage/custodian/dashboard.php',
+        'librarian' => '/librarymanage/librarian/dashboard.php',
     ];
 
     header('Location: ' . ($map[$role] ?? '/librarymanage/loginpage.php'));
@@ -25,12 +25,38 @@ function redirect_to_dashboard(?string $role = null): void
 
 function page_title(string $role, string $title): string
 {
-    return ucfirst($role) . ' | ' . $title;
+    return role_label($role) . ' | ' . $title;
 }
 
 function system_roles(): array
 {
-    return ['student', 'faculty', 'custodian', 'admin'];
+    return ['student', 'faculty', 'librarian', 'admin'];
+}
+
+function role_label(string $role): string
+{
+    $map = [
+        'admin' => 'Admin',
+        'student' => 'Student',
+        'faculty' => 'Faculty',
+        'librarian' => 'Librarian',
+        'system' => 'System',
+    ];
+
+    $role = canonical_role(trim($role));
+    return $map[$role] ?? ucfirst($role);
+}
+
+function canonical_role(string $role): string
+{
+    $role = trim($role);
+    // Accept the legacy DB/session value during migration and normalize it.
+    return $role === 'custodian' ? 'librarian' : $role;
+}
+
+function roles_match(string $actualRole, string $expectedRole): bool
+{
+    return canonical_role($actualRole) === canonical_role($expectedRole);
 }
 
 function complaint_statuses(): array
@@ -56,6 +82,63 @@ function ensure_upload_directory(string $path): bool
 function format_currency($amount): string
 {
     return 'PHP ' . number_format((float) $amount, 2);
+}
+
+function format_display_date(?string $dateValue, string $fallback = '-'): string
+{
+    $dateValue = trim((string) $dateValue);
+    if ($dateValue === '' || $dateValue === '0000-00-00') {
+        return $fallback;
+    }
+
+    $timestamp = strtotime($dateValue);
+    if ($timestamp === false) {
+        return $dateValue;
+    }
+
+    return date('M j, Y', $timestamp);
+}
+
+function format_display_datetime(?string $dateValue, string $fallback = '-'): string
+{
+    $dateValue = trim((string) $dateValue);
+    if ($dateValue === '' || $dateValue === '0000-00-00' || $dateValue === '0000-00-00 00:00:00') {
+        return $fallback;
+    }
+
+    $timestamp = strtotime($dateValue);
+    if ($timestamp === false) {
+        return $dateValue;
+    }
+
+    return date('M j, Y g:i A', $timestamp);
+}
+
+function format_batch_reference(?string $batchRef, string $label = 'Request Ref'): string
+{
+    $batchRef = trim((string) $batchRef);
+    $label = trim($label) !== '' ? trim($label) : 'Request Ref';
+
+    if ($batchRef === '') {
+        return $label;
+    }
+
+    if (preg_match('/^legacy-(\d+)$/i', $batchRef, $matches) === 1) {
+        return $label . ' ' . str_pad($matches[1], 3, '0', STR_PAD_LEFT);
+    }
+
+    $suffix = $batchRef;
+    if (str_contains($batchRef, '-')) {
+        $parts = explode('-', $batchRef, 2);
+        $suffix = $parts[1] ?? $batchRef;
+    }
+
+    $suffix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $suffix), 0, 6));
+    if ($suffix === '') {
+        return $label;
+    }
+
+    return $label . ' ' . $suffix;
 }
 
 function remove_relative_file(string $relativePath): void

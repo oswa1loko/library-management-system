@@ -15,9 +15,8 @@
     <span class="muted">Faculty accounts</span>
   </div>
   <div class="stat-card">
-    <span class="code-pill">Custodians</span>
-    <strong><?php echo (int) ($stats['custodians'] ?? 0); ?></strong>
-    <span class="muted">Custodian accounts</span>
+    <span class="code-pill">Librarians</span>
+    <strong><?php echo (int) ($stats['librarians'] ?? 0); ?></strong>
+    <span class="muted">Librarian accounts</span>
   </div>
 </div>
-

@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
-require_role('custodian');
+require_role('librarian');
 
 $message = '';
 $messageType = 'success';
@@ -92,12 +92,35 @@ if (isset($_POST['delete'])) {
     $id = (int) ($_POST['id'] ?? 0);
 
     if ($id > 0) {
-        $stmt = $conn->prepare("DELETE FROM books WHERE id = ?");
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $stmt->close();
-        header('Location: manage_books.php');
-        exit;
+        $usageCheck = $conn->prepare("
+            SELECT
+                COUNT(*) AS total_borrows,
+                COALESCE(SUM(CASE WHEN status IN ('pending', 'borrowed', 'return_requested') THEN 1 ELSE 0 END), 0) AS active_borrows
+            FROM borrows
+            WHERE book_id = ?
+        ");
+        $usageCheck->bind_param('i', $id);
+        $usageCheck->execute();
+        $usage = $usageCheck->get_result()->fetch_assoc();
+        $usageCheck->close();
+
+        $totalBorrows = (int) ($usage['total_borrows'] ?? 0);
+        $activeBorrows = (int) ($usage['active_borrows'] ?? 0);
+
+        if ($activeBorrows > 0) {
+            $message = 'This book cannot be deleted while it has active or pending borrow records.';
+            $messageType = 'error';
+        } elseif ($totalBorrows > 0) {
+            $message = 'This book cannot be deleted because it already has borrow history.';
+            $messageType = 'error';
+        } else {
+            $stmt = $conn->prepare("DELETE FROM books WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $stmt->close();
+            header('Location: manage_books.php');
+            exit;
+        }
     }
 }
 
@@ -146,14 +169,22 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manage Books</title>
+<title><?php echo h(page_title('librarian', 'Books')); ?></title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell librarian-shell member-shell js-member-sidebar" data-sidebar-key="librarian-books" data-sidebar-default="expanded">
   <?php
-  $pageTitle = 'Manage Books';
+  $sidebarPage = 'books';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
+  <?php
+  $pageTitle = 'Librarian Books';
   $pageSubtitle = 'Inventory maintenance for library holdings';
   require __DIR__ . '/partials/topbar.php';
   ?>
@@ -371,8 +402,10 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
       <p id="client-filter-empty" class="muted hidden flow-top-sm">No books match the current on-page filter.</p>
     </div>
   </div>
+  </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
-<script src="/librarymanage/assets/custodian_manage_books.js"></script>
+<script src="/librarymanage/assets/librarian_manage_books.js"></script>
 </body>
 </html>

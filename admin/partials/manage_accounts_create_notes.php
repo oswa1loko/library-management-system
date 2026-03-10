@@ -21,7 +21,7 @@
         <div class="ui-select-shell">
           <select name="role" class="ui-select" required>
             <?php foreach ($rolesAllowed as $roleOption): ?>
-              <option value="<?php echo h($roleOption); ?>" <?php echo $createData['role'] === $roleOption ? 'selected' : ''; ?>><?php echo h(ucfirst($roleOption)); ?></option>
+              <option value="<?php echo h($roleOption); ?>" <?php echo $createData['role'] === $roleOption ? 'selected' : ''; ?>><?php echo h(role_label($roleOption)); ?></option>
             <?php endforeach; ?>
           </select>
           <span class="ui-select-caret" aria-hidden="true"></span>
@@ -48,4 +48,3 @@
     </div>
   </div>
 </div>
-

@@ -51,23 +51,26 @@ $notifications = $conn->query("
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Notifications</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
-  <div class="topbar">
-    <div>
-      <h1>Admin Notifications</h1>
-      <p>Operational alerts and system events</p>
-    </div>
-    <div class="topbar-nav">
-      <a href="dashboard.php">Dashboard</a>
-      <a href="/librarymanage/logout.php">Logout</a>
-    </div>
-  </div>
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-notifications" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'notifications';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
 
-  <div class="stack">
+  <div class="member-main">
+    <?php
+    $pageTitle = 'Admin Notifications';
+    $pageSubtitle = 'Operational alerts and system events';
+    require __DIR__ . '/partials/topbar.php';
+    ?>
+
+    <div class="stack">
     <?php if ($message !== ''): ?>
       <div class="notice <?php echo $messageType === 'error' ? 'error' : 'success'; ?>"><?php echo h($message); ?></div>
     <?php endif; ?>
@@ -126,8 +129,8 @@ $notifications = $conn->query("
         <?php endwhile; ?>
       </div>
     </div>
-  </div>
+    </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>
-

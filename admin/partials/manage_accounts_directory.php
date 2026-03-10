@@ -21,7 +21,7 @@
           <select id="role_filter" name="role" class="ui-select">
             <option value="">All roles</option>
             <?php foreach ($rolesAllowed as $roleOption): ?>
-              <option value="<?php echo h($roleOption); ?>" <?php echo $roleFilter === $roleOption ? 'selected' : ''; ?>><?php echo h(ucfirst($roleOption)); ?></option>
+              <option value="<?php echo h($roleOption); ?>" <?php echo $roleFilter === $roleOption ? 'selected' : ''; ?>><?php echo h(role_label($roleOption)); ?></option>
             <?php endforeach; ?>
           </select>
           <span class="ui-select-caret" aria-hidden="true"></span>
@@ -34,7 +34,7 @@
     </form>
   </div>
   <div class="inline-actions chips-row manage-users-summary">
-    <span class="chip">Showing role: <?php echo h($roleFilter !== '' ? ucfirst($roleFilter) : 'All'); ?></span>
+    <span class="chip">Showing role: <?php echo h($roleFilter !== '' ? role_label($roleFilter) : 'All'); ?></span>
     <span class="chip">Search term: <?php echo h($search !== '' ? $search : 'None'); ?></span>
     <span class="chip">Records loaded: <?php echo (int) $users->num_rows; ?></span>
   </div>
@@ -47,7 +47,7 @@
           <option value="all">Print All Users</option>
           <option value="student">Print Student</option>
           <option value="faculty">Print Faculty</option>
-          <option value="custodian">Print Custodian</option>
+          <option value="librarian">Print Librarian</option>
           <option value="admin">Print Admin</option>
           <option value="selected">Print Selected</option>
         </select>
@@ -91,8 +91,8 @@
             </td>
             <td><?php echo h($user['email']); ?></td>
             <td><?php echo h($user['username']); ?></td>
-            <td><span class="badge"><?php echo h($user['role']); ?></span></td>
-            <td><?php echo h($user['created_at']); ?></td>
+            <td><span class="badge"><?php echo h(role_label((string) $user['role'])); ?></span></td>
+            <td><?php echo h(format_display_date((string) $user['created_at'])); ?></td>
             <td>
               <div class="inline-actions manage-users-actions">
                 <a class="button secondary" href="manage_accounts.php?print=1&user_id=<?php echo (int) $user['id']; ?>">Print</a>

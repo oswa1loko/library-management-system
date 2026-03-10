@@ -60,7 +60,7 @@ const coreActions = [
 const quickAccessTiles = [
   {
     title: "Open Login",
-    helper: "Sign in as admin, student, faculty, or custodian.",
+    helper: "Sign in as admin, student, faculty, or librarian.",
     icon: LogIn,
     href: "/librarymanage/loginpage.php",
   },
@@ -106,7 +106,7 @@ const roleShortcuts = [
   { label: "Admin", href: "/librarymanage/loginpage.php?role=admin" },
   { label: "Student", href: "/librarymanage/loginpage.php?role=student" },
   { label: "Faculty", href: "/librarymanage/loginpage.php?role=faculty" },
-  { label: "Custodian", href: "/librarymanage/loginpage.php?role=custodian" },
+  { label: "Librarian", href: "/librarymanage/loginpage.php?role=librarian" },
 ];
 
 const statusStrip = [
@@ -402,7 +402,7 @@ export default function LandingPage() {
               Regis Marie College Library portal for faster search, cleaner borrowing, and clearer access.
             </h1>
             <p className="mt-5 text-base text-slate-600 md:text-lg dark:text-slate-300/80">
-              Access one system for catalog browsing, borrow tracking, return requests, and payment review across admin, student, faculty, and custodian roles.
+              Access one system for catalog browsing, borrow tracking, return requests, and payment review across admin, student, faculty, and librarian roles.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">

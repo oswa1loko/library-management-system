@@ -31,7 +31,7 @@ $userStats = $conn->query("
       COUNT(*) AS total_users,
       SUM(role = 'student') AS students,
       SUM(role = 'faculty') AS faculty,
-      SUM(role = 'custodian') AS custodians
+      SUM(role = 'librarian') AS librarians
     FROM users
 ")->fetch_assoc();
 
@@ -170,23 +170,26 @@ $recentActivity = $conn->query("
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Dashboard</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
-  <div class="topbar">
-    <div>
-      <h1>Admin Dashboard</h1>
-      <p>Signed in as <?php echo h($_SESSION['username']); ?></p>
-    </div>
-    <div class="topbar-nav">
-      <a href="/librarymanage/index.php">Home</a>
-      <a href="/librarymanage/logout.php">Logout</a>
-    </div>
-  </div>
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-dashboard" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'dashboard';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
 
-  <div class="stack">
+  <div class="member-main">
+    <?php
+    $pageTitle = 'Admin Dashboard';
+    $pageSubtitle = 'Signed in as ' . (string) ($_SESSION['username'] ?? '');
+    require __DIR__ . '/partials/topbar.php';
+    ?>
+
+    <div class="stack">
     <?php if ($syncNotice !== ''): ?>
       <div class="notice success"><?php echo h($syncNotice); ?></div>
     <?php endif; ?>
@@ -219,96 +222,13 @@ $recentActivity = $conn->query("
           <span class="muted">New complaints</span>
         </div>
       </div>
-    </div>
-
-    <div class="grid cards">
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-accounts" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Accounts</span>
-            <h3 class="heading-top-md">Manage Accounts</h3>
-          </div>
+      <div class="toolbar toolbar-top flow-top-md admin-maintenance-bar">
+        <div class="grow admin-maintenance-copy">
+          <span class="code-pill">Maintenance</span>
+          <h3 class="heading-top-md">Penalty Sync</h3>
+          <p class="muted">Use this only when overdue penalties need a manual refresh. Main navigation is now in the left sidebar.</p>
         </div>
-        <p>Create users, update roles, search by account details, and remove unused accounts.</p>
-        <div class="row row-top"><a class="button" href="manage_accounts.php">Open Accounts</a></div>
-      </div>
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-payments" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Payments</span>
-            <h3 class="heading-top-md">Payment Records</h3>
-          </div>
-        </div>
-        <p>Review full payment proof uploads, filter by status, and approve or reject submissions.</p>
-        <div class="row row-top"><a class="button" href="payments_records.php">Open Payments</a></div>
-      </div>
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-penalties" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Penalties</span>
-            <h3 class="heading-top-md">Penalty Records</h3>
-          </div>
-        </div>
-        <p>Track overdue balances, unpaid penalties, and user borrowing references.</p>
-        <div class="row row-top"><a class="button" href="penalties_records.php">Open Penalties</a></div>
-      </div>
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-feedback" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Feedback</span>
-            <h3 class="heading-top-md">Complaint Records</h3>
-          </div>
-        </div>
-        <p>Review complaints and reports submitted from the feedback form on the landing page.</p>
-        <div class="row row-top"><a class="button" href="complaints_records.php">Open Complaints</a></div>
-      </div>
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-recent" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Alerts</span>
-            <h3 class="heading-top-md">Notifications</h3>
-          </div>
-        </div>
-        <p>Review operational alerts for overdue records, payment queue activity, and system events.</p>
-        <div class="row row-top"><a class="button" href="notifications.php">Open Notifications</a></div>
-      </div>
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-ledger" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Compliance</span>
-            <h3 class="heading-top-md">Audit Logs</h3>
-          </div>
-        </div>
-        <p>Track critical actions including approvals, sync runs, account changes, and API token operations.</p>
-        <div class="row row-top"><a class="button" href="audit_logs.php">Open Audit Logs</a></div>
-      </div>
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-upload" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Recovery</span>
-            <h3 class="heading-top-md">Backup and Restore</h3>
-          </div>
-        </div>
-        <p>Export full SQL backups and restore from saved snapshots when recovery is required.</p>
-        <div class="row row-top"><a class="button" href="backup_restore.php">Open Backup Tools</a></div>
-      </div>
-      <div class="action-card">
-        <div class="card-head">
-          <div class="dashboard-icon icon-penalties" aria-hidden="true"></div>
-          <div>
-            <span class="chip">Maintenance</span>
-            <h3 class="heading-top-md">Penalty Sync</h3>
-          </div>
-        </div>
-        <p>Force-refresh all overdue penalties now using the PHP 2.00 per day rule.</p>
-        <form method="post" class="row row-top" data-confirm="Run penalty sync now?">
+        <form method="post" class="admin-maintenance-action" data-confirm="Run penalty sync now?">
           <button type="submit" name="run_penalty_sync" value="1">Run Penalty Sync Now</button>
         </form>
       </div>
@@ -431,8 +351,9 @@ $recentActivity = $conn->query("
         <?php endwhile; ?>
       </div>
     </div>
-  </div>
+    </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 <script src="/librarymanage/assets/admin_dashboard.js"></script>
 </body>

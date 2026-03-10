@@ -88,11 +88,19 @@ $complaints = $stmt->get_result();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Complaint Records</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-complaints" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'complaints';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
   <?php
   $pageTitle = 'Complaint Records';
   $pageSubtitle = 'Submitted feedback, complaints, and reports';
@@ -195,7 +203,7 @@ $complaints = $stmt->get_result();
             </div>
           </div>
         </div>
-        <form method="get" class="toolbar grow">
+        <form method="get" class="toolbar grow admin-record-filters admin-record-filters-compact">
           <div>
             <label for="status">Status</label>
             <div class="ui-select-shell">
@@ -256,7 +264,7 @@ $complaints = $stmt->get_result();
                 <td><?php echo h($displayMobile); ?></td>
                 <td><?php echo nl2br(h($complaint['message'])); ?></td>
                 <td><span class="badge"><span class="status-dot <?php echo h($status); ?>"></span><?php echo h($status); ?></span></td>
-                <td><?php echo h($complaint['created_at']); ?></td>
+                <td><?php echo h(format_display_date((string) $complaint['created_at'])); ?></td>
                 <td>
                   <div class="inline-actions">
                     <?php if ($status === 'new'): ?>
@@ -286,7 +294,9 @@ $complaints = $stmt->get_result();
       </div>
     </div>
   </div>
+  </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 </body>
 </html>

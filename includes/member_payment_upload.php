@@ -218,23 +218,61 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo h(page_title($role, 'Payments')); ?></title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
-  <div class="topbar">
-    <div>
-      <h1><?php echo h(ucfirst($role)); ?> Portal</h1>
-      <p>Penalty payment submissions</p>
+<div class="site-shell member-shell js-member-sidebar" data-sidebar-key="<?php echo h($role); ?>-payments">
+  <aside class="panel member-sidebar">
+    <div class="member-sidebar-head">
+      <button type="button" class="member-sidebar-toggle js-sidebar-toggle" aria-expanded="true" aria-label="Collapse sidebar">
+        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Main Menu</span>
+      </button>
     </div>
-    <div class="topbar-nav">
-      <a href="/librarymanage/<?php echo h($role); ?>/dashboard.php">Dashboard</a>
-      <a href="/librarymanage/logout.php">Logout</a>
+    <p class="member-sidebar-section member-sidebar-label">Main</p>
+    <nav class="member-sidebar-nav">
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/dashboard.php" data-tooltip="Dashboard">
+        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Dashboard</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="Borrow and Return">
+        <span class="dashboard-icon icon-books" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Borrow and Return</span>
+      </a>
+      <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/payment_upload.php" data-tooltip="Payments">
+        <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Payments</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Catalog">
+        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Catalog</span>
+      </a>
+    </nav>
+    <p class="member-sidebar-section member-sidebar-label">Account</p>
+    <div class="topbar-nav member-sidebar-utilities">
+      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Home</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
+        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Logout</span>
+      </a>
     </div>
-  </div>
+  </aside>
 
-  <div class="stack">
+  <div class="member-main">
+    <div class="topbar">
+      <div>
+        <h1><?php echo h(role_label($role)); ?> Portal</h1>
+        <p>Penalty payment submissions</p>
+      </div>
+    </div>
+
+    <div class="stack">
     <?php if ($msg !== ''): ?>
       <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
     <?php endif; ?>
@@ -393,7 +431,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
                 <td><span class="badge"><span class="status-dot <?php echo h($penalty['status']); ?>"></span><?php echo h($penalty['status']); ?></span></td>
                 <td><?php echo h($penalty['latest_payment_status'] ?: '-'); ?></td>
                 <td><?php echo h($penalty['reason']); ?></td>
-                <td><?php echo h($penalty['created_at']); ?></td>
+                <td><?php echo h(format_display_date((string) $penalty['created_at'])); ?></td>
               </tr>
             <?php endwhile; ?>
           </tbody>
@@ -446,7 +484,9 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
         </table>
       </div>
     </div>
+    </div>
   </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>

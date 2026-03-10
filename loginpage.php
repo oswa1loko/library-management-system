@@ -12,27 +12,20 @@ if (!$check || $check->num_rows === 0) {
     $showSetupNote = true;
 }
 
-$allowedLoginRoles = ['admin', 'student', 'faculty', 'custodian'];
-$selectedRole = trim((string) ($_POST['role'] ?? ($_GET['role'] ?? '')));
-if (!in_array($selectedRole, $allowedLoginRoles, true)) {
-    $selectedRole = '';
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
-    $role = trim($_POST['role'] ?? '');
 
-    if ($login === '' || $password === '' || $role === '') {
+    if ($login === '' || $password === '') {
         $error = 'Please complete all fields.';
     } else {
         $stmt = $conn->prepare("
             SELECT id, username, email, password, role
             FROM users
-            WHERE (username = ? OR email = ?) AND role = ?
+            WHERE (username = ? OR email = ?)
             LIMIT 1
         ");
-        $stmt->bind_param('sss', $login, $login, $role);
+        $stmt->bind_param('ss', $login, $login);
         $stmt->execute();
         $stmt->store_result();
 
@@ -52,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($ok) {
+                session_regenerate_id(true);
                 $_SESSION['user_id'] = (int) $id;
                 $_SESSION['username'] = $dbUsername;
                 $_SESSION['email'] = $dbEmail;
@@ -60,9 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect_to_dashboard($dbRole);
             }
 
-            $error = 'Incorrect password.';
+            $error = 'Invalid credentials.';
         } else {
-            $error = 'Account not found or role mismatch.';
+            $error = 'Invalid credentials.';
         }
 
         $stmt->close();
@@ -85,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="auth-panel auth-panel-main">
         <p class="muted auth-kicker">Secure Access</p>
         <h2 class="auth-title">Library Login</h2>
-        <p class="muted auth-intro">Use your email or username, then choose the correct role for access. The system will route you to the right dashboard after login.</p>
+        <p class="muted auth-intro">Use your email or username and password. The system will route you to the correct dashboard after login.</p>
 
         <?php if (!empty($error)): ?>
           <div class="notice error"><?php echo h($error); ?></div>
@@ -100,20 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div>
             <label for="password">Password</label>
             <input id="password" type="password" name="password" placeholder="Enter password" required>
-          </div>
-
-          <div>
-            <label for="role">Role</label>
-            <div class="ui-select-shell">
-              <select id="role" name="role" class="ui-select" required>
-                <option value="" disabled <?php echo $selectedRole === '' ? 'selected' : ''; ?>>Select your role</option>
-                <option value="admin" <?php echo $selectedRole === 'admin' ? 'selected' : ''; ?>>Admin</option>
-                <option value="student" <?php echo $selectedRole === 'student' ? 'selected' : ''; ?>>Student</option>
-                <option value="faculty" <?php echo $selectedRole === 'faculty' ? 'selected' : ''; ?>>Faculty</option>
-                <option value="custodian" <?php echo $selectedRole === 'custodian' ? 'selected' : ''; ?>>Custodian</option>
-              </select>
-              <span class="ui-select-caret" aria-hidden="true"></span>
-            </div>
           </div>
 
           <div class="inline-actions">
@@ -133,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="stack auth-role-list">
           <div class="empty-state auth-role-item"><strong>Admin</strong>Manage accounts, review payment submissions, and monitor penalty records.</div>
           <div class="empty-state auth-role-item"><strong>Student and Faculty</strong>Borrow books, check return status, and upload payment proof.</div>
-          <div class="empty-state auth-role-item"><strong>Custodian</strong>Manage books, track active borrows, mark returns, and maintain penalties.</div>
+          <div class="empty-state auth-role-item"><strong>Librarian</strong>Manage books, track active borrows, mark returns, and maintain penalties.</div>
         </div>
       </div>
     </div>

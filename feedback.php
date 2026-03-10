@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formData['mobile_number'] = trim($_POST['mobile_number'] ?? '');
     $formData['message'] = trim($_POST['message'] ?? '');
 
-    $allowedRoles = ['guest', 'student', 'faculty', 'custodian', 'admin'];
+    $allowedRoles = ['guest', 'student', 'faculty', 'librarian', 'admin'];
     if (!in_array($formData['role'], $allowedRoles, true)) {
         $formData['role'] = 'guest';
     }
@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <label for="role">Role</label>
               <div class="ui-select-shell">
                 <select id="role" name="role" class="ui-select">
-                  <?php foreach (['guest', 'student', 'faculty', 'custodian', 'admin'] as $roleOption): ?>
+                  <?php foreach (['guest', 'student', 'faculty', 'librarian', 'admin'] as $roleOption): ?>
                     <option value="<?php echo h($roleOption); ?>" <?php echo $formData['role'] === $roleOption ? 'selected' : ''; ?>>
                       <?php echo h(ucfirst($roleOption)); ?>
                     </option>

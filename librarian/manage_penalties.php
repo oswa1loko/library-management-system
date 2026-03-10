@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
-require_role('custodian');
+require_role('librarian');
 
 $notice = trim($_GET['notice'] ?? '');
 $bookTitleSql = column_exists($conn, 'books', 'title') ? 'b.title' : (column_exists($conn, 'books', 'book_title') ? 'b.book_title' : "''");
@@ -18,79 +18,19 @@ $summary = $conn->query("
     FROM penalties
 ")->fetch_assoc();
 
-if (isset($_POST['mark_paid'])) {
-    $id = (int) ($_POST['id'] ?? 0);
-    $borrowCheck = $conn->prepare("
-        SELECT br.status
-        FROM penalties p
-        JOIN borrows br ON br.id = p.borrow_id
-        WHERE p.id = ?
-        LIMIT 1
-    ");
-    $borrowCheck->bind_param('i', $id);
-    $borrowCheck->execute();
-    $borrowState = (string) (($borrowCheck->get_result()->fetch_assoc()['status'] ?? ''));
-    $borrowCheck->close();
-
-    if ($borrowState !== 'returned') {
-        header('Location: manage_penalties.php?notice=' . urlencode('Penalty can only be marked as paid after the book is confirmed returned.'));
-        exit;
-    }
-
-    $paymentCheck = $conn->prepare("
-        SELECT status
-        FROM payments
-        WHERE penalty_id = ?
-        ORDER BY id DESC
-        LIMIT 1
-    ");
-    $paymentCheck->bind_param('i', $id);
-    $paymentCheck->execute();
-    $latestPayment = $paymentCheck->get_result()->fetch_assoc();
-    $paymentCheck->close();
-
-    if (($latestPayment['status'] ?? '') === 'pending') {
-        header('Location: manage_penalties.php?notice=' . urlencode('Pending payment reviews must be handled by admin before marking a penalty as paid.'));
-        exit;
-    }
-
-    $stmt = $conn->prepare("UPDATE penalties SET status = 'paid' WHERE id = ?");
-    $stmt->bind_param('i', $id);
-    $stmt->execute();
-    $stmt->close();
-    header('Location: manage_penalties.php');
-    exit;
-}
-
-if (isset($_POST['mark_unpaid'])) {
-    $id = (int) ($_POST['id'] ?? 0);
-    $paymentCheck = $conn->prepare("
-        SELECT status
-        FROM payments
-        WHERE penalty_id = ?
-        ORDER BY id DESC
-        LIMIT 1
-    ");
-    $paymentCheck->bind_param('i', $id);
-    $paymentCheck->execute();
-    $latestPayment = $paymentCheck->get_result()->fetch_assoc();
-    $paymentCheck->close();
-
-    if (($latestPayment['status'] ?? '') === 'approved') {
-        header('Location: manage_penalties.php?notice=' . urlencode('Approved payments must be changed from the admin payment records page.'));
-        exit;
-    }
-
-    $stmt = $conn->prepare("UPDATE penalties SET status = 'unpaid' WHERE id = ?");
-    $stmt->bind_param('i', $id);
-    $stmt->execute();
-    $stmt->close();
-    header('Location: manage_penalties.php');
-    exit;
-}
-
 $penalties = $conn->query("
-    SELECT p.*, u.username, {$bookTitleSql} AS title
+    SELECT
+        p.*,
+        u.username,
+        {$bookTitleSql} AS title,
+        br.status AS borrow_status,
+        (
+            SELECT pay.status
+            FROM payments pay
+            WHERE pay.penalty_id = p.id
+            ORDER BY pay.id DESC
+            LIMIT 1
+        ) AS latest_payment_status
     FROM penalties p
     JOIN users u ON u.id = p.user_id
     JOIN borrows br ON br.id = p.borrow_id
@@ -114,14 +54,22 @@ $recentUnpaid = $conn->query("
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manage Penalties</title>
+<title><?php echo h(page_title('librarian', 'Penalties')); ?></title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell">
+<div class="site-shell librarian-shell member-shell js-member-sidebar" data-sidebar-key="librarian-penalties" data-sidebar-default="expanded">
   <?php
-  $pageTitle = 'Manage Penalties';
+  $sidebarPage = 'penalties';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
+  <?php
+  $pageTitle = 'Librarian Penalties';
   $pageSubtitle = 'Penalty review and settlement status updates';
   require __DIR__ . '/partials/topbar.php';
   ?>
@@ -196,28 +144,28 @@ $recentUnpaid = $conn->query("
           <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
           <div>
             <p class="muted eyebrow-compact">Settlement Notes</p>
-            <h3 class="heading-card">Custodian checklist</h3>
-            <p class="muted">Use the admin payment records page when proof has been submitted, then change penalty state here only when no payment review is blocking it.</p>
+            <h3 class="heading-card">Librarian checklist</h3>
+            <p class="muted">Use this page to monitor balances and borrow status. Payment approval and final settlement changes are handled by admin.</p>
           </div>
         </div>
         <div class="stack">
           <div class="empty-state">
-            <strong class="label-block-gap">Unpaid first</strong>
-            Focus on unsettled records before marking anything paid so balances stay credible for admin review.
+            <strong class="label-block-gap">Monitor only</strong>
+            Librarians can review which borrowers have open penalties, but admin handles final payment approval and settlement status.
           </div>
           <div class="empty-state">
             <strong class="label-block-gap">Payment coordination</strong>
-            Match payment uploads with the correct borrower and title before changing penalty status.
+            Match payment uploads with the correct borrower and title, then let admin review the proof from payment records.
           </div>
           <div class="empty-state">
             <strong class="label-block-gap">Reporting readiness</strong>
-            Consistent penalty status makes admin records and monthly totals easier to audit later.
+            Keep borrow returns updated so admin sees the correct penalty context during payment verification.
           </div>
         </div>
       </div>
     </div>
 
-    <div class="panel custodian-penalties-panel">
+    <div class="panel librarian-penalties-panel">
       <div class="card-head card-head-tight">
         <div class="dashboard-icon icon-ledger" aria-hidden="true"></div>
         <div>
@@ -226,12 +174,12 @@ $recentUnpaid = $conn->query("
           <p class="muted">Each row shows the borrower, related book, amount, current state, and the action needed to keep records accurate.</p>
         </div>
       </div>
-      <div class="inline-actions chips-row custodian-penalties-summary">
+      <div class="inline-actions chips-row librarian-penalties-summary">
         <span class="chip">Total amount: <?php echo h(format_currency($summary['total_amount'] ?? 0)); ?></span>
         <span class="chip">Unpaid balance: <?php echo h(format_currency($summary['unpaid_balance'] ?? 0)); ?></span>
         <span class="chip">Open items: <?php echo (int) ($summary['unpaid_penalties'] ?? 0); ?></span>
       </div>
-      <div class="table-wrap table-wrap-top custodian-penalties-table">
+      <div class="table-wrap table-wrap-top librarian-penalties-table">
         <table>
           <thead>
             <tr>
@@ -265,15 +213,16 @@ $recentUnpaid = $conn->query("
                 <td><span class="badge"><span class="status-dot <?php echo h($penalty['status']); ?>"></span><?php echo h(ucfirst($penalty['status'])); ?></span></td>
                 <td><?php echo h($penalty['reason']); ?></td>
                 <td>
-                  <div class="inline-actions custodian-penalties-actions">
-                    <form method="post" class="inline-form">
-                      <input type="hidden" name="id" value="<?php echo (int) $penalty['id']; ?>">
-                      <button type="submit" name="mark_paid" value="1">Mark Paid</button>
-                    </form>
-                    <form method="post" class="inline-form">
-                      <input type="hidden" name="id" value="<?php echo (int) $penalty['id']; ?>">
-                      <button type="submit" class="secondary" name="mark_unpaid" value="1">Mark Unpaid</button>
-                    </form>
+                  <div class="stack flow-gap-sm">
+                    <?php if (($penalty['latest_payment_status'] ?? '') === 'pending'): ?>
+                      <span class="muted">Pending admin payment review</span>
+                    <?php elseif (($penalty['latest_payment_status'] ?? '') === 'approved' || $penalty['status'] === 'paid'): ?>
+                      <span class="muted">Settled by approved payment</span>
+                    <?php elseif (($penalty['borrow_status'] ?? '') !== 'returned'): ?>
+                      <span class="muted">Waiting for confirmed return</span>
+                    <?php else: ?>
+                      <span class="muted">Awaiting admin settlement decision</span>
+                    <?php endif; ?>
                   </div>
                 </td>
               </tr>
@@ -283,6 +232,8 @@ $recentUnpaid = $conn->query("
       </div>
     </div>
   </div>
+  </div>
 </div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>

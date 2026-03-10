@@ -7,72 +7,134 @@ api_require_token_scope($user, 'write');
 
 global $conn;
 
-$bookId = (int) ($_POST['book_id'] ?? 0);
 $days = (int) ($_POST['days'] ?? 7);
 $days = max(1, min($days, 30));
 
-if ($bookId <= 0) {
-    api_error('Invalid book_id.', 422);
+$bookIdsRaw = $_POST['book_ids'] ?? null;
+$bookQtyRaw = $_POST['book_qty'] ?? [];
+if (!is_array($bookIdsRaw)) {
+    $singleBookId = (int) ($_POST['book_id'] ?? 0);
+    $bookIdsRaw = $singleBookId > 0 ? [$singleBookId] : [];
+}
+if (!is_array($bookQtyRaw)) {
+    $bookQtyRaw = [];
 }
 
-$bookStmt = $conn->prepare("SELECT id, qty_available FROM books WHERE id = ? LIMIT 1");
-$bookStmt->bind_param('i', $bookId);
+$bookIds = array_values(array_unique(array_filter(array_map('intval', $bookIdsRaw), static function (int $id): bool {
+    return $id > 0;
+})));
+
+if ($bookIds === []) {
+    api_error('Select at least one book.', 422);
+}
+
+$bookQuantities = [];
+foreach ($bookIds as $bookId) {
+    $bookQuantities[$bookId] = max(1, min(5, (int) ($bookQtyRaw[$bookId] ?? 1)));
+}
+
+$placeholders = implode(',', array_fill(0, count($bookIds), '?'));
+$bookTypes = str_repeat('i', count($bookIds));
+$bookStmt = $conn->prepare("SELECT id, title, qty_available FROM books WHERE id IN ($placeholders) ORDER BY title ASC");
+$bookStmt->bind_param($bookTypes, ...$bookIds);
 $bookStmt->execute();
-$book = $bookStmt->get_result()->fetch_assoc();
+$bookRows = $bookStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $bookStmt->close();
 
-if (!$book) {
-    api_error('Book not found.', 404);
+$booksById = [];
+foreach ($bookRows as $bookRow) {
+    $booksById[(int) $bookRow['id']] = $bookRow;
 }
 
-if ((int) ($book['qty_available'] ?? 0) <= 0) {
-    api_error('Book not available.', 409);
+$missingIds = [];
+$unavailableTitles = [];
+$insufficientStock = [];
+foreach ($bookIds as $bookId) {
+    if (!isset($booksById[$bookId])) {
+        $missingIds[] = $bookId;
+        continue;
+    }
+
+    $availableCopies = (int) ($booksById[$bookId]['qty_available'] ?? 0);
+    $requestedCopies = (int) ($bookQuantities[$bookId] ?? 1);
+
+    if ($availableCopies <= 0) {
+        $unavailableTitles[] = (string) ($booksById[$bookId]['title'] ?? ('Book #' . $bookId));
+        continue;
+    }
+
+    if ($requestedCopies > $availableCopies) {
+        $insufficientStock[] = (string) ($booksById[$bookId]['title'] ?? ('Book #' . $bookId))
+            . ' (requested ' . $requestedCopies . ', available ' . $availableCopies . ')';
+    }
+}
+
+if ($missingIds !== []) {
+    api_error('One or more selected books were not found.', 404, ['book_ids' => $missingIds]);
+}
+
+if ($unavailableTitles !== []) {
+    api_error('These books are not available right now: ' . implode(', ', $unavailableTitles) . '.', 409);
+}
+
+if ($insufficientStock !== []) {
+    api_error('Requested quantity exceeds available copies for: ' . implode(', ', $insufficientStock) . '.', 409);
 }
 
 $borrowDate = date('Y-m-d');
-$dueDate = date('Y-m-d', strtotime("+{$days} days"));
+$dueDate = $borrowDate;
+$createdBorrows = [];
+$requestBatch = 'req-' . bin2hex(random_bytes(8));
 
 $conn->begin_transaction();
 
 try {
     $borrowStmt = $conn->prepare("
-        INSERT INTO borrows (user_id, book_id, borrow_date, due_date, status)
-        VALUES (?, ?, ?, ?, 'borrowed')
+        INSERT INTO borrows (user_id, book_id, request_batch, borrow_date, due_date, borrow_days, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
     ");
-    $borrowStmt->bind_param('iiss', $user['id'], $bookId, $borrowDate, $dueDate);
-    $borrowStmt->execute();
-    $borrowId = (int) $borrowStmt->insert_id;
-    $borrowStmt->close();
 
-    $inventoryStmt = $conn->prepare("UPDATE books SET qty_available = qty_available - 1 WHERE id = ? AND qty_available > 0");
-    $inventoryStmt->bind_param('i', $bookId);
-    $inventoryStmt->execute();
-
-    if ($inventoryStmt->affected_rows !== 1) {
-        throw new RuntimeException('Book inventory update failed.');
+    foreach ($bookIds as $bookId) {
+        $requestedCopies = (int) ($bookQuantities[$bookId] ?? 1);
+        for ($copy = 0; $copy < $requestedCopies; $copy++) {
+            $borrowStmt->bind_param('iisssi', $user['id'], $bookId, $requestBatch, $borrowDate, $dueDate, $days);
+            $borrowStmt->execute();
+            $borrowId = (int) $borrowStmt->insert_id;
+            $createdBorrows[] = [
+                'id' => $borrowId,
+                'book_id' => $bookId,
+                'request_batch' => $requestBatch,
+                'title' => (string) ($booksById[$bookId]['title'] ?? ''),
+                'requested_at' => $borrowDate,
+                'requested_days' => $days,
+                'status' => 'pending',
+            ];
+        }
     }
 
-    $inventoryStmt->close();
+    $borrowStmt->close();
     $conn->commit();
 } catch (Throwable $e) {
+    if (isset($borrowStmt) && $borrowStmt instanceof mysqli_stmt) {
+        $borrowStmt->close();
+    }
     $conn->rollback();
-    api_error('Unable to borrow this book right now.', 500);
+    api_error('Unable to submit borrow request right now.', 500);
 }
 
 audit_log($conn, 'api.borrow.create', [
-    'borrow_id' => $borrowId,
-    'book_id' => $bookId,
-    'due_date' => $dueDate,
+    'borrow_ids' => array_column($createdBorrows, 'id'),
+    'book_ids' => $bookIds,
+    'book_qty' => $bookQuantities,
+    'request_batch' => $requestBatch,
+    'requested_days' => $days,
+    'requested_count' => count($createdBorrows),
 ], $user['id'], $user['role']);
 
 api_json([
     'ok' => true,
-    'message' => 'Borrow successful.',
-    'borrow' => [
-        'id' => $borrowId,
-        'book_id' => $bookId,
-        'borrow_date' => $borrowDate,
-        'due_date' => $dueDate,
-        'status' => 'borrowed',
-    ],
+    'message' => count($createdBorrows) > 1 ? 'Borrow requests submitted.' : 'Borrow request submitted.',
+    'requested_count' => count($createdBorrows),
+    'request_batch' => $requestBatch,
+    'borrows' => $createdBorrows,
 ], 201);

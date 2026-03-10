@@ -38,7 +38,7 @@
                     <a class="button" href="loginpage.php">Enter Library Portal</a>
                     <a class="landing-inline-link" href="#services">Explore Services</a>
                 </div>
-                <p class="landing-hero-note">For students, faculty, administrators, and custodians using one shared library system.</p>
+                <p class="landing-hero-note">For students, faculty, administrators, and librarians using one shared library system.</p>
             </div>
             <div class="landing-hero-visual">
                 <div class="landing-display-photo">
@@ -72,7 +72,7 @@
             <article class="landing-feature-card">
                 <div class="dashboard-icon icon-tools" aria-hidden="true"></div>
                 <h3>Staff Management</h3>
-                <p>Custodians and admins can manage book activity, confirm returns, and review updates without visual overload.</p>
+                <p>Librarians and admins can manage book activity, confirm returns, and review updates without visual overload.</p>
             </article>
             <article class="landing-feature-card">
                 <div class="dashboard-icon icon-feedback" aria-hidden="true"></div>
@@ -91,7 +91,7 @@
             <a class="landing-access-card landing-access-card-primary" href="loginpage.php">
                 <span class="code-pill">Portal</span>
                 <strong>Open Login</strong>
-                <span>Sign in as admin, student, faculty, or custodian through the main library portal.</span>
+                <span>Sign in as admin, student, faculty, or librarian through the main library portal.</span>
             </a>
             <a class="landing-access-card landing-access-card-featured" href="feedback.php">
                 <span class="code-pill">Feedback</span>

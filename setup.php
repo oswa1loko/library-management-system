@@ -2,10 +2,6 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/helpers.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 $setupLocked = false;
 $usersReady = $conn->query("SHOW TABLES LIKE 'users'");
 if ($usersReady instanceof mysqli_result && $usersReady->num_rows > 0) {
@@ -44,7 +40,7 @@ run_sql(
         email VARCHAR(100) NOT NULL UNIQUE,
         username VARCHAR(50) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
-        role ENUM('admin','student','faculty','custodian') NOT NULL,
+        role ENUM('admin','student','faculty','librarian') NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
     $messages,
@@ -76,8 +72,9 @@ run_sql(
         book_id INT NOT NULL,
         borrow_date DATE NOT NULL,
         due_date DATE NOT NULL,
+        borrow_days INT NOT NULL DEFAULT 7,
         return_date DATE DEFAULT NULL,
-        status ENUM('borrowed','return_requested','returned') NOT NULL DEFAULT 'borrowed',
+        status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_borrows_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT fk_borrows_book FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
@@ -136,8 +133,25 @@ run_sql(
     'Complaints table ready.'
 );
 
-$conn->query("ALTER TABLE users MODIFY role ENUM('admin','student','faculty','custodian') NOT NULL");
-$conn->query("ALTER TABLE borrows MODIFY status ENUM('borrowed','return_requested','returned') NOT NULL DEFAULT 'borrowed'");
+$conn->query("ALTER TABLE users MODIFY role ENUM('admin','student','faculty','custodian','librarian') NOT NULL");
+$conn->query("UPDATE users SET role = 'librarian' WHERE role = 'custodian'");
+$conn->query("ALTER TABLE users MODIFY role ENUM('admin','student','faculty','librarian') NOT NULL");
+$conn->query("ALTER TABLE borrows MODIFY status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending'");
+
+if (!column_exists($conn, 'borrows', 'borrow_days')) {
+    $conn->query("ALTER TABLE borrows ADD COLUMN borrow_days INT NOT NULL DEFAULT 7 AFTER due_date");
+}
+
+if (column_exists($conn, 'borrows', 'borrow_days')) {
+    $conn->query("
+        UPDATE borrows
+        SET borrow_days = CASE
+            WHEN due_date >= borrow_date THEN LEAST(GREATEST(DATEDIFF(due_date, borrow_date), 1), 30)
+            ELSE 7
+        END
+        WHERE borrow_days IS NULL OR borrow_days < 1 OR borrow_days > 30
+    ");
+}
 
 if (column_exists($conn, 'books', 'book_title') && !column_exists($conn, 'books', 'title')) {
     $conn->query("ALTER TABLE books CHANGE book_title title VARCHAR(255) NOT NULL");
@@ -207,7 +221,7 @@ $defaults = [
     ['Library Admin', 'admin@gmail.com', 'admin', $hash, 'admin'],
     ['Student One', 'student1@gmail.com', 'student1', $hash, 'student'],
     ['Faculty One', 'faculty1@gmail.com', 'faculty1', $hash, 'faculty'],
-    ['Custodian One', 'custodian1@gmail.com', 'custodian1', $hash, 'custodian'],
+    ['Librarian One', 'librarian1@gmail.com', 'librarian1', $hash, 'librarian'],
 ];
 
 $stmt = $conn->prepare("INSERT IGNORE INTO users (fullname, email, username, password, role) VALUES (?, ?, ?, ?, ?)");
@@ -280,8 +294,8 @@ add_message($messages, 'Setup finished. Default password for sample accounts: ad
             Password: <code>admin123</code>
           </div>
           <div class="empty-state">
-            <strong class="label-block-gap">Custodian</strong>
-            Username: <code>custodian1</code><br>
+            <strong class="label-block-gap">Librarian</strong>
+            Username: <code>librarian1</code><br>
             Password: <code>admin123</code>
           </div>
         </div>
