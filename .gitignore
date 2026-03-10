@@ -28,6 +28,8 @@ uploads/book_covers/*
 !uploads/book_covers/.gitkeep
 uploads/backups/*
 !uploads/backups/.gitkeep
+storage/sessions/*
+!storage/sessions/.gitkeep
 
 # Local SQL exports
 *.sql
