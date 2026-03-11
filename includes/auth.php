@@ -9,10 +9,6 @@ function require_login(): void {
         header("Location: /librarymanage/loginpage.php");
         exit;
     }
-
-    if (isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof mysqli && function_exists('sync_overdue_penalties_if_needed')) {
-        sync_overdue_penalties_if_needed($GLOBALS['conn']);
-    }
 }
 
 function require_role(string $role): void {
