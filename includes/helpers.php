@@ -3,6 +3,11 @@ require_once __DIR__ . '/session.php';
 
 app_start_session();
 
+$composerAutoload = dirname(__DIR__) . '/vendor/autoload.php';
+if (is_file($composerAutoload)) {
+    require_once $composerAutoload;
+}
+
 function h($value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -139,6 +144,119 @@ function format_batch_reference(?string $batchRef, string $label = 'Request Ref'
     }
 
     return $label . ' ' . $suffix;
+}
+
+function library_mail_from_address(): string
+{
+    $value = trim((string) getenv('LIBRARY_MAIL_FROM_ADDRESS'));
+    return $value !== '' ? $value : 'no-reply@localhost';
+}
+
+function library_mail_from_name(): string
+{
+    $value = trim((string) getenv('LIBRARY_MAIL_FROM_NAME'));
+    return $value !== '' ? $value : 'Library Management System';
+}
+
+function set_library_mail_last_error(string $message): void
+{
+    $GLOBALS['library_mail_last_error'] = trim($message);
+}
+
+function get_library_mail_last_error(): string
+{
+    return trim((string) ($GLOBALS['library_mail_last_error'] ?? ''));
+}
+
+function can_send_library_email(): bool
+{
+    return library_mailer_mode() !== 'disabled';
+}
+
+function library_mailer_mode(): string
+{
+    $smtpHost = trim((string) getenv('LIBRARY_SMTP_HOST'));
+    $smtpUser = trim((string) getenv('LIBRARY_SMTP_USERNAME'));
+    $smtpPass = trim((string) getenv('LIBRARY_SMTP_PASSWORD'));
+
+    if ($smtpHost !== '' && $smtpUser !== '' && $smtpPass !== '' && class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+        return 'smtp';
+    }
+
+    return function_exists('mail') ? 'mail' : 'disabled';
+}
+
+function library_smtp_port(): int
+{
+    $value = (int) getenv('LIBRARY_SMTP_PORT');
+    return $value > 0 ? $value : 587;
+}
+
+function library_smtp_secure(): string
+{
+    $value = strtolower(trim((string) getenv('LIBRARY_SMTP_SECURE')));
+    return in_array($value, ['tls', 'ssl'], true) ? $value : 'tls';
+}
+
+function send_library_email(string $to, string $subject, string $textBody): bool
+{
+    set_library_mail_last_error('');
+
+    $to = trim($to);
+    $subject = trim($subject);
+    $textBody = trim($textBody);
+
+    if ($to === '' || $subject === '' || $textBody === '') {
+        set_library_mail_last_error('Missing recipient, subject, or message body.');
+        return false;
+    }
+
+    if (filter_var($to, FILTER_VALIDATE_EMAIL) === false || !can_send_library_email()) {
+        set_library_mail_last_error('Invalid recipient email or mail transport is not configured.');
+        return false;
+    }
+
+    $fromAddress = library_mail_from_address();
+    $fromName = library_mail_from_name();
+    $mailerMode = library_mailer_mode();
+
+    if ($mailerMode === 'smtp' && class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+        try {
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host = trim((string) getenv('LIBRARY_SMTP_HOST'));
+            $mail->Port = library_smtp_port();
+            $mail->SMTPAuth = true;
+            $mail->Username = trim((string) getenv('LIBRARY_SMTP_USERNAME'));
+            $mail->Password = trim((string) getenv('LIBRARY_SMTP_PASSWORD'));
+            $mail->SMTPSecure = library_smtp_secure();
+            $mail->CharSet = 'UTF-8';
+            $mail->setFrom($fromAddress, $fromName);
+            $mail->addAddress($to);
+            $mail->Subject = $subject;
+            $mail->Body = $textBody;
+            $mail->isHTML(false);
+            return $mail->send();
+        } catch (Throwable $e) {
+            set_library_mail_last_error($e->getMessage());
+            return false;
+        }
+    }
+
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'From: ' . $fromName . ' <' . $fromAddress . '>',
+        'Reply-To: ' . $fromAddress,
+        'X-Mailer: PHP/' . PHP_VERSION,
+    ];
+
+    $sent = @mail($to, $encodedSubject, $textBody, implode("\r\n", $headers));
+    if (!$sent) {
+        set_library_mail_last_error('PHP mail() failed to hand off the message.');
+    }
+    return $sent;
 }
 
 function remove_relative_file(string $relativePath): void
@@ -359,5 +477,107 @@ function member_api_post_request(string $endpoint, array $fields, string $token)
         'json' => is_array($json) ? $json : null,
         'transport_error' => '',
     ];
+}
+
+function send_due_soon_reminders(mysqli $conn): array
+{
+    $result = [
+        'checked' => 0,
+        'sent' => 0,
+        'failed' => 0,
+        'skipped' => 0,
+        'errors' => [],
+    ];
+
+    $rows = $conn->query("
+        SELECT
+            br.id,
+            br.user_id,
+            br.book_id,
+            br.due_date,
+            br.due_reminder_sent_at,
+            u.fullname,
+            u.email,
+            u.role,
+            b.title
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        JOIN books b ON b.id = br.book_id
+        WHERE br.status = 'borrowed'
+          AND u.role IN ('student', 'faculty')
+          AND br.due_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+    ");
+
+    if (!$rows instanceof mysqli_result) {
+        return $result;
+    }
+
+    $updateStmt = $conn->prepare("
+        UPDATE borrows
+        SET due_reminder_sent_at = ?
+        WHERE id = ?
+    ");
+
+    while ($row = $rows->fetch_assoc()) {
+        $result['checked']++;
+
+        $borrowId = (int) ($row['id'] ?? 0);
+        $email = trim((string) ($row['email'] ?? ''));
+        $dueDate = (string) ($row['due_date'] ?? '');
+        $sentAt = trim((string) ($row['due_reminder_sent_at'] ?? ''));
+
+        if ($borrowId <= 0 || $email === '') {
+            $result['skipped']++;
+            continue;
+        }
+
+        if ($sentAt !== '' && strpos($sentAt, $dueDate) === 0) {
+            $result['skipped']++;
+            continue;
+        }
+
+        $fullName = trim((string) ($row['fullname'] ?? 'Member'));
+        $bookTitle = trim((string) ($row['title'] ?? 'your borrowed book'));
+        $roleLabel = role_label((string) ($row['role'] ?? 'member'));
+        $formattedDueDate = format_display_date($dueDate, $dueDate);
+        $subject = 'Reminder: "' . $bookTitle . '" is due tomorrow';
+        $message = "Hello {$fullName},\n\n"
+            . "This is a reminder that your borrowed book \"{$bookTitle}\" is due tomorrow ({$formattedDueDate}).\n\n"
+            . "Please return it on time to avoid overdue penalties.\n\n"
+            . "Role: {$roleLabel}\n"
+            . "Borrow ID: #{$borrowId}\n\n"
+            . "Library Management System";
+
+        $sent = send_library_email($email, $subject, $message);
+
+        if ($sent) {
+            $timestamp = date('Y-m-d H:i:s');
+            $updateStmt->bind_param('si', $timestamp, $borrowId);
+            $updateStmt->execute();
+            $result['sent']++;
+            continue;
+        }
+
+        $result['failed']++;
+        $result['errors'][] = [
+            'borrow_id' => $borrowId,
+            'email' => $email,
+            'message' => get_library_mail_last_error(),
+        ];
+    }
+
+    $updateStmt->close();
+
+    if ($result['sent'] > 0) {
+        create_notification(
+            $conn,
+            'admin',
+            'Due Soon Email Reminders Sent',
+            $result['sent'] . ' due-soon reminder email(s) were sent for books due tomorrow.',
+            'info'
+        );
+    }
+
+    return $result;
 }
 ?>

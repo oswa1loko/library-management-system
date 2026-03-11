@@ -89,6 +89,7 @@ function ensure_library_schema(mysqli $conn): void
             borrow_date DATE NOT NULL,
             due_date DATE NOT NULL,
             borrow_days INT NOT NULL DEFAULT 7,
+            due_reminder_sent_at DATETIME DEFAULT NULL,
             return_date DATE DEFAULT NULL,
             status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -220,6 +221,10 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'borrows', 'borrow_days')) {
         $conn->query("ALTER TABLE borrows ADD COLUMN borrow_days INT NOT NULL DEFAULT 7 AFTER due_date");
+    }
+
+    if (!column_exists($conn, 'borrows', 'due_reminder_sent_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN due_reminder_sent_at DATETIME DEFAULT NULL AFTER borrow_days");
     }
 
     if (!column_exists($conn, 'borrows', 'request_batch')) {
