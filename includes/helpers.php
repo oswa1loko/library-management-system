@@ -146,16 +146,162 @@ function format_batch_reference(?string $batchRef, string $label = 'Request Ref'
     return $label . ' ' . $suffix;
 }
 
+function library_runtime_value(string $key, string $fallback = ''): string
+{
+    $key = trim($key);
+    if ($key === '') {
+        return $fallback;
+    }
+
+    $value = trim((string) getenv($key));
+    if ($value !== '') {
+        return $value;
+    }
+
+    $config = $GLOBALS['library_runtime_config'] ?? [];
+    if (is_array($config)) {
+        $configured = trim((string) ($config[$key] ?? ''));
+        if ($configured !== '') {
+            return $configured;
+        }
+    }
+
+    return $fallback;
+}
+
 function library_mail_from_address(): string
 {
-    $value = trim((string) getenv('LIBRARY_MAIL_FROM_ADDRESS'));
-    return $value !== '' ? $value : 'no-reply@localhost';
+    return library_runtime_value('LIBRARY_MAIL_FROM_ADDRESS', 'no-reply@localhost');
 }
 
 function library_mail_from_name(): string
 {
-    $value = trim((string) getenv('LIBRARY_MAIL_FROM_NAME'));
-    return $value !== '' ? $value : 'Library Management System';
+    return library_runtime_value('LIBRARY_MAIL_FROM_NAME', 'Library Management System');
+}
+
+function library_email_signature(): string
+{
+    return library_runtime_value('LIBRARY_EMAIL_SIGNATURE', 'Library Services Team');
+}
+
+function is_valid_email_address(string $email): bool
+{
+    return filter_var(trim($email), FILTER_VALIDATE_EMAIL) !== false;
+}
+
+function role_requires_login_otp(string $role): bool
+{
+    $role = canonical_role($role);
+    return in_array($role, ['student', 'faculty'], true);
+}
+
+function generate_login_otp_code(): string
+{
+    return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+}
+
+function clear_login_otp(mysqli $conn, int $userId): void
+{
+    if ($userId <= 0) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE users
+        SET login_otp_hash = NULL,
+            login_otp_expires_at = NULL,
+            login_otp_sent_at = NULL
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function issue_login_otp(mysqli $conn, int $userId): array
+{
+    $code = generate_login_otp_code();
+    $hash = hash('sha256', $code);
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+    $sentAt = date('Y-m-d H:i:s');
+
+    $stmt = $conn->prepare("
+        UPDATE users
+        SET login_otp_hash = ?,
+            login_otp_expires_at = ?,
+            login_otp_sent_at = ?
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('sssi', $hash, $expiresAt, $sentAt, $userId);
+    $stmt->execute();
+    $stmt->close();
+
+    return [
+        'code' => $code,
+        'expires_at' => $expiresAt,
+        'sent_at' => $sentAt,
+    ];
+}
+
+function send_login_otp_email(string $email, string $fullName, string $role, string $otpCode): bool
+{
+    $roleLabel = role_label($role);
+    $subject = 'Your Library Login Verification Code';
+    $message = "Hello {$fullName},\n\n"
+        . "Use this verification code to finish logging in to the library portal:\n\n"
+        . "{$otpCode}\n\n"
+        . "This code is valid for 10 minutes.\n\n"
+        . "Role: {$roleLabel}\n\n"
+        . "Do not share this code with anyone.\n\n"
+        . "If you did not try to log in, you may ignore this email.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
+        . '<p>Use this verification code to finish logging in to the library portal:</p>'
+        . '<div style="margin:16px 0;padding:14px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;font-size:28px;font-weight:800;letter-spacing:0.22em;text-align:center;">'
+        . h($otpCode)
+        . '</div>'
+        . '<p>This code is valid for <strong>10 minutes</strong>.</p>'
+        . '<p><strong>Role:</strong> ' . h($roleLabel) . '</p>'
+        . '<p><strong>Do not share this code with anyone.</strong></p>'
+        . '<p style="color:#5c7188;">If you did not try to log in, you may ignore this email.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return send_library_email($email, $subject, $message, $htmlMessage);
+}
+
+function verify_login_otp(mysqli $conn, int $userId, string $otpCode): bool
+{
+    $otpCode = trim($otpCode);
+    if ($userId <= 0 || $otpCode === '') {
+        return false;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT login_otp_hash, login_otp_expires_at
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->bind_result($otpHash, $expiresAt);
+    $found = $stmt->fetch();
+    $stmt->close();
+
+    if (!$found || trim((string) $otpHash) === '' || trim((string) $expiresAt) === '') {
+        return false;
+    }
+
+    if (strtotime((string) $expiresAt) < time()) {
+        return false;
+    }
+
+    return hash_equals((string) $otpHash, hash('sha256', $otpCode));
 }
 
 function set_library_mail_last_error(string $message): void
@@ -175,9 +321,9 @@ function can_send_library_email(): bool
 
 function library_mailer_mode(): string
 {
-    $smtpHost = trim((string) getenv('LIBRARY_SMTP_HOST'));
-    $smtpUser = trim((string) getenv('LIBRARY_SMTP_USERNAME'));
-    $smtpPass = trim((string) getenv('LIBRARY_SMTP_PASSWORD'));
+    $smtpHost = library_runtime_value('LIBRARY_SMTP_HOST');
+    $smtpUser = library_runtime_value('LIBRARY_SMTP_USERNAME');
+    $smtpPass = library_runtime_value('LIBRARY_SMTP_PASSWORD');
 
     if ($smtpHost !== '' && $smtpUser !== '' && $smtpPass !== '' && class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
         return 'smtp';
@@ -188,17 +334,17 @@ function library_mailer_mode(): string
 
 function library_smtp_port(): int
 {
-    $value = (int) getenv('LIBRARY_SMTP_PORT');
+    $value = (int) library_runtime_value('LIBRARY_SMTP_PORT');
     return $value > 0 ? $value : 587;
 }
 
 function library_smtp_secure(): string
 {
-    $value = strtolower(trim((string) getenv('LIBRARY_SMTP_SECURE')));
+    $value = strtolower(library_runtime_value('LIBRARY_SMTP_SECURE'));
     return in_array($value, ['tls', 'ssl'], true) ? $value : 'tls';
 }
 
-function send_library_email(string $to, string $subject, string $textBody): bool
+function send_library_email(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
 {
     set_library_mail_last_error('');
 
@@ -211,7 +357,7 @@ function send_library_email(string $to, string $subject, string $textBody): bool
         return false;
     }
 
-    if (filter_var($to, FILTER_VALIDATE_EMAIL) === false || !can_send_library_email()) {
+    if (!is_valid_email_address($to) || !can_send_library_email()) {
         set_library_mail_last_error('Invalid recipient email or mail transport is not configured.');
         return false;
     }
@@ -224,18 +370,19 @@ function send_library_email(string $to, string $subject, string $textBody): bool
         try {
             $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
             $mail->isSMTP();
-            $mail->Host = trim((string) getenv('LIBRARY_SMTP_HOST'));
+            $mail->Host = library_runtime_value('LIBRARY_SMTP_HOST');
             $mail->Port = library_smtp_port();
             $mail->SMTPAuth = true;
-            $mail->Username = trim((string) getenv('LIBRARY_SMTP_USERNAME'));
-            $mail->Password = trim((string) getenv('LIBRARY_SMTP_PASSWORD'));
+            $mail->Username = library_runtime_value('LIBRARY_SMTP_USERNAME');
+            $mail->Password = library_runtime_value('LIBRARY_SMTP_PASSWORD');
             $mail->SMTPSecure = library_smtp_secure();
             $mail->CharSet = 'UTF-8';
             $mail->setFrom($fromAddress, $fromName);
             $mail->addAddress($to);
             $mail->Subject = $subject;
-            $mail->Body = $textBody;
-            $mail->isHTML(false);
+            $mail->Body = $htmlBody !== null && trim($htmlBody) !== '' ? $htmlBody : nl2br(h($textBody));
+            $mail->AltBody = $textBody;
+            $mail->isHTML(true);
             return $mail->send();
         } catch (Throwable $e) {
             set_library_mail_last_error($e->getMessage());
@@ -526,7 +673,7 @@ function send_due_soon_reminders(mysqli $conn): array
         $dueDate = (string) ($row['due_date'] ?? '');
         $sentAt = trim((string) ($row['due_reminder_sent_at'] ?? ''));
 
-        if ($borrowId <= 0 || $email === '') {
+        if ($borrowId <= 0 || $email === '' || !is_valid_email_address($email)) {
             $result['skipped']++;
             continue;
         }
@@ -542,13 +689,31 @@ function send_due_soon_reminders(mysqli $conn): array
         $formattedDueDate = format_display_date($dueDate, $dueDate);
         $subject = 'Reminder: "' . $bookTitle . '" is due tomorrow';
         $message = "Hello {$fullName},\n\n"
-            . "This is a reminder that your borrowed book \"{$bookTitle}\" is due tomorrow ({$formattedDueDate}).\n\n"
-            . "Please return it on time to avoid overdue penalties.\n\n"
-            . "Role: {$roleLabel}\n"
-            . "Borrow ID: #{$borrowId}\n\n"
-            . "Library Management System";
+            . "This is a friendly reminder that your borrowed book \"{$bookTitle}\" is due tomorrow ({$formattedDueDate}).\n\n"
+            . "Please return it on or before the due date to avoid overdue penalties.\n\n"
+            . "Borrow details:\n"
+            . "- Book: {$bookTitle}\n"
+            . "- Due date: {$formattedDueDate}\n"
+            . "- Role: {$roleLabel}\n"
+            . "- Borrow ID: #{$borrowId}\n\n"
+            . "If you have already returned this book, you may ignore this email.\n\n"
+            . library_email_signature();
 
-        $sent = send_library_email($email, $subject, $message);
+        $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+            . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
+            . '<p>This is a friendly reminder that your borrowed book <strong>"' . h($bookTitle) . '"</strong> is due <strong>tomorrow</strong> (' . h($formattedDueDate) . ').</p>'
+            . '<div style="margin:18px 0;padding:14px 16px;border:1px solid #d7e6f5;border-radius:14px;background:#f7fbff;">'
+            . '<div><strong>Book:</strong> ' . h($bookTitle) . '</div>'
+            . '<div><strong>Due date:</strong> ' . h($formattedDueDate) . '</div>'
+            . '<div><strong>Role:</strong> ' . h($roleLabel) . '</div>'
+            . '<div><strong>Borrow ID:</strong> #' . (int) $borrowId . '</div>'
+            . '</div>'
+            . '<p>Please return it on or before the due date to avoid overdue penalties.</p>'
+            . '<p style="color:#5c7188;">If you have already returned this book, you may ignore this email.</p>'
+            . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+            . '</div>';
+
+        $sent = send_library_email($email, $subject, $message, $htmlMessage);
 
         if ($sent) {
             $timestamp = date('Y-m-d H:i:s');
@@ -575,6 +740,129 @@ function send_due_soon_reminders(mysqli $conn): array
             'Due Soon Email Reminders Sent',
             $result['sent'] . ' due-soon reminder email(s) were sent for books due tomorrow.',
             'info'
+        );
+    }
+
+    return $result;
+}
+
+function send_overdue_notices(mysqli $conn): array
+{
+    $result = [
+        'checked' => 0,
+        'sent' => 0,
+        'failed' => 0,
+        'skipped' => 0,
+        'errors' => [],
+    ];
+
+    $rows = $conn->query("
+        SELECT
+            br.id,
+            br.user_id,
+            br.book_id,
+            br.due_date,
+            br.overdue_notice_sent_at,
+            u.fullname,
+            u.email,
+            u.role,
+            b.title
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        JOIN books b ON b.id = br.book_id
+        WHERE br.status = 'borrowed'
+          AND u.role IN ('student', 'faculty')
+          AND br.due_date < CURDATE()
+    ");
+
+    if (!$rows instanceof mysqli_result) {
+        return $result;
+    }
+
+    $updateStmt = $conn->prepare("
+        UPDATE borrows
+        SET overdue_notice_sent_at = ?
+        WHERE id = ?
+    ");
+
+    while ($row = $rows->fetch_assoc()) {
+        $result['checked']++;
+
+        $borrowId = (int) ($row['id'] ?? 0);
+        $email = trim((string) ($row['email'] ?? ''));
+        $dueDate = (string) ($row['due_date'] ?? '');
+        $sentAt = trim((string) ($row['overdue_notice_sent_at'] ?? ''));
+
+        if ($borrowId <= 0 || $email === '' || !is_valid_email_address($email)) {
+            $result['skipped']++;
+            continue;
+        }
+
+        if ($sentAt !== '') {
+            $result['skipped']++;
+            continue;
+        }
+
+        $fullName = trim((string) ($row['fullname'] ?? 'Member'));
+        $bookTitle = trim((string) ($row['title'] ?? 'your borrowed book'));
+        $roleLabel = role_label((string) ($row['role'] ?? 'member'));
+        $formattedDueDate = format_display_date($dueDate, $dueDate);
+        $daysOverdue = max(1, (int) floor((strtotime(date('Y-m-d')) - strtotime($dueDate)) / 86400));
+        $subject = 'Overdue Notice: "' . $bookTitle . '"';
+        $message = "Hello {$fullName},\n\n"
+            . "This is an overdue notice for your borrowed book \"{$bookTitle}\".\n\n"
+            . "The due date was {$formattedDueDate}, and the item is now {$daysOverdue} day" . ($daysOverdue === 1 ? '' : 's') . " overdue.\n\n"
+            . "Please return it as soon as possible to avoid additional penalties.\n\n"
+            . "Borrow details:\n"
+            . "- Book: {$bookTitle}\n"
+            . "- Due date: {$formattedDueDate}\n"
+            . "- Role: {$roleLabel}\n"
+            . "- Borrow ID: #{$borrowId}\n\n"
+            . "If you have already returned this book, you may ignore this email.\n\n"
+            . library_email_signature();
+
+        $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+            . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
+            . '<p>This is an <strong style="color:#b42318;">overdue notice</strong> for your borrowed book <strong>"' . h($bookTitle) . '"</strong>.</p>'
+            . '<div style="margin:18px 0;padding:14px 16px;border:1px solid #f3c6c2;border-radius:14px;background:#fff7f6;">'
+            . '<div><strong>Book:</strong> ' . h($bookTitle) . '</div>'
+            . '<div><strong>Due date:</strong> ' . h($formattedDueDate) . '</div>'
+            . '<div><strong>Current status:</strong> ' . (int) $daysOverdue . ' day' . ($daysOverdue === 1 ? '' : 's') . ' overdue</div>'
+            . '<div><strong>Role:</strong> ' . h($roleLabel) . '</div>'
+            . '<div><strong>Borrow ID:</strong> #' . (int) $borrowId . '</div>'
+            . '</div>'
+            . '<p>Please return it as soon as possible to avoid additional penalties.</p>'
+            . '<p style="color:#5c7188;">If you have already returned this book, you may ignore this email.</p>'
+            . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+            . '</div>';
+
+        $sent = send_library_email($email, $subject, $message, $htmlMessage);
+
+        if ($sent) {
+            $timestamp = date('Y-m-d H:i:s');
+            $updateStmt->bind_param('si', $timestamp, $borrowId);
+            $updateStmt->execute();
+            $result['sent']++;
+            continue;
+        }
+
+        $result['failed']++;
+        $result['errors'][] = [
+            'borrow_id' => $borrowId,
+            'email' => $email,
+            'message' => get_library_mail_last_error(),
+        ];
+    }
+
+    $updateStmt->close();
+
+    if ($result['sent'] > 0) {
+        create_notification(
+            $conn,
+            'admin',
+            'Overdue Email Notices Sent',
+            $result['sent'] . ' one-time overdue email notice(s) were sent.',
+            'warning'
         );
     }
 

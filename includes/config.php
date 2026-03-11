@@ -1,4 +1,13 @@
 <?php
+$GLOBALS['library_runtime_config'] = [];
+$localMailConfigPath = __DIR__ . '/local_mail_config.php';
+if (is_file($localMailConfigPath)) {
+    $localMailConfig = require $localMailConfigPath;
+    if (is_array($localMailConfig)) {
+        $GLOBALS['library_runtime_config'] = $localMailConfig;
+    }
+}
+
 $servername = "localhost";
 $dbusername = "root";
 $dbpassword = "";
@@ -61,6 +70,9 @@ function ensure_library_schema(mysqli $conn): void
             username VARCHAR(50) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             role ENUM('admin','student','faculty','librarian') NOT NULL,
+            login_otp_hash CHAR(64) DEFAULT NULL,
+            login_otp_expires_at DATETIME DEFAULT NULL,
+            login_otp_sent_at DATETIME DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
@@ -90,6 +102,7 @@ function ensure_library_schema(mysqli $conn): void
             due_date DATE NOT NULL,
             borrow_days INT NOT NULL DEFAULT 7,
             due_reminder_sent_at DATETIME DEFAULT NULL,
+            overdue_notice_sent_at DATETIME DEFAULT NULL,
             return_date DATE DEFAULT NULL,
             status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -199,6 +212,18 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("ALTER TABLE books CHANGE book_title title VARCHAR(255) NOT NULL");
     }
 
+    if (!column_exists($conn, 'users', 'login_otp_hash')) {
+        $conn->query("ALTER TABLE users ADD COLUMN login_otp_hash CHAR(64) DEFAULT NULL AFTER role");
+    }
+
+    if (!column_exists($conn, 'users', 'login_otp_expires_at')) {
+        $conn->query("ALTER TABLE users ADD COLUMN login_otp_expires_at DATETIME DEFAULT NULL AFTER login_otp_hash");
+    }
+
+    if (!column_exists($conn, 'users', 'login_otp_sent_at')) {
+        $conn->query("ALTER TABLE users ADD COLUMN login_otp_sent_at DATETIME DEFAULT NULL AFTER login_otp_expires_at");
+    }
+
     if (!column_exists($conn, 'books', 'category')) {
         $conn->query("ALTER TABLE books ADD COLUMN category VARCHAR(120) DEFAULT '' AFTER author");
     }
@@ -225,6 +250,10 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'borrows', 'due_reminder_sent_at')) {
         $conn->query("ALTER TABLE borrows ADD COLUMN due_reminder_sent_at DATETIME DEFAULT NULL AFTER borrow_days");
+    }
+
+    if (!column_exists($conn, 'borrows', 'overdue_notice_sent_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN overdue_notice_sent_at DATETIME DEFAULT NULL AFTER due_reminder_sent_at");
     }
 
     if (!column_exists($conn, 'borrows', 'request_batch')) {

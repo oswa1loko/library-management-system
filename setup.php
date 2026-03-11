@@ -41,6 +41,9 @@ run_sql(
         username VARCHAR(50) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         role ENUM('admin','student','faculty','librarian') NOT NULL,
+        login_otp_hash CHAR(64) DEFAULT NULL,
+        login_otp_expires_at DATETIME DEFAULT NULL,
+        login_otp_sent_at DATETIME DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
     $messages,
@@ -74,6 +77,7 @@ run_sql(
         due_date DATE NOT NULL,
         borrow_days INT NOT NULL DEFAULT 7,
         due_reminder_sent_at DATETIME DEFAULT NULL,
+        overdue_notice_sent_at DATETIME DEFAULT NULL,
         return_date DATE DEFAULT NULL,
         status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -139,12 +143,28 @@ $conn->query("UPDATE users SET role = 'librarian' WHERE role = 'custodian'");
 $conn->query("ALTER TABLE users MODIFY role ENUM('admin','student','faculty','librarian') NOT NULL");
 $conn->query("ALTER TABLE borrows MODIFY status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending'");
 
+if (!column_exists($conn, 'users', 'login_otp_hash')) {
+    $conn->query("ALTER TABLE users ADD COLUMN login_otp_hash CHAR(64) DEFAULT NULL AFTER role");
+}
+
+if (!column_exists($conn, 'users', 'login_otp_expires_at')) {
+    $conn->query("ALTER TABLE users ADD COLUMN login_otp_expires_at DATETIME DEFAULT NULL AFTER login_otp_hash");
+}
+
+if (!column_exists($conn, 'users', 'login_otp_sent_at')) {
+    $conn->query("ALTER TABLE users ADD COLUMN login_otp_sent_at DATETIME DEFAULT NULL AFTER login_otp_expires_at");
+}
+
 if (!column_exists($conn, 'borrows', 'borrow_days')) {
     $conn->query("ALTER TABLE borrows ADD COLUMN borrow_days INT NOT NULL DEFAULT 7 AFTER due_date");
 }
 
 if (!column_exists($conn, 'borrows', 'due_reminder_sent_at')) {
     $conn->query("ALTER TABLE borrows ADD COLUMN due_reminder_sent_at DATETIME DEFAULT NULL AFTER borrow_days");
+}
+
+if (!column_exists($conn, 'borrows', 'overdue_notice_sent_at')) {
+    $conn->query("ALTER TABLE borrows ADD COLUMN overdue_notice_sent_at DATETIME DEFAULT NULL AFTER due_reminder_sent_at");
 }
 
 if (column_exists($conn, 'borrows', 'borrow_days')) {
