@@ -8,6 +8,7 @@ require_role('admin');
 $message = '';
 $messageType = 'success';
 $emailReminderDebug = is_array($_SESSION['email_reminder_debug'] ?? null) ? $_SESSION['email_reminder_debug'] : [];
+$mailHealth = library_mail_health_snapshot(false);
 
 if (isset($_POST['mark_read'])) {
     $id = (int) ($_POST['id'] ?? 0);
@@ -37,6 +38,20 @@ if (isset($_POST['run_email_reminder_check'])) {
     $message = 'Reminder check finished. Due soon sent: ' . (int) ($dueSoonResult['sent'] ?? 0)
         . ', overdue sent: ' . (int) ($overdueResult['sent'] ?? 0) . '.';
     $messageType = ((int) ($dueSoonResult['failed'] ?? 0) > 0 || (int) ($overdueResult['failed'] ?? 0) > 0) ? 'error' : 'success';
+}
+
+if (isset($_POST['run_mail_health_check'])) {
+    $mailHealth = library_mail_health_snapshot(true);
+    $probe = is_array($mailHealth['probe'] ?? null) ? $mailHealth['probe'] : [];
+    if ((bool) ($probe['success'] ?? false)) {
+        $message = 'Mail health check passed. Test email sent to ' . (string) ($probe['recipient'] ?? '') . '.';
+        $messageType = 'success';
+    } else {
+        $message = 'Mail health check failed: ' . (string) ($probe['error'] ?? 'Unknown mail error') . '.';
+        $messageType = 'error';
+    }
+} else {
+    $mailHealth = library_mail_health_snapshot(false);
 }
 
 $liveStats = $conn->query("
@@ -84,6 +99,70 @@ $notifications = $conn->query("
     <?php if ($message !== ''): ?>
       <div class="notice <?php echo $messageType === 'error' ? 'error' : 'success'; ?>"><?php echo h($message); ?></div>
     <?php endif; ?>
+
+    <div class="panel">
+      <p class="muted eyebrow-compact stack-copy">Mail Health</p>
+      <div class="toolbar toolbar-top">
+        <div class="grow">
+          <h3 class="heading-card">Sender and transport status</h3>
+        </div>
+        <form method="post" class="inline-form">
+          <button type="submit" name="run_mail_health_check" value="1">Run Mail Health Check</button>
+        </form>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <strong><?php echo h(strtoupper((string) ($mailHealth['mode'] ?? 'unknown'))); ?></strong>
+          <span class="muted">Mailer mode</span>
+        </div>
+        <div class="stat-card">
+          <strong><?php echo !empty($mailHealth['smtp_configured']) ? 'Configured' : 'Incomplete'; ?></strong>
+          <span class="muted">SMTP setup</span>
+        </div>
+        <div class="stat-card">
+          <strong><?php echo !empty($mailHealth['phpmailer_available']) ? 'Available' : 'Missing'; ?></strong>
+          <span class="muted">PHPMailer</span>
+        </div>
+      </div>
+      <div class="activity-feed">
+        <div class="activity-item">
+          <strong>Current sender identity</strong>
+          <div class="meta">From name: <?php echo h((string) ($mailHealth['from_name'] ?? '-')); ?></div>
+          <div class="meta">From address: <?php echo h((string) ($mailHealth['from_address'] ?? '-')); ?></div>
+          <div class="meta">Signature: <?php echo h((string) ($mailHealth['signature'] ?? '-')); ?></div>
+        </div>
+        <div class="activity-item">
+          <strong>SMTP transport</strong>
+          <div class="meta">Host: <?php echo h((string) ($mailHealth['smtp_host'] ?? '-')); ?></div>
+          <div class="meta">Port: <?php echo (int) ($mailHealth['smtp_port'] ?? 0); ?></div>
+          <div class="meta">Security: <?php echo h((string) ($mailHealth['smtp_secure'] ?? '-')); ?></div>
+          <div class="meta">Username: <?php echo h((string) ($mailHealth['smtp_username_masked'] ?? '-')); ?></div>
+        </div>
+        <?php $mailIssues = is_array($mailHealth['issues'] ?? null) ? $mailHealth['issues'] : []; ?>
+        <?php if (!empty($mailIssues)): ?>
+          <div class="activity-item">
+            <strong>Detected issues</strong>
+            <?php foreach ($mailIssues as $issue): ?>
+              <div class="meta"><?php echo h((string) $issue); ?></div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+        <?php $probe = is_array($mailHealth['probe'] ?? null) ? $mailHealth['probe'] : []; ?>
+        <?php if (!empty($probe)): ?>
+          <div class="activity-item">
+            <strong>Latest probe result</strong>
+            <div class="meta">Recipient: <?php echo h((string) ($probe['recipient'] ?? '-')); ?></div>
+            <div class="meta">Status: <?php echo !empty($probe['success']) ? 'Sent' : 'Failed'; ?></div>
+            <?php if (!empty($probe['error'])): ?>
+              <div class="meta">Error: <?php echo h((string) $probe['error']); ?></div>
+            <?php endif; ?>
+            <div class="inline-actions meta-top">
+              <span class="muted"><?php echo h(format_display_datetime((string) ($probe['checked_at'] ?? ''))); ?></span>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
 
     <div class="panel">
       <p class="muted eyebrow-compact stack-copy">Email Diagnostics</p>

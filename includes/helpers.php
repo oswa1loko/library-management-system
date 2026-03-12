@@ -184,6 +184,25 @@ function library_email_signature(): string
     return library_runtime_value('LIBRARY_EMAIL_SIGNATURE', 'Library Services Team');
 }
 
+function mask_email_address(string $email): string
+{
+    $email = trim($email);
+    if ($email === '' || strpos($email, '@') === false) {
+        return $email;
+    }
+
+    [$localPart, $domain] = explode('@', $email, 2);
+    if ($localPart === '') {
+        return '*@' . $domain;
+    }
+
+    if (strlen($localPart) <= 2) {
+        return substr($localPart, 0, 1) . str_repeat('*', max(0, strlen($localPart) - 1)) . '@' . $domain;
+    }
+
+    return substr($localPart, 0, 2) . str_repeat('*', max(0, strlen($localPart) - 2)) . '@' . $domain;
+}
+
 function is_valid_email_address(string $email): bool
 {
     return filter_var(trim($email), FILTER_VALIDATE_EMAIL) !== false;
@@ -385,6 +404,86 @@ function library_smtp_secure(): string
 {
     $value = strtolower(library_runtime_value('LIBRARY_SMTP_SECURE'));
     return in_array($value, ['tls', 'ssl'], true) ? $value : 'tls';
+}
+
+function library_mail_health_snapshot(bool $sendProbe = false): array
+{
+    $mailerMode = library_mailer_mode();
+    $smtpHost = trim(library_runtime_value('LIBRARY_SMTP_HOST'));
+    $smtpUser = trim(library_runtime_value('LIBRARY_SMTP_USERNAME'));
+    $smtpPass = trim(library_runtime_value('LIBRARY_SMTP_PASSWORD'));
+    $fromAddress = library_mail_from_address();
+    $fromName = library_mail_from_name();
+    $issues = [];
+    $probe = null;
+
+    if ($mailerMode === 'disabled') {
+        $issues[] = 'Mail sending is disabled because no working transport is configured.';
+    }
+
+    if ($mailerMode === 'smtp' && !class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+        $issues[] = 'SMTP is configured but PHPMailer is not available.';
+    }
+
+    if ($fromAddress === '' || !is_valid_email_address($fromAddress)) {
+        $issues[] = 'The From address is missing or invalid.';
+    }
+
+    if ($smtpHost === '' && $mailerMode === 'smtp') {
+        $issues[] = 'SMTP host is missing.';
+    }
+
+    if ($sendProbe) {
+        $probeRecipient = is_valid_email_address($fromAddress) ? $fromAddress : $smtpUser;
+        if ($probeRecipient !== '' && is_valid_email_address($probeRecipient)) {
+            $timestamp = date('Y-m-d H:i:s');
+            $subject = 'Library Mail Health Check';
+            $textBody = "This is a mail health check from the Library Management System.\n\n"
+                . 'Mode: ' . strtoupper($mailerMode) . "\n"
+                . 'Timestamp: ' . $timestamp . "\n";
+            $htmlBody = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+                . '<p>This is a mail health check from the <strong>Library Management System</strong>.</p>'
+                . '<p><strong>Mode:</strong> ' . h(strtoupper($mailerMode)) . '<br>'
+                . '<strong>Timestamp:</strong> ' . h($timestamp) . '</p>'
+                . '</div>';
+
+            $probeSent = send_library_email($probeRecipient, $subject, $textBody, $htmlBody);
+            $probe = [
+                'recipient' => $probeRecipient,
+                'success' => $probeSent,
+                'error' => $probeSent ? '' : get_library_mail_last_error(),
+                'checked_at' => $timestamp,
+            ];
+
+            if (!$probeSent && $probe['error'] !== '') {
+                $issues[] = $probe['error'];
+            }
+        } else {
+            $probe = [
+                'recipient' => '',
+                'success' => false,
+                'error' => 'No valid recipient is available for the mail health check.',
+                'checked_at' => date('Y-m-d H:i:s'),
+            ];
+            $issues[] = $probe['error'];
+        }
+    }
+
+    return [
+        'mode' => $mailerMode,
+        'smtp_host' => $smtpHost,
+        'smtp_port' => library_smtp_port(),
+        'smtp_secure' => library_smtp_secure(),
+        'smtp_username_masked' => mask_email_address($smtpUser),
+        'smtp_configured' => $smtpHost !== '' && $smtpUser !== '' && $smtpPass !== '',
+        'phpmailer_available' => class_exists(\PHPMailer\PHPMailer\PHPMailer::class),
+        'from_address' => $fromAddress,
+        'from_name' => $fromName,
+        'signature' => library_email_signature(),
+        'issues' => array_values(array_unique(array_filter($issues))),
+        'probe' => $probe,
+        'captured_at' => date('Y-m-d H:i:s'),
+    ];
 }
 
 function send_library_email(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool

@@ -19,6 +19,7 @@ $monthlyTopBooks = $conn->query("
             ) AS row_num
         FROM borrows br
         JOIN books b ON b.id = br.book_id
+        WHERE br.status IN ('borrowed', 'return_requested', 'returned')
         GROUP BY DATE_FORMAT(br.borrow_date, '%Y-%m'), b.id, b.title, b.author
     ) AS ranked
     WHERE ranked.row_num = 1
@@ -40,6 +41,7 @@ $monthlyBorrowBreakdownResult = $conn->query("
       COUNT(*) AS borrow_count
     FROM borrows br
     JOIN books b ON b.id = br.book_id
+    WHERE br.status IN ('borrowed', 'return_requested', 'returned')
     GROUP BY DATE_FORMAT(br.borrow_date, '%Y-%m'), b.id, b.title, b.author
     ORDER BY borrow_month DESC, borrow_count DESC, b.title ASC
     LIMIT 60
@@ -57,6 +59,7 @@ $monthlyBorrowTotals = $conn->query("
       DATE_FORMAT(borrow_date, '%Y-%m') AS borrow_month,
       COUNT(*) AS borrow_count
     FROM borrows
+    WHERE status IN ('borrowed', 'return_requested', 'returned')
     GROUP BY DATE_FORMAT(borrow_date, '%Y-%m')
     ORDER BY borrow_month DESC
     LIMIT 6
@@ -92,6 +95,7 @@ $weeklyBorrowRowsStmt = $conn->prepare("
       COUNT(*) AS borrow_count
     FROM borrows
     WHERE DATE_FORMAT(borrow_date, '%Y-%m') = ?
+      AND status IN ('borrowed', 'return_requested', 'returned')
     GROUP BY week_slot
     ORDER BY week_slot ASC
 ");
@@ -158,6 +162,7 @@ $topBooksThisMonthResult = $conn->prepare("
     FROM borrows br
     JOIN books b ON b.id = br.book_id
     WHERE DATE_FORMAT(br.borrow_date, '%Y-%m') = ?
+      AND br.status IN ('borrowed', 'return_requested', 'returned')
     GROUP BY b.id, b.title, b.author
     ORDER BY borrow_count DESC, b.title ASC
     LIMIT 5
@@ -192,6 +197,7 @@ $roleBreakdownStmt = $conn->prepare("
     FROM borrows br
     JOIN users u ON u.id = br.user_id
     WHERE DATE_FORMAT(br.borrow_date, '%Y-%m') = ?
+      AND br.status IN ('borrowed', 'return_requested', 'returned')
       AND u.role IN ('student', 'faculty')
     GROUP BY u.role
     ORDER BY borrow_count DESC, u.role ASC
