@@ -200,6 +200,49 @@ function generate_login_otp_code(): string
     return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
+function login_otp_resend_cooldown_seconds(): int
+{
+    $value = (int) library_runtime_value('LIBRARY_LOGIN_OTP_RESEND_COOLDOWN');
+    return $value >= 30 ? $value : 60;
+}
+
+function login_otp_max_attempts(): int
+{
+    $value = (int) library_runtime_value('LIBRARY_LOGIN_OTP_MAX_ATTEMPTS');
+    return $value > 0 ? $value : 5;
+}
+
+function get_login_otp_resend_wait_seconds(mysqli $conn, int $userId): int
+{
+    if ($userId <= 0) {
+        return 0;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT login_otp_sent_at
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->bind_result($sentAt);
+    $found = $stmt->fetch();
+    $stmt->close();
+
+    if (!$found || trim((string) $sentAt) === '') {
+        return 0;
+    }
+
+    $sentAtTimestamp = strtotime((string) $sentAt);
+    if ($sentAtTimestamp === false) {
+        return 0;
+    }
+
+    $remaining = ($sentAtTimestamp + login_otp_resend_cooldown_seconds()) - time();
+    return max(0, $remaining);
+}
+
 function clear_login_otp(mysqli $conn, int $userId): void
 {
     if ($userId <= 0) {
