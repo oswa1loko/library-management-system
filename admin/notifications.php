@@ -7,6 +7,7 @@ require_role('admin');
 
 $message = '';
 $messageType = 'success';
+$emailReminderDebug = is_array($_SESSION['email_reminder_debug'] ?? null) ? $_SESSION['email_reminder_debug'] : [];
 
 if (isset($_POST['mark_read'])) {
     $id = (int) ($_POST['id'] ?? 0);
@@ -27,6 +28,15 @@ if (isset($_POST['mark_all_read'])) {
     $conn->query("UPDATE notifications SET is_read = 1 WHERE role = 'admin' AND is_read = 0");
     $message = 'All admin notifications marked as read.';
     audit_log($conn, 'admin.notification.read_all');
+}
+
+if (isset($_POST['run_email_reminder_check'])) {
+    $dueSoonResult = send_due_soon_reminders($conn);
+    $overdueResult = send_overdue_notices($conn);
+    $emailReminderDebug = is_array($_SESSION['email_reminder_debug'] ?? null) ? $_SESSION['email_reminder_debug'] : [];
+    $message = 'Reminder check finished. Due soon sent: ' . (int) ($dueSoonResult['sent'] ?? 0)
+        . ', overdue sent: ' . (int) ($overdueResult['sent'] ?? 0) . '.';
+    $messageType = ((int) ($dueSoonResult['failed'] ?? 0) > 0 || (int) ($overdueResult['failed'] ?? 0) > 0) ? 'error' : 'success';
 }
 
 $liveStats = $conn->query("
@@ -74,6 +84,51 @@ $notifications = $conn->query("
     <?php if ($message !== ''): ?>
       <div class="notice <?php echo $messageType === 'error' ? 'error' : 'success'; ?>"><?php echo h($message); ?></div>
     <?php endif; ?>
+
+    <div class="panel">
+      <p class="muted eyebrow-compact stack-copy">Email Diagnostics</p>
+      <div class="toolbar toolbar-top">
+        <div class="grow">
+          <h3 class="heading-card">Latest reminder sync snapshot</h3>
+        </div>
+        <form method="post" class="inline-form">
+          <button type="submit" name="run_email_reminder_check" value="1">Run Email Reminder Check</button>
+        </form>
+      </div>
+      <?php if (!empty($emailReminderDebug)): ?>
+      <div class="activity-feed">
+        <?php foreach (['due_soon' => 'Due Soon', 'overdue' => 'Overdue'] as $bucketKey => $bucketLabel): ?>
+          <?php $bucket = is_array($emailReminderDebug[$bucketKey] ?? null) ? $emailReminderDebug[$bucketKey] : null; ?>
+          <?php if (!$bucket): ?>
+            <?php continue; ?>
+          <?php endif; ?>
+          <div class="activity-item">
+            <strong>
+              <span class="status-dot <?php echo (int) ($bucket['failed'] ?? 0) > 0 ? 'unpaid' : ((int) ($bucket['sent'] ?? 0) > 0 ? 'approved' : 'due'); ?>"></span>
+              <?php echo h($bucketLabel); ?> reminder run
+            </strong>
+            <div class="meta">
+              Checked: <?php echo (int) ($bucket['checked'] ?? 0); ?>,
+              sent: <?php echo (int) ($bucket['sent'] ?? 0); ?>,
+              failed: <?php echo (int) ($bucket['failed'] ?? 0); ?>,
+              skipped: <?php echo (int) ($bucket['skipped'] ?? 0); ?>
+            </div>
+            <?php $errors = is_array($bucket['errors'] ?? null) ? $bucket['errors'] : []; ?>
+            <?php if (!empty($errors)): ?>
+              <?php foreach ($errors as $error): ?>
+                <div class="meta">Borrow #<?php echo (int) ($error['borrow_id'] ?? 0); ?> to <?php echo h((string) ($error['email'] ?? '-')); ?>: <?php echo h((string) ($error['message'] ?? 'Unknown error')); ?></div>
+              <?php endforeach; ?>
+            <?php endif; ?>
+            <div class="inline-actions meta-top">
+              <span class="muted"><?php echo h(format_display_datetime((string) ($bucket['captured_at'] ?? ''))); ?></span>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <?php else: ?>
+      <div class="empty-state">Run a manual reminder check here to see due-soon and overdue email results without slowing down every page request.</div>
+      <?php endif; ?>
+    </div>
 
     <div class="panel">
       <p class="muted eyebrow-compact stack-copy">Live Alerts</p>

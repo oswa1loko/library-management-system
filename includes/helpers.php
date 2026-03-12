@@ -526,6 +526,29 @@ function sync_overdue_penalties_if_needed(mysqli $conn, int $seconds = 60): void
     }
 }
 
+function update_email_reminder_debug_snapshot(string $bucket, array $result): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    $bucket = trim($bucket);
+    if ($bucket === '') {
+        return;
+    }
+
+    $snapshot = is_array($_SESSION['email_reminder_debug'] ?? null) ? $_SESSION['email_reminder_debug'] : [];
+    $snapshot[$bucket] = [
+        'checked' => (int) ($result['checked'] ?? 0),
+        'sent' => (int) ($result['sent'] ?? 0),
+        'failed' => (int) ($result['failed'] ?? 0),
+        'skipped' => (int) ($result['skipped'] ?? 0),
+        'errors' => array_slice(is_array($result['errors'] ?? null) ? $result['errors'] : [], 0, 3),
+        'captured_at' => date('Y-m-d H:i:s'),
+    ];
+    $_SESSION['email_reminder_debug'] = $snapshot;
+}
+
 function audit_log(mysqli $conn, string $eventName, array $context = [], ?int $actorUserId = null, ?string $actorRole = null): void
 {
     $eventName = trim($eventName);
@@ -786,6 +809,8 @@ function send_due_soon_reminders(mysqli $conn): array
         );
     }
 
+    update_email_reminder_debug_snapshot('due_soon', $result);
+
     return $result;
 }
 
@@ -909,6 +934,9 @@ function send_overdue_notices(mysqli $conn): array
         );
     }
 
+    update_email_reminder_debug_snapshot('overdue', $result);
+
     return $result;
 }
+
 ?>
