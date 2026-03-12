@@ -29,10 +29,18 @@ uploads/proofs/*
 !uploads/proofs/.gitkeep
 uploads/book_covers/*
 !uploads/book_covers/.gitkeep
+uploads/ebook_covers/*
+!uploads/ebook_covers/.gitkeep
+uploads/ebooks/*
+!uploads/ebooks/.gitkeep
+uploads/catalog_covers/*
+!uploads/catalog_covers/.gitkeep
 uploads/backups/*
 !uploads/backups/.gitkeep
 storage/sessions/*
 !storage/sessions/.gitkeep
+storage/cache/*
+!storage/cache/.gitkeep
 
 # Local SQL exports
 *.sql

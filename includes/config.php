@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('Asia/Manila');
+
 $GLOBALS['library_runtime_config'] = [];
 $localMailConfigPath = __DIR__ . '/local_mail_config.php';
 if (is_file($localMailConfigPath)) {
@@ -78,12 +80,24 @@ function ensure_library_schema(mysqli $conn): void
     ");
 
     $conn->query("
+        CREATE TABLE IF NOT EXISTS catalogs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(120) NOT NULL UNIQUE,
+            description TEXT DEFAULT NULL,
+            cover_path VARCHAR(255) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
         CREATE TABLE IF NOT EXISTS books (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
             author VARCHAR(255) DEFAULT '',
             category VARCHAR(120) DEFAULT '',
+            catalog_id INT DEFAULT NULL,
             isbn VARCHAR(50) DEFAULT NULL,
+            description TEXT DEFAULT NULL,
             cover_path VARCHAR(255) DEFAULT NULL,
             qty_total INT NOT NULL DEFAULT 1,
             qty_available INT NOT NULL DEFAULT 1,
@@ -98,12 +112,17 @@ function ensure_library_schema(mysqli $conn): void
             book_id INT NOT NULL,
             request_batch VARCHAR(40) DEFAULT NULL,
             return_batch VARCHAR(40) DEFAULT NULL,
-            borrow_date DATE NOT NULL,
-            due_date DATE NOT NULL,
+            requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            borrow_date DATE DEFAULT NULL,
+            approved_at DATETIME DEFAULT NULL,
+            due_date DATE DEFAULT NULL,
+            due_at DATETIME DEFAULT NULL,
             borrow_days INT NOT NULL DEFAULT 7,
             due_reminder_sent_at DATETIME DEFAULT NULL,
             overdue_notice_sent_at DATETIME DEFAULT NULL,
+            return_requested_at DATETIME DEFAULT NULL,
             return_date DATE DEFAULT NULL,
+            returned_at DATETIME DEFAULT NULL,
             status ENUM('pending','borrowed','return_requested','returned') NOT NULL DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
@@ -191,10 +210,30 @@ function ensure_library_schema(mysqli $conn): void
     ");
 
     $conn->query("
+        CREATE TABLE IF NOT EXISTS email_jobs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            job_type VARCHAR(60) NOT NULL,
+            recipient_email VARCHAR(160) NOT NULL,
+            subject VARCHAR(255) NOT NULL,
+            text_body MEDIUMTEXT NOT NULL,
+            html_body MEDIUMTEXT DEFAULT NULL,
+            status ENUM('pending','sending','sent','failed') NOT NULL DEFAULT 'pending',
+            attempts INT NOT NULL DEFAULT 0,
+            last_error TEXT DEFAULT NULL,
+            available_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            sent_at DATETIME DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_email_jobs_status_available (status, available_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
         CREATE TABLE IF NOT EXISTS ebooks (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
+            author VARCHAR(255) DEFAULT '',
             description TEXT DEFAULT NULL,
+            cover_path VARCHAR(255) DEFAULT NULL,
             file_path VARCHAR(255) NOT NULL,
             uploaded_by INT DEFAULT NULL,
             is_active TINYINT(1) NOT NULL DEFAULT 1,
@@ -228,12 +267,55 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("ALTER TABLE books ADD COLUMN category VARCHAR(120) DEFAULT '' AFTER author");
     }
 
+    if (!column_exists($conn, 'catalogs', 'cover_path')) {
+        $conn->query("ALTER TABLE catalogs ADD COLUMN cover_path VARCHAR(255) DEFAULT NULL AFTER description");
+    }
+
+    if (!column_exists($conn, 'books', 'catalog_id')) {
+        $conn->query("ALTER TABLE books ADD COLUMN catalog_id INT DEFAULT NULL AFTER category");
+    }
+
     if (!column_exists($conn, 'books', 'isbn')) {
-        $conn->query("ALTER TABLE books ADD COLUMN isbn VARCHAR(50) DEFAULT NULL AFTER category");
+        $conn->query("ALTER TABLE books ADD COLUMN isbn VARCHAR(50) DEFAULT NULL AFTER catalog_id");
+    }
+
+    if (!column_exists($conn, 'books', 'description')) {
+        $conn->query("ALTER TABLE books ADD COLUMN description TEXT DEFAULT NULL AFTER isbn");
+    }
+
+    if (!index_exists($conn, 'books', 'idx_books_catalog_id')) {
+        $conn->query("CREATE INDEX idx_books_catalog_id ON books (catalog_id)");
+    }
+
+    if (table_exists($conn, 'catalogs')) {
+        $conn->query("
+            INSERT IGNORE INTO catalogs (name)
+            SELECT DISTINCT category
+            FROM books
+            WHERE category IS NOT NULL
+              AND category <> ''
+        ");
+
+        $conn->query("
+            UPDATE books b
+            JOIN catalogs c ON c.name = b.category
+            SET b.catalog_id = c.id
+            WHERE (b.catalog_id IS NULL OR b.catalog_id = 0)
+              AND b.category IS NOT NULL
+              AND b.category <> ''
+        ");
+
+        $conn->query("
+            UPDATE books b
+            JOIN catalogs c ON c.id = b.catalog_id
+            SET b.category = c.name
+            WHERE b.catalog_id IS NOT NULL
+              AND (b.category IS NULL OR b.category = '' OR b.category <> c.name)
+        ");
     }
 
     if (!column_exists($conn, 'books', 'cover_path')) {
-        $conn->query("ALTER TABLE books ADD COLUMN cover_path VARCHAR(255) DEFAULT NULL AFTER isbn");
+        $conn->query("ALTER TABLE books ADD COLUMN cover_path VARCHAR(255) DEFAULT NULL AFTER description");
     }
 
     if (!column_exists($conn, 'books', 'qty_total')) {
@@ -246,6 +328,18 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'borrows', 'borrow_days')) {
         $conn->query("ALTER TABLE borrows ADD COLUMN borrow_days INT NOT NULL DEFAULT 7 AFTER due_date");
+    }
+
+    if (!column_exists($conn, 'borrows', 'requested_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN requested_at DATETIME DEFAULT CURRENT_TIMESTAMP AFTER return_batch");
+    }
+
+    if (!column_exists($conn, 'borrows', 'approved_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN approved_at DATETIME DEFAULT NULL AFTER borrow_date");
+    }
+
+    if (!column_exists($conn, 'borrows', 'due_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN due_at DATETIME DEFAULT NULL AFTER due_date");
     }
 
     if (!column_exists($conn, 'borrows', 'due_reminder_sent_at')) {
@@ -263,6 +357,18 @@ function ensure_library_schema(mysqli $conn): void
     if (!column_exists($conn, 'borrows', 'return_batch')) {
         $conn->query("ALTER TABLE borrows ADD COLUMN return_batch VARCHAR(40) DEFAULT NULL AFTER request_batch");
     }
+
+    if (!column_exists($conn, 'borrows', 'return_requested_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN return_requested_at DATETIME DEFAULT NULL AFTER overdue_notice_sent_at");
+    }
+
+    if (!column_exists($conn, 'borrows', 'returned_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN returned_at DATETIME DEFAULT NULL AFTER return_date");
+    }
+
+    $conn->query("ALTER TABLE borrows MODIFY borrow_date DATE DEFAULT NULL");
+    $conn->query("ALTER TABLE borrows MODIFY due_date DATE DEFAULT NULL");
+    $conn->query("ALTER TABLE borrows MODIFY return_date DATE DEFAULT NULL");
 
     if (!index_exists($conn, 'borrows', 'idx_borrows_request_batch')) {
         $conn->query("CREATE INDEX idx_borrows_request_batch ON borrows (request_batch)");
@@ -288,6 +394,54 @@ function ensure_library_schema(mysqli $conn): void
                 ELSE 7
             END
             WHERE borrow_days IS NULL OR borrow_days < 1 OR borrow_days > 30
+        ");
+    }
+
+    if (column_exists($conn, 'borrows', 'requested_at')) {
+        $conn->query("
+            UPDATE borrows
+            SET requested_at = COALESCE(DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s'), NOW())
+            WHERE requested_at IS NULL
+        ");
+    }
+
+    if (column_exists($conn, 'borrows', 'approved_at')) {
+        $conn->query("
+            UPDATE borrows
+            SET approved_at = CONCAT(borrow_date, ' 00:00:00')
+            WHERE approved_at IS NULL
+              AND borrow_date IS NOT NULL
+              AND status IN ('borrowed', 'return_requested', 'returned')
+        ");
+    }
+
+    if (column_exists($conn, 'borrows', 'due_at')) {
+        $conn->query("
+            UPDATE borrows
+            SET due_at = CONCAT(due_date, ' 23:59:59')
+            WHERE due_at IS NULL
+              AND due_date IS NOT NULL
+              AND status IN ('borrowed', 'return_requested', 'returned')
+        ");
+    }
+
+    if (column_exists($conn, 'borrows', 'return_requested_at')) {
+        $conn->query("
+            UPDATE borrows
+            SET return_requested_at = CONCAT(return_date, ' 00:00:00')
+            WHERE return_requested_at IS NULL
+              AND return_date IS NOT NULL
+              AND status = 'return_requested'
+        ");
+    }
+
+    if (column_exists($conn, 'borrows', 'returned_at')) {
+        $conn->query("
+            UPDATE borrows
+            SET returned_at = CONCAT(return_date, ' 00:00:00')
+            WHERE returned_at IS NULL
+              AND return_date IS NOT NULL
+              AND status = 'returned'
         ");
     }
 
@@ -329,6 +483,14 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'ebooks', 'description')) {
         $conn->query("ALTER TABLE ebooks ADD COLUMN description TEXT DEFAULT NULL AFTER title");
+    }
+
+    if (!column_exists($conn, 'ebooks', 'author')) {
+        $conn->query("ALTER TABLE ebooks ADD COLUMN author VARCHAR(255) DEFAULT '' AFTER title");
+    }
+
+    if (!column_exists($conn, 'ebooks', 'cover_path')) {
+        $conn->query("ALTER TABLE ebooks ADD COLUMN cover_path VARCHAR(255) DEFAULT NULL AFTER description");
     }
 
     if (!column_exists($conn, 'ebooks', 'uploaded_by')) {

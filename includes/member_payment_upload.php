@@ -242,6 +242,10 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
         <span class="member-sidebar-label">Borrow and Return</span>
       </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/ebooks.php" data-tooltip="eBooks">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">eBooks</span>
+      </a>
       <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/payment_upload.php" data-tooltip="Payments">
         <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
         <span class="member-sidebar-label">Payments</span>

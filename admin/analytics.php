@@ -290,9 +290,17 @@ foreach ($allBooksShareSegments as $index => $segment) {
 
     <div class="stack">
       <div class="panel">
-        <p class="muted eyebrow-compact stack-copy">Analytics</p>
-        <h3 class="heading-card">Borrowing performance</h3>
-        <p class="muted copy-bottom">Monthly borrowing activity and top title leaders based on the <code>borrows</code> table.</p>
+        <div class="inline-actions inline-actions-spread analytics-print-head">
+          <div>
+            <p class="muted eyebrow-compact stack-copy">Analytics</p>
+            <h3 class="heading-card">Borrowing performance</h3>
+            <p class="muted copy-bottom">Monthly borrowing activity and top title leaders based on the <code>borrows</code> table.</p>
+            <p class="analytics-print-note">For best print results, enable browser background graphics when saving this report as PDF.</p>
+          </div>
+          <div class="inline-actions analytics-print-actions">
+            <button type="button" class="button secondary" onclick="window.print()">Print Report</button>
+          </div>
+        </div>
 
         <div class="analytics-summary-grid">
           <div class="analytics-summary-card analytics-summary-card-primary">

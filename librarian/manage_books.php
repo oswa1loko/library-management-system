@@ -8,11 +8,13 @@ require_role('librarian');
 $message = '';
 $messageType = 'success';
 $search = trim($_GET['search'] ?? '');
-$categoryFilter = trim($_GET['category'] ?? '');
+$catalogFilter = trim((string) ($_GET['catalog'] ?? $_GET['category'] ?? ''));
 $formData = [
     'title' => '',
     'author' => '',
-    'category' => '',
+    'catalog_id' => '',
+    'isbn' => '',
+    'description' => '',
     'qty' => 1,
 ];
 
@@ -46,16 +48,33 @@ function upload_book_cover(array $file, string $existingPath = ''): array
 if (isset($_POST['add'])) {
     $title = trim($_POST['title'] ?? '');
     $author = trim($_POST['author'] ?? '');
-    $category = trim($_POST['category'] ?? '');
+    $catalogId = max(0, (int) ($_POST['catalog_id'] ?? 0));
+    $isbn = trim($_POST['isbn'] ?? '');
+    $description = trim($_POST['description'] ?? '');
     $qty = max(0, (int) ($_POST['qty'] ?? 1));
     $formData = [
         'title' => $title,
         'author' => $author,
-        'category' => $category,
+        'catalog_id' => $catalogId > 0 ? (string) $catalogId : '',
+        'isbn' => $isbn,
+        'description' => $description,
         'qty' => $qty,
     ];
 
     $coverUpload = upload_book_cover($_FILES['cover'] ?? []);
+    $selectedCatalog = null;
+    if ($catalogId > 0) {
+        $catalogLookup = $conn->prepare("
+            SELECT id, name, description
+            FROM catalogs
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $catalogLookup->bind_param('i', $catalogId);
+        $catalogLookup->execute();
+        $selectedCatalog = $catalogLookup->get_result()->fetch_assoc();
+        $catalogLookup->close();
+    }
 
     if ($title === '') {
         $message = 'Title is required.';
@@ -63,8 +82,11 @@ if (isset($_POST['add'])) {
     } elseif ($author === '') {
         $message = 'Author is required.';
         $messageType = 'error';
-    } elseif ($category === '') {
-        $message = 'Category is required.';
+    } elseif (!$selectedCatalog) {
+        $message = 'Select a catalog first.';
+        $messageType = 'error';
+    } elseif ($isbn !== '' && !preg_match('/^[0-9Xx-]+$/', $isbn)) {
+        $message = 'ISBN may only contain numbers, hyphens, and X.';
         $messageType = 'error';
     } elseif ($qty <= 0) {
         $message = 'Quantity must be at least 1.';
@@ -74,17 +96,41 @@ if (isset($_POST['add'])) {
         $messageType = 'error';
     } else {
         $coverPath = $coverUpload['path'] ?: null;
-        $stmt = $conn->prepare("INSERT INTO books (title, author, category, cover_path, qty_total, qty_available) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param('ssssii', $title, $author, $category, $coverPath, $qty, $qty);
-        $stmt->execute();
-        $stmt->close();
-        $message = 'Book added successfully.';
-        $formData = [
-            'title' => '',
-            'author' => '',
-            'category' => '',
-            'qty' => 1,
-        ];
+        $catalogName = trim((string) ($selectedCatalog['name'] ?? ''));
+        $duplicateCheck = $conn->prepare("
+            SELECT id
+            FROM books
+            WHERE title = ? AND author = ? AND catalog_id = ? AND (? = '' OR isbn = ?)
+            LIMIT 1
+        ");
+        $duplicateCheck->bind_param('ssiss', $title, $author, $catalogId, $isbn, $isbn);
+        $duplicateCheck->execute();
+        $duplicateBook = $duplicateCheck->get_result()->fetch_assoc();
+        $duplicateCheck->close();
+
+        if ($duplicateBook) {
+            $message = 'A matching book already exists under this catalog. Review the existing record before adding another one.';
+            $messageType = 'error';
+        } else {
+            $isbnValue = $isbn !== '' ? $isbn : null;
+            $descriptionValue = $description !== '' ? $description : null;
+            $stmt = $conn->prepare("
+                INSERT INTO books (title, author, category, catalog_id, isbn, description, cover_path, qty_total, qty_available)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->bind_param('sssisssii', $title, $author, $catalogName, $catalogId, $isbnValue, $descriptionValue, $coverPath, $qty, $qty);
+            $stmt->execute();
+            $stmt->close();
+            $message = 'Book added successfully.';
+            $formData = [
+                'title' => '',
+                'author' => '',
+                'catalog_id' => '',
+                'isbn' => '',
+                'description' => '',
+                'qty' => 1,
+            ];
+        }
     }
 }
 
@@ -124,24 +170,29 @@ if (isset($_POST['delete'])) {
     }
 }
 
-$categories = $conn->query("SELECT DISTINCT category FROM books WHERE category <> '' ORDER BY category ASC");
+$catalogRows = $conn->query("SELECT id, name, description FROM catalogs ORDER BY name ASC");
+$catalogs = [];
+while ($catalogRows && ($catalogRow = $catalogRows->fetch_assoc())) {
+    $catalogs[] = $catalogRow;
+}
 
 $booksSql = "SELECT * FROM books WHERE 1=1";
 $booksParams = [];
 $booksTypes = '';
 
 if ($search !== '') {
-    $booksSql .= " AND (title LIKE ? OR author LIKE ?)";
+    $booksSql .= " AND (title LIKE ? OR author LIKE ? OR COALESCE(isbn, '') LIKE ?)";
     $term = '%' . $search . '%';
     $booksParams[] = $term;
     $booksParams[] = $term;
-    $booksTypes .= 'ss';
+    $booksParams[] = $term;
+    $booksTypes .= 'sss';
 }
 
-if ($categoryFilter !== '') {
-    $booksSql .= " AND category = ?";
-    $booksParams[] = $categoryFilter;
-    $booksTypes .= 's';
+if ($catalogFilter !== '') {
+    $booksSql .= " AND catalog_id = ?";
+    $booksParams[] = (int) $catalogFilter;
+    $booksTypes .= 'i';
 }
 
 $booksSql .= " ORDER BY id DESC";
@@ -238,11 +289,18 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
           <div>
             <p class="muted eyebrow-compact">Add Book</p>
             <h3 class="heading-card">Create a new library entry</h3>
-            <p class="muted">Fill in the core catalog details first. Available quantity will automatically match the starting stock.</p>
+            <p class="muted">After filling in the book details, assign the book to an existing catalog instead of typing the catalog manually.</p>
           </div>
         </div>
 
         <form method="post" enctype="multipart/form-data" class="stack flow-top-lg">
+          <div class="stack">
+            <div>
+              <p class="muted eyebrow-compact">Book Details</p>
+              <h4 class="heading-top-md">Catalog metadata for this title</h4>
+            </div>
+            <div class="empty-state">Need a new catalog first? Create it in <a href="/librarymanage/librarian/manage_catalogs.php">Catalog Management</a>, then come back here to assign the book.</div>
+          </div>
           <div class="grid form">
             <div>
               <label for="title">Book Title</label>
@@ -253,12 +311,30 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
               <input id="author" name="author" value="<?php echo h($formData['author']); ?>" placeholder="John Doe" required>
             </div>
             <div>
-              <label for="category">Category</label>
-              <input id="category" name="category" value="<?php echo h($formData['category']); ?>" placeholder="Computer Science" required>
+              <label for="catalog_id">Catalog</label>
+              <div class="ui-select-shell">
+                <select id="catalog_id" name="catalog_id" class="ui-select" required>
+                  <option value="">Select catalog</option>
+                  <?php foreach ($catalogs as $catalog): ?>
+                    <option value="<?php echo (int) $catalog['id']; ?>" <?php echo $formData['catalog_id'] === (string) $catalog['id'] ? 'selected' : ''; ?>>
+                      <?php echo h($catalog['name']); ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <span class="ui-select-caret" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div>
+              <label for="isbn">ISBN</label>
+              <input id="isbn" name="isbn" value="<?php echo h($formData['isbn']); ?>" placeholder="978-1234567890">
             </div>
             <div>
               <label for="qty">Starting Quantity</label>
               <input id="qty" type="number" name="qty" value="<?php echo (int) $formData['qty']; ?>" min="1" required>
+            </div>
+            <div class="form-span-2">
+              <label for="description">Description</label>
+              <textarea id="description" name="description" rows="4" placeholder="Short catalog note or summary"><?php echo h($formData['description']); ?></textarea>
             </div>
             <div>
               <label for="cover">Book Cover</label>
@@ -269,26 +345,38 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
             </div>
           </div>
 
+          <div class="stack">
+            <div>
+              <p class="muted eyebrow-compact">Inventory</p>
+              <h4 class="heading-top-md">Physical copies for this catalog record</h4>
+            </div>
+            <div class="empty-state">Starting quantity becomes both total copies and available copies after the book is assigned to the selected catalog.</div>
+          </div>
+
           <div class="inline-actions">
             <button type="submit" name="add" value="1">Add Book</button>
-            <span class="muted">This creates both total and available copies at the same value.</span>
+            <span class="muted">Book details, assigned catalog, and starting stock are saved together on one book record.</span>
           </div>
         </form>
       </div>
 
       <div class="panel">
-        <div class="card-head">
-          <div class="dashboard-icon icon-guide" aria-hidden="true"></div>
-          <div>
-            <p class="muted eyebrow-compact">Workflow Notes</p>
-            <h3 class="heading-card">Daily catalog reminders</h3>
-            <p class="muted">Use one naming style per category, verify stock before editing totals, and update covers only when the title record is final.</p>
+          <div class="card-head">
+            <div class="dashboard-icon icon-guide" aria-hidden="true"></div>
+            <div>
+              <p class="muted eyebrow-compact">Workflow Notes</p>
+              <h3 class="heading-card">Daily catalog reminders</h3>
+            <p class="muted">Create the catalog once, assign books to it consistently, verify stock before editing totals, and update covers only when the title record is final.</p>
           </div>
         </div>
         <div class="stack">
           <div class="empty-state">
-            <strong class="label-block-gap">Category consistency</strong>
-            Keep categories clean, for example "Computer Science", "Education", or "Criminology", so monthly reporting stays usable.
+            <strong class="label-block-gap">Catalog accuracy</strong>
+            Keep catalog names clean, for example "Computer Science", "Education", or "Criminology", then assign every new book to one of those records.
+          </div>
+          <div class="empty-state">
+            <strong class="label-block-gap">Catalog management</strong>
+            Rename, review, or delete unused catalogs from <a href="/librarymanage/librarian/manage_catalogs.php">Catalog Management</a> instead of changing catalog structure here.
           </div>
           <div class="empty-state">
             <strong class="label-block-gap">Stock review</strong>
@@ -303,32 +391,30 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
     </div>
 
     <div class="panel">
-      <div class="toolbar toolbar-top">
-        <div class="grow">
-          <div class="card-head card-head-tight">
-            <div class="dashboard-icon icon-ledger" aria-hidden="true"></div>
-            <div>
-              <p class="muted eyebrow-compact">Catalog Records</p>
-              <h3 class="heading-card">Books list and stock review</h3>
-              <p class="muted">Search by title or author, narrow by category, and jump to edit when copy counts need correction.</p>
-            </div>
+      <div class="manage-books-records-head">
+        <div class="card-head card-head-tight">
+          <div class="dashboard-icon icon-ledger" aria-hidden="true"></div>
+          <div>
+            <p class="muted eyebrow-compact">Catalog Records</p>
+            <h3 class="heading-card">Books list and stock review</h3>
+            <p class="muted">Search by title or author, narrow by assigned catalog, and jump to edit when copy counts need correction.</p>
           </div>
         </div>
-        <form method="get" class="toolbar grow">
+        <form method="get" class="manage-books-tablefilters">
           <div class="grow">
             <label for="search">Search</label>
             <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search title or author">
           </div>
           <div>
-            <label for="category_filter">Category</label>
+            <label for="catalog_filter">Catalog</label>
             <div class="ui-select-shell">
-              <select id="category_filter" name="category" class="ui-select">
-                <option value="">All categories</option>
-                <?php while ($categoryRow = $categories->fetch_assoc()): ?>
-                  <option value="<?php echo h($categoryRow['category']); ?>" <?php echo $categoryFilter === $categoryRow['category'] ? 'selected' : ''; ?>>
-                    <?php echo h($categoryRow['category']); ?>
+              <select id="catalog_filter" name="catalog" class="ui-select">
+                <option value="">All catalogs</option>
+                <?php foreach ($catalogs as $catalog): ?>
+                  <option value="<?php echo (int) $catalog['id']; ?>" <?php echo $catalogFilter === (string) $catalog['id'] ? 'selected' : ''; ?>>
+                    <?php echo h($catalog['name']); ?>
                   </option>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
               </select>
               <span class="ui-select-caret" aria-hidden="true"></span>
             </div>
@@ -353,6 +439,7 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
               <th>Book</th>
               <th>Author</th>
               <th>Category</th>
+              <th>ISBN</th>
               <th>Total</th>
               <th>Available</th>
               <th>Action</th>
@@ -360,7 +447,7 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
           </thead>
           <tbody>
             <?php if ($books->num_rows === 0): ?>
-              <tr><td colspan="7" class="muted">No books matched your current filters.</td></tr>
+              <tr><td colspan="8" class="muted">No books matched your current filters.</td></tr>
             <?php endif; ?>
               <?php while ($book = $books->fetch_assoc()): ?>
               <tr data-book-row data-title="<?php echo h(strtolower($book['title'])); ?>" data-author="<?php echo h(strtolower($book['author'])); ?>" data-category="<?php echo h(strtolower($book['category'])); ?>">
@@ -374,12 +461,16 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
                     <?php endif; ?>
                     <div>
                       <strong class="label-block"><?php echo h($book['title']); ?></strong>
+                      <?php if (!empty($book['description'])): ?>
+                        <span class="muted"><?php echo h($book['description']); ?></span>
+                      <?php endif; ?>
                       <span class="muted"><?php echo (int) $book['qty_available'] <= 0 ? 'Unavailable now' : ((int) $book['qty_available'] <= 2 ? 'Low stock title' : 'Ready to borrow'); ?></span>
                     </div>
                   </div>
                 </td>
                 <td><?php echo h($book['author']); ?></td>
-                <td><?php echo h($book['category']); ?></td>
+                <td><?php echo h((string) ($book['category'] ?: '-')); ?></td>
+                <td><?php echo h((string) ($book['isbn'] ?: '-')); ?></td>
                 <td><?php echo (int) $book['qty_total']; ?></td>
                 <td>
                   <span class="badge">

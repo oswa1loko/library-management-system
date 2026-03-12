@@ -81,8 +81,7 @@ if ($insufficientStock !== []) {
     api_error('Requested quantity exceeds available copies for: ' . implode(', ', $insufficientStock) . '.', 409);
 }
 
-$borrowDate = date('Y-m-d');
-$dueDate = $borrowDate;
+$requestedAt = date('Y-m-d H:i:s');
 $createdBorrows = [];
 $requestBatch = 'req-' . bin2hex(random_bytes(8));
 
@@ -90,14 +89,14 @@ $conn->begin_transaction();
 
 try {
     $borrowStmt = $conn->prepare("
-        INSERT INTO borrows (user_id, book_id, request_batch, borrow_date, due_date, borrow_days, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+        INSERT INTO borrows (user_id, book_id, request_batch, requested_at, borrow_date, approved_at, due_date, due_at, borrow_days, status)
+        VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, 'pending')
     ");
 
     foreach ($bookIds as $bookId) {
         $requestedCopies = (int) ($bookQuantities[$bookId] ?? 1);
         for ($copy = 0; $copy < $requestedCopies; $copy++) {
-            $borrowStmt->bind_param('iisssi', $user['id'], $bookId, $requestBatch, $borrowDate, $dueDate, $days);
+            $borrowStmt->bind_param('iissi', $user['id'], $bookId, $requestBatch, $requestedAt, $days);
             $borrowStmt->execute();
             $borrowId = (int) $borrowStmt->insert_id;
             $createdBorrows[] = [
@@ -105,7 +104,7 @@ try {
                 'book_id' => $bookId,
                 'request_batch' => $requestBatch,
                 'title' => (string) ($booksById[$bookId]['title'] ?? ''),
-                'requested_at' => $borrowDate,
+                'requested_at' => $requestedAt,
                 'requested_days' => $days,
                 'status' => 'pending',
             ];

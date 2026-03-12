@@ -336,6 +336,344 @@ function send_login_otp_email(string $email, string $fullName, string $role, str
     return send_library_email($email, $subject, $message, $htmlMessage);
 }
 
+function build_borrow_approval_email_payload(mysqli $conn, int $borrowId): ?array
+{
+    $borrowId = max(0, $borrowId);
+    if ($borrowId <= 0) {
+        set_library_mail_last_error('Missing borrow record.');
+        return null;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT
+            br.id,
+            br.borrow_date,
+            br.due_date,
+            u.fullname,
+            u.email,
+            u.role,
+            b.title,
+            b.author
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        JOIN books b ON b.id = br.book_id
+        WHERE br.id = ? AND br.status = 'borrowed'
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $borrowId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row) {
+        set_library_mail_last_error('Borrow record is not available for approval email.');
+        return null;
+    }
+
+    $email = trim((string) ($row['email'] ?? ''));
+    if ($email === '' || !is_valid_email_address($email)) {
+        set_library_mail_last_error('Borrower email address is missing or invalid.');
+        return null;
+    }
+
+    $fullName = trim((string) ($row['fullname'] ?? 'Library Member'));
+    $roleLabel = role_label((string) ($row['role'] ?? ''));
+    $title = trim((string) ($row['title'] ?? ''));
+    $author = trim((string) ($row['author'] ?? ''));
+    $borrowDate = format_display_date((string) ($row['borrow_date'] ?? ''));
+    $dueDate = format_display_date((string) ($row['due_date'] ?? ''));
+
+    $subject = 'Borrow Request Approved - ' . ($title !== '' ? $title : 'Library Book');
+    $message = "Hello {$fullName},\n\n"
+        . "Your borrowing request has been approved by the librarian.\n\n"
+        . "Book: {$title}\n"
+        . "Author: {$author}\n"
+        . "Borrow Date: {$borrowDate}\n"
+        . "Due Date: {$dueDate}\n"
+        . "Role: {$roleLabel}\n\n"
+        . "Please keep the book in good condition and return it on or before the due date.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
+        . '<p>Your borrowing request has been <strong>approved</strong> by the librarian.</p>'
+        . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
+        . '<p style="margin:0 0 8px;"><strong>Book:</strong> ' . h($title) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Author:</strong> ' . h($author) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Borrow Date:</strong> ' . h($borrowDate) . '</p>'
+        . '<p style="margin:0;"><strong>Due Date:</strong> ' . h($dueDate) . '</p>'
+        . '</div>'
+        . '<p><strong>Role:</strong> ' . h($roleLabel) . '</p>'
+        . '<p>Please keep the book in good condition and return it on or before the due date.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return [
+        'borrow_id' => $borrowId,
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function send_borrow_approval_email(mysqli $conn, int $borrowId): bool
+{
+    $payload = build_borrow_approval_email_payload($conn, $borrowId);
+    if (!$payload) {
+        return false;
+    }
+
+    return send_library_email(
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
+function enqueue_email_job(
+    mysqli $conn,
+    string $jobType,
+    string $recipientEmail,
+    string $subject,
+    string $textBody,
+    ?string $htmlBody = null
+): bool {
+    $recipientEmail = trim($recipientEmail);
+    $subject = trim($subject);
+    $textBody = trim($textBody);
+    $htmlBody = $htmlBody !== null ? trim($htmlBody) : null;
+
+    if ($jobType === '' || $recipientEmail === '' || $subject === '' || $textBody === '') {
+        return false;
+    }
+
+    $stmt = $conn->prepare("
+        INSERT INTO email_jobs (job_type, recipient_email, subject, text_body, html_body, status, available_at)
+        VALUES (?, ?, ?, ?, ?, 'pending', NOW())
+    ");
+    $stmt->bind_param('sssss', $jobType, $recipientEmail, $subject, $textBody, $htmlBody);
+    $ok = $stmt->execute();
+    $stmt->close();
+
+    return $ok;
+}
+
+function enqueue_borrow_approval_email_job(mysqli $conn, int $borrowId): bool
+{
+    $payload = build_borrow_approval_email_payload($conn, $borrowId);
+    if (!$payload) {
+        return false;
+    }
+
+    return enqueue_email_job(
+        $conn,
+        'borrow_approval',
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
+function create_library_smtp_mailer(): ?\PHPMailer\PHPMailer\PHPMailer
+{
+    if (library_mailer_mode() !== 'smtp' || !class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+        return null;
+    }
+
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host = library_runtime_value('LIBRARY_SMTP_HOST');
+    $mail->Port = library_smtp_port();
+    $mail->SMTPAuth = true;
+    $mail->Username = library_runtime_value('LIBRARY_SMTP_USERNAME');
+    $mail->Password = library_runtime_value('LIBRARY_SMTP_PASSWORD');
+    $mail->SMTPSecure = library_smtp_secure();
+    $mail->CharSet = 'UTF-8';
+    $mail->Timeout = 10;
+    $mail->SMTPKeepAlive = true;
+    $mail->setFrom(library_mail_from_address(), library_mail_from_name());
+
+    return $mail;
+}
+
+function send_library_email_with_mailer(\PHPMailer\PHPMailer\PHPMailer $mail, string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
+{
+    set_library_mail_last_error('');
+
+    $to = trim($to);
+    $subject = trim($subject);
+    $textBody = trim($textBody);
+
+    if ($to === '' || $subject === '' || $textBody === '') {
+        set_library_mail_last_error('Missing recipient, subject, or message body.');
+        return false;
+    }
+
+    if (!is_valid_email_address($to)) {
+        set_library_mail_last_error('Invalid recipient email address.');
+        return false;
+    }
+
+    try {
+        $mail->clearAllRecipients();
+        $mail->Subject = $subject;
+        $mail->Body = $htmlBody !== null && trim($htmlBody) !== '' ? $htmlBody : nl2br(h($textBody));
+        $mail->AltBody = $textBody;
+        $mail->isHTML(true);
+        $mail->addAddress($to);
+        return $mail->send();
+    } catch (Throwable $e) {
+        set_library_mail_last_error($e->getMessage());
+        return false;
+    }
+}
+
+function send_borrow_approval_emails_bulk(mysqli $conn, array $borrowIds): array
+{
+    $result = [
+        'sent' => [],
+        'failed' => [],
+    ];
+
+    $payloads = [];
+    foreach ($borrowIds as $borrowId) {
+        $payload = build_borrow_approval_email_payload($conn, (int) $borrowId);
+        if ($payload) {
+            $payloads[] = $payload;
+            continue;
+        }
+
+        $result['failed'][(int) $borrowId] = get_library_mail_last_error();
+    }
+
+    if ($payloads === []) {
+        return $result;
+    }
+
+    $mailer = create_library_smtp_mailer();
+    if ($mailer) {
+        foreach ($payloads as $payload) {
+            $sent = send_library_email_with_mailer(
+                $mailer,
+                (string) $payload['to'],
+                (string) $payload['subject'],
+                (string) $payload['text'],
+                (string) $payload['html']
+            );
+
+            if ($sent) {
+                $result['sent'][] = (int) $payload['borrow_id'];
+            } else {
+                $result['failed'][(int) $payload['borrow_id']] = get_library_mail_last_error();
+            }
+        }
+
+        $mailer->smtpClose();
+        return $result;
+    }
+
+    foreach ($payloads as $payload) {
+        $sent = send_library_email(
+            (string) $payload['to'],
+            (string) $payload['subject'],
+            (string) $payload['text'],
+            (string) $payload['html']
+        );
+
+        if ($sent) {
+            $result['sent'][] = (int) $payload['borrow_id'];
+        } else {
+            $result['failed'][(int) $payload['borrow_id']] = get_library_mail_last_error();
+        }
+    }
+
+    return $result;
+}
+
+function process_pending_email_jobs(mysqli $conn, int $limit = 5): array
+{
+    $result = [
+        'processed' => 0,
+        'sent' => 0,
+        'failed' => 0,
+    ];
+
+    $limit = max(1, min($limit, 20));
+    $jobsStmt = $conn->prepare("
+        SELECT id, recipient_email, subject, text_body, html_body
+        FROM email_jobs
+        WHERE status = 'pending' AND available_at <= NOW()
+        ORDER BY id ASC
+        LIMIT ?
+    ");
+    $jobsStmt->bind_param('i', $limit);
+    $jobsStmt->execute();
+    $jobs = $jobsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $jobsStmt->close();
+
+    if ($jobs === []) {
+        return $result;
+    }
+
+    foreach ($jobs as $job) {
+        $jobId = (int) ($job['id'] ?? 0);
+        if ($jobId <= 0) {
+            continue;
+        }
+
+        $claimStmt = $conn->prepare("
+            UPDATE email_jobs
+            SET status = 'sending', attempts = attempts + 1, last_error = NULL
+            WHERE id = ? AND status = 'pending'
+        ");
+        $claimStmt->bind_param('i', $jobId);
+        $claimStmt->execute();
+        $claimed = $claimStmt->affected_rows === 1;
+        $claimStmt->close();
+
+        if (!$claimed) {
+            continue;
+        }
+
+        $result['processed']++;
+        $sent = send_library_email(
+            (string) ($job['recipient_email'] ?? ''),
+            (string) ($job['subject'] ?? ''),
+            (string) ($job['text_body'] ?? ''),
+            isset($job['html_body']) ? (string) $job['html_body'] : null
+        );
+
+        if ($sent) {
+            $result['sent']++;
+            $doneStmt = $conn->prepare("
+                UPDATE email_jobs
+                SET status = 'sent', sent_at = NOW(), last_error = NULL
+                WHERE id = ?
+            ");
+            $doneStmt->bind_param('i', $jobId);
+            $doneStmt->execute();
+            $doneStmt->close();
+            continue;
+        }
+
+        $result['failed']++;
+        $error = get_library_mail_last_error();
+        $failStmt = $conn->prepare("
+            UPDATE email_jobs
+            SET status = 'failed', last_error = ?
+            WHERE id = ?
+        ");
+        $failStmt->bind_param('si', $error, $jobId);
+        $failStmt->execute();
+        $failStmt->close();
+    }
+
+    return $result;
+}
+
 function verify_login_otp(mysqli $conn, int $userId, string $otpCode): bool
 {
     $otpCode = trim($otpCode);
@@ -510,22 +848,13 @@ function send_library_email(string $to, string $subject, string $textBody, ?stri
 
     if ($mailerMode === 'smtp' && class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
         try {
-            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host = library_runtime_value('LIBRARY_SMTP_HOST');
-            $mail->Port = library_smtp_port();
-            $mail->SMTPAuth = true;
-            $mail->Username = library_runtime_value('LIBRARY_SMTP_USERNAME');
-            $mail->Password = library_runtime_value('LIBRARY_SMTP_PASSWORD');
-            $mail->SMTPSecure = library_smtp_secure();
-            $mail->CharSet = 'UTF-8';
-            $mail->setFrom($fromAddress, $fromName);
-            $mail->addAddress($to);
-            $mail->Subject = $subject;
-            $mail->Body = $htmlBody !== null && trim($htmlBody) !== '' ? $htmlBody : nl2br(h($textBody));
-            $mail->AltBody = $textBody;
-            $mail->isHTML(true);
-            return $mail->send();
+            $mail = create_library_smtp_mailer();
+            if (!$mail) {
+                set_library_mail_last_error('SMTP mailer could not be initialized.');
+                return false;
+            }
+            $mail->SMTPKeepAlive = false;
+            return send_library_email_with_mailer($mail, $to, $subject, $textBody, $htmlBody);
         } catch (Throwable $e) {
             set_library_mail_last_error($e->getMessage());
             return false;

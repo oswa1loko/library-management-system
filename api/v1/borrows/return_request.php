@@ -61,7 +61,7 @@ if ($invalidIds !== []) {
     api_error('Only borrowed records can request return.', 409, ['borrow_ids' => $invalidIds]);
 }
 
-$returnRequestDate = date('Y-m-d');
+$returnRequestedAt = date('Y-m-d H:i:s');
 $returnBatch = 'ret-' . bin2hex(random_bytes(8));
 $updatedBorrows = [];
 
@@ -70,12 +70,12 @@ $conn->begin_transaction();
 try {
     $requestStmt = $conn->prepare("
         UPDATE borrows
-        SET status = 'return_requested', return_date = ?, return_batch = ?
+        SET status = 'return_requested', return_requested_at = ?, return_batch = ?
         WHERE id = ? AND user_id = ? AND status = 'borrowed'
     ");
 
     foreach ($borrowIds as $borrowId) {
-        $requestStmt->bind_param('ssii', $returnRequestDate, $returnBatch, $borrowId, $user['id']);
+        $requestStmt->bind_param('ssii', $returnRequestedAt, $returnBatch, $borrowId, $user['id']);
         $requestStmt->execute();
 
         if ($requestStmt->affected_rows !== 1) {
@@ -85,7 +85,7 @@ try {
         $updatedBorrows[] = [
             'id' => $borrowId,
             'status' => 'return_requested',
-            'return_date' => $returnRequestDate,
+            'return_requested_at' => $returnRequestedAt,
             'return_batch' => $returnBatch,
             'request_batch' => (string) ($rowsById[$borrowId]['request_batch'] ?? ''),
         ];
@@ -103,7 +103,7 @@ try {
 
 audit_log($conn, 'api.borrow.return_request', [
     'borrow_ids' => $borrowIds,
-    'return_date' => $returnRequestDate,
+    'return_requested_at' => $returnRequestedAt,
     'return_batch' => $returnBatch,
 ], $user['id'], $user['role']);
 

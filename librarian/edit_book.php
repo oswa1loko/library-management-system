@@ -39,7 +39,9 @@ function upload_book_cover(array $file, string $existingPath = ''): array
 if (isset($_POST['update'])) {
     $title = trim($_POST['title'] ?? '');
     $author = trim($_POST['author'] ?? '');
-    $category = trim($_POST['category'] ?? '');
+    $catalogId = max(0, (int) ($_POST['catalog_id'] ?? 0));
+    $isbn = trim($_POST['isbn'] ?? '');
+    $description = trim($_POST['description'] ?? '');
     $total = max(0, (int) ($_POST['qty_total'] ?? 1));
     $requestedAvailable = (int) ($_POST['qty_available'] ?? 1);
     $existingCoverPath = trim($_POST['existing_cover_path'] ?? '');
@@ -57,13 +59,28 @@ if (isset($_POST['update'])) {
     $borrowedCopies = (int) ($borrowedCopiesRow['borrowed_copies'] ?? 0);
     $minimumAvailable = max(0, $total - $borrowedCopies);
     $available = max($minimumAvailable, min($requestedAvailable, $total));
+    $selectedCatalog = null;
+    if ($catalogId > 0) {
+        $catalogLookup = $conn->prepare("
+            SELECT id, name, description
+            FROM catalogs
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $catalogLookup->bind_param('i', $catalogId);
+        $catalogLookup->execute();
+        $selectedCatalog = $catalogLookup->get_result()->fetch_assoc();
+        $catalogLookup->close();
+    }
 
     if ($bookId <= 0 || $title === '') {
         $message = 'Book title is required.';
     } elseif ($author === '') {
         $message = 'Author is required.';
-    } elseif ($category === '') {
-        $message = 'Category is required.';
+    } elseif (!$selectedCatalog) {
+        $message = 'Select a catalog first.';
+    } elseif ($isbn !== '' && !preg_match('/^[0-9Xx-]+$/', $isbn)) {
+        $message = 'ISBN may only contain numbers, hyphens, and X.';
     } elseif ($total < $borrowedCopies) {
         $message = 'Total quantity cannot be lower than the number of copies currently borrowed (' . $borrowedCopies . ').';
     } elseif ($requestedAvailable < $minimumAvailable) {
@@ -72,8 +89,15 @@ if (isset($_POST['update'])) {
         $message = $coverUpload['error'];
     } else {
         $coverPath = $coverUpload['path'] ?: null;
-        $stmt = $conn->prepare("UPDATE books SET title = ?, author = ?, category = ?, cover_path = ?, qty_total = ?, qty_available = ? WHERE id = ?");
-        $stmt->bind_param('ssssiii', $title, $author, $category, $coverPath, $total, $available, $bookId);
+        $catalogName = trim((string) ($selectedCatalog['name'] ?? ''));
+        $isbnValue = $isbn !== '' ? $isbn : null;
+        $descriptionValue = $description !== '' ? $description : null;
+        $stmt = $conn->prepare("
+            UPDATE books
+            SET title = ?, author = ?, category = ?, catalog_id = ?, isbn = ?, description = ?, cover_path = ?, qty_total = ?, qty_available = ?
+            WHERE id = ?
+        ");
+        $stmt->bind_param('sssisssiii', $title, $author, $catalogName, $catalogId, $isbnValue, $descriptionValue, $coverPath, $total, $available, $bookId);
         $stmt->execute();
         $stmt->close();
         header('Location: manage_books.php');
@@ -86,6 +110,12 @@ $stmt->bind_param('i', $bookId);
 $stmt->execute();
 $book = $stmt->get_result()->fetch_assoc();
 $stmt->close();
+
+$catalogRows = $conn->query("SELECT id, name, description FROM catalogs ORDER BY name ASC");
+$catalogs = [];
+while ($catalogRows && ($catalogRow = $catalogRows->fetch_assoc())) {
+    $catalogs[] = $catalogRow;
+}
 
 if (!$book) {
     http_response_code(404);
@@ -168,12 +198,12 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
 
       <div class="grid cards librarian-edit-book-grid">
         <div class="panel librarian-edit-book-main">
-          <div class="card-head">
+            <div class="card-head">
             <div class="dashboard-icon icon-edit" aria-hidden="true"></div>
             <div>
               <p class="muted eyebrow-compact">Book Editor</p>
               <h3 class="heading-card"><?php echo h($book['title']); ?></h3>
-              <p class="muted">Update book details, stock levels, and cover image from this dedicated edit screen.</p>
+              <p class="muted">Update the catalog metadata and inventory for this one specific book record.</p>
             </div>
           </div>
 
@@ -181,6 +211,12 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
             <input type="hidden" name="id" value="<?php echo (int) $book['id']; ?>">
             <input type="hidden" name="existing_cover_path" value="<?php echo h($book['cover_path'] ?? ''); ?>">
 
+            <div class="stack">
+              <div>
+                <p class="muted eyebrow-compact">Book Details</p>
+                <h4 class="heading-top-md">Catalog metadata for this title</h4>
+              </div>
+            </div>
             <div class="grid form">
               <div>
                 <label for="title">Title</label>
@@ -191,8 +227,22 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
                 <input id="author" name="author" value="<?php echo h($_POST['author'] ?? $book['author']); ?>" required>
               </div>
               <div>
-                <label for="category">Category</label>
-                <input id="category" name="category" value="<?php echo h($_POST['category'] ?? $book['category']); ?>" required>
+                <label for="catalog_id">Catalog</label>
+                <div class="ui-select-shell">
+                  <select id="catalog_id" name="catalog_id" class="ui-select" required>
+                    <option value="">Select catalog</option>
+                    <?php foreach ($catalogs as $catalog): ?>
+                      <option value="<?php echo (int) $catalog['id']; ?>" <?php echo (string) ($_POST['catalog_id'] ?? ($book['catalog_id'] ?? '')) === (string) $catalog['id'] ? 'selected' : ''; ?>>
+                        <?php echo h($catalog['name']); ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                  <span class="ui-select-caret" aria-hidden="true"></span>
+                </div>
+              </div>
+              <div>
+                <label for="isbn">ISBN</label>
+                <input id="isbn" name="isbn" value="<?php echo h($_POST['isbn'] ?? ($book['isbn'] ?? '')); ?>">
               </div>
               <div>
                 <label for="qty_total">Total quantity</label>
@@ -201,6 +251,10 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
               <div>
                 <label for="qty_available">Available quantity</label>
                 <input id="qty_available" type="number" name="qty_available" value="<?php echo (int) ($_POST['qty_available'] ?? $book['qty_available']); ?>" min="0" required>
+              </div>
+              <div class="form-span-2">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4"><?php echo h($_POST['description'] ?? ($book['description'] ?? '')); ?></textarea>
               </div>
               <div>
                 <label for="cover">Replace cover</label>
@@ -211,6 +265,14 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
               </div>
             </div>
 
+            <div class="stack">
+              <div>
+                <p class="muted eyebrow-compact">Inventory</p>
+                <h4 class="heading-top-md">Physical copies tied to this record</h4>
+              </div>
+              <div class="empty-state">Keep the catalog details on this title record and adjust quantities without hiding copies that are still borrowed out.</div>
+            </div>
+
             <div class="inline-actions librarian-edit-book-actions">
               <button type="submit" name="update" value="1">Save Changes</button>
               <a class="button secondary" href="manage_books.php">Back to Books</a>
@@ -218,7 +280,10 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
             <div class="inline-actions librarian-edit-book-chips">
               <span class="chip">Borrowed out: <?php echo $borrowedCopies; ?></span>
               <span class="chip">Available now: <?php echo (int) $book['qty_available']; ?></span>
-              <span class="chip">Category: <?php echo h($book['category']); ?></span>
+              <span class="chip">Catalog: <?php echo h($book['category']); ?></span>
+              <?php if (!empty($book['isbn'])): ?>
+                <span class="chip">ISBN: <?php echo h($book['isbn']); ?></span>
+              <?php endif; ?>
             </div>
           </form>
         </div>
@@ -237,6 +302,8 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
             <div class="empty-state">Total copies: <strong><?php echo (int) $book['qty_total']; ?></strong></div>
             <div class="empty-state">Available copies: <strong><?php echo (int) $book['qty_available']; ?></strong></div>
             <div class="empty-state">Borrowed out: <strong><?php echo $borrowedCopies; ?></strong></div>
+            <div class="empty-state">Catalog: <strong><?php echo h((string) (($book['category'] ?? '') !== '' ? $book['category'] : '-')); ?></strong></div>
+            <div class="empty-state">ISBN: <strong><?php echo h((string) (($book['isbn'] ?? '') !== '' ? $book['isbn'] : '-')); ?></strong></div>
           </div>
 
           <div class="book-media book-media-start">
@@ -249,6 +316,9 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
               <strong class="label-block"><?php echo h($book['title']); ?></strong>
               <span class="muted"><?php echo h($book['author']); ?></span><br>
               <span class="muted"><?php echo h($book['category']); ?></span>
+              <?php if (!empty($book['description'])): ?>
+                <br><span class="muted"><?php echo h($book['description']); ?></span>
+              <?php endif; ?>
             </div>
           </div>
 

@@ -82,7 +82,7 @@ $overview = $overviewStmt->get_result()->fetch_assoc();
 $overviewStmt->close();
 
 $historySql = "
-    SELECT br.id, b.title, b.qty_available, br.borrow_date, br.due_date, br.return_date, br.status
+    SELECT br.id, b.title, b.qty_available, br.requested_at, br.approved_at, br.borrow_date, br.due_date, br.due_at, br.return_date, br.returned_at, br.status
     FROM borrows br
     JOIN books b ON b.id = br.book_id
     WHERE br.user_id = ?
@@ -108,7 +108,7 @@ $myBorrows = $history->get_result();
 $history->close();
 
 $dueSoonStmt = $conn->prepare("
-    SELECT b.title, br.due_date, br.status
+    SELECT b.title, br.due_date, br.due_at, br.status
     FROM borrows br
     JOIN books b ON b.id = br.book_id
     WHERE br.user_id = ?
@@ -129,7 +129,9 @@ $activeBatchStmt = $conn->prepare("
       br.request_batch,
       br.return_batch,
       br.status,
+      br.approved_at,
       br.borrow_date,
+      br.due_at,
       br.due_date,
       b.title,
       b.author
@@ -137,7 +139,7 @@ $activeBatchStmt = $conn->prepare("
     JOIN books b ON b.id = br.book_id
     WHERE br.user_id = ?
       AND br.status IN ('borrowed', 'return_requested')
-    ORDER BY br.borrow_date DESC, br.id ASC
+    ORDER BY COALESCE(br.approved_at, br.requested_at, br.created_at) DESC, br.id ASC
 ");
 $activeBatchStmt->bind_param('i', $userId);
 $activeBatchStmt->execute();
@@ -154,6 +156,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
     if (!isset($activeReturnGroups[$groupKey])) {
         $activeReturnGroups[$groupKey] = [
             'request_batch' => $groupKey,
+            'approved_at' => (string) ($activeRow['approved_at'] ?? ''),
             'borrow_date' => (string) ($activeRow['borrow_date'] ?? ''),
             'total_items' => 0,
             'return_requested_items' => 0,
@@ -203,6 +206,10 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
         <span class="member-sidebar-label">Books / Borrow</span>
       </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/ebooks.php" data-tooltip="eBooks">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">eBooks</span>
+      </a>
       <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="My Borrows and Returns">
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
         <span class="member-sidebar-label">My Borrows / Returns</span>
@@ -243,7 +250,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
           <strong class="label-block stack-copy">Upcoming Due Dates</strong>
           <?php while ($dueBook = $dueSoonBooks->fetch_assoc()): ?>
             <div class="muted meta-top-sm">
-              <?php echo h($dueBook['title']); ?> is due on <?php echo h(format_display_date((string) $dueBook['due_date'])); ?>
+              <?php echo h($dueBook['title']); ?> is due on <?php echo h(format_display_datetime((string) (($dueBook['due_at'] ?? '') ?: ($dueBook['due_date'] ?? '')))); ?>
               <?php if ($dueBook['status'] === 'return_requested'): ?>
                 and is waiting for librarian confirmation.
               <?php endif; ?>
@@ -295,7 +302,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
                 <div>
                   <strong class="label-block"><?php echo h(format_batch_reference($group['request_batch'], 'Borrow Ref')); ?></strong>
                   <span class="muted">
-                    Borrowed on <?php echo h(format_display_date($group['borrow_date'], '-')); ?> |
+                    Borrowed on <?php echo h(format_display_datetime((string) (($group['approved_at'] ?? '') ?: ($group['borrow_date'] ?? '')), '-')); ?> |
                     <?php echo (int) $group['return_requested_items']; ?> of <?php echo (int) $group['total_items']; ?> already requested for return
                   </span>
                   <div class="inline-actions chips-row batch-status-row">
@@ -327,7 +334,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
                       <strong class="label-block meta-top-sm"><?php echo h($item['title']); ?></strong>
                       <span class="muted">
                         <?php echo h($item['author']); ?> |
-                        Due <?php echo h(format_display_date((string) $item['due_date'])); ?>
+                        Due <?php echo h(format_display_datetime((string) (($item['due_at'] ?? '') ?: ($item['due_date'] ?? '')))); ?>
                       </span>
                     </span>
                     <span class="badge">
@@ -436,9 +443,9 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
                 <tr>
                   <td><?php echo (int) $record['id']; ?></td>
                   <td><?php echo h($record['title']); ?></td>
-                  <td><?php echo h(format_display_date((string) $record['borrow_date'])); ?></td>
-                  <td><?php echo $record['status'] === 'pending' ? '-' : h(format_display_date((string) $record['due_date'])); ?></td>
-                  <td><?php echo $record['status'] === 'returned' ? h(format_display_date((string) ($record['return_date'] ?: ''), '-')) : '-'; ?></td>
+                  <td><?php echo h(format_display_datetime((string) (($record['status'] === 'pending' ? ($record['requested_at'] ?? '') : ($record['approved_at'] ?? '')) ?: ($record['borrow_date'] ?? '')))); ?></td>
+                  <td><?php echo $record['status'] === 'pending' ? '-' : h(format_display_datetime((string) (($record['due_at'] ?? '') ?: ($record['due_date'] ?? '')))); ?></td>
+                  <td><?php echo $record['status'] === 'returned' ? h(format_display_datetime((string) (($record['returned_at'] ?? '') ?: ($record['return_date'] ?? '')), '-')) : '-'; ?></td>
                   <td>
                     <span class="badge">
                       <span class="status-dot <?php echo h($derivedDot); ?>"></span>
