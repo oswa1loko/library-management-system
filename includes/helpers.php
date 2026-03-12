@@ -744,7 +744,7 @@ function send_due_soon_reminders(mysqli $conn): array
             continue;
         }
 
-        if ($sentAt !== '' && strpos($sentAt, $dueDate) === 0) {
+        if ($sentAt !== '') {
             $result['skipped']++;
             continue;
         }
