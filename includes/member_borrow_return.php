@@ -10,11 +10,6 @@ $msg = '';
 $msgType = 'success';
 $role = (string) $_SESSION['role'];
 $today = date('Y-m-d');
-$historyFilter = trim((string) ($_GET['history'] ?? 'all'));
-$historyFilterOptions = ['all', 'overdue', 'due_today', 'active', 'returned'];
-if (!in_array($historyFilter, $historyFilterOptions, true)) {
-    $historyFilter = 'all';
-}
 
 if (isset($_POST['return_book']) || isset($_POST['return_books'])) {
     $borrowIdsRaw = $_POST['borrow_ids'] ?? [];
@@ -81,32 +76,6 @@ $overviewStmt->execute();
 $overview = $overviewStmt->get_result()->fetch_assoc();
 $overviewStmt->close();
 
-$historySql = "
-    SELECT br.id, b.title, b.qty_available, br.requested_at, br.approved_at, br.borrow_date, br.due_date, br.due_at, br.return_date, br.returned_at, br.status
-    FROM borrows br
-    JOIN books b ON b.id = br.book_id
-    WHERE br.user_id = ?
-";
-$historyTypes = 'i';
-$historyParams = [$userId];
-
-if ($historyFilter === 'overdue') {
-    $historySql .= " AND br.status IN ('borrowed', 'return_requested') AND br.due_date < CURDATE()";
-} elseif ($historyFilter === 'due_today') {
-    $historySql .= " AND br.status IN ('borrowed', 'return_requested') AND br.due_date = CURDATE()";
-} elseif ($historyFilter === 'active') {
-    $historySql .= " AND br.status IN ('pending', 'borrowed', 'return_requested')";
-} elseif ($historyFilter === 'returned') {
-    $historySql .= " AND br.status = 'returned'";
-}
-
-$historySql .= " ORDER BY br.id DESC LIMIT 30";
-$history = $conn->prepare($historySql);
-$history->bind_param($historyTypes, ...$historyParams);
-$history->execute();
-$myBorrows = $history->get_result();
-$history->close();
-
 $dueSoonStmt = $conn->prepare("
     SELECT b.title, br.due_date, br.due_at, br.status
     FROM borrows br
@@ -126,6 +95,7 @@ $dueSoonStmt->close();
 $activeBatchStmt = $conn->prepare("
     SELECT
       br.id,
+      br.book_id,
       br.request_batch,
       br.return_batch,
       br.status,
@@ -172,8 +142,34 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
         $activeReturnGroups[$groupKey]['borrowed_items']++;
     }
 
-    $activeReturnGroups[$groupKey]['items'][] = $activeRow;
+    $itemGroupKey = (int) ($activeRow['book_id'] ?? 0);
+    if (!isset($activeReturnGroups[$groupKey]['items'][$itemGroupKey])) {
+        $activeReturnGroups[$groupKey]['items'][$itemGroupKey] = [
+            'book_id' => $itemGroupKey,
+            'title' => (string) ($activeRow['title'] ?? ''),
+            'author' => (string) ($activeRow['author'] ?? ''),
+            'due_at' => (string) ($activeRow['due_at'] ?? ''),
+            'due_date' => (string) ($activeRow['due_date'] ?? ''),
+            'borrowed_count' => 0,
+            'return_requested_count' => 0,
+            'borrow_ids' => [],
+            'status' => 'borrowed',
+        ];
+    }
+
+    if ((string) $activeRow['status'] === 'return_requested') {
+        $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['return_requested_count']++;
+        $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['status'] = 'return_requested';
+    } else {
+        $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['borrowed_count']++;
+        $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['borrow_ids'][] = (int) $activeRow['id'];
+    }
 }
+
+foreach ($activeReturnGroups as &$group) {
+    $group['items'] = array_values($group['items']);
+}
+unset($group);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -182,37 +178,44 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo h(page_title($role, 'My Borrows and Returns')); ?></title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <?php $memberBorrowReturnVersion = (string) filemtime(__DIR__ . '/../assets/member_borrow_return.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
 <div class="site-shell member-shell js-member-sidebar" data-sidebar-key="<?php echo h($role); ?>-borrows-returns">
   <aside class="panel member-sidebar">
     <div class="member-sidebar-head">
-      <button type="button" class="member-sidebar-toggle js-sidebar-toggle" aria-expanded="true" aria-label="Collapse sidebar">
-        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+      <div class="member-sidebar-toggle" aria-hidden="true">
         <span class="member-sidebar-label">Main Menu</span>
-      </button>
+      </div>
     </div>
-    <p class="member-sidebar-section member-sidebar-label">Main</p>
     <nav class="member-sidebar-nav">
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/dashboard.php" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
-      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Books and Borrow">
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Books / Borrow</span>
+        <span class="member-sidebar-label">Books</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/catalog.php" data-tooltip="Catalog">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Catalog</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/ebooks.php" data-tooltip="eBooks">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
-      <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="My Borrows and Returns">
+      <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="Returns">
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
-        <span class="member-sidebar-label">My Borrows / Returns</span>
+        <span class="member-sidebar-label">Returns</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/tracking.php" data-tooltip="Records Tracking">
+        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Records Tracking</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/payment_upload.php" data-tooltip="Payments">
         <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
@@ -221,12 +224,15 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
     </nav>
     <p class="member-sidebar-section member-sidebar-label">Account</p>
     <div class="topbar-nav member-sidebar-utilities">
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/profile.php" data-tooltip="Profile">
+        <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Profile</span>
+      </a>
       <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
-        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
         <span class="member-sidebar-label">Logout</span>
       </a>
     </div>
@@ -259,7 +265,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
         </div>
       <?php endif; ?>
 
-      <div class="panel member-workspace-overview">
+      <div class="panel member-workspace-overview member-mobile-hide">
         <p class="muted eyebrow-compact stack-copy">Overview</p>
         <h3 class="heading-panel">My borrowing workspace</h3>
         <div class="stat-grid">
@@ -296,8 +302,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
             <div class="empty-state">No active borrowed items are available for return request right now.</div>
           <?php endif; ?>
           <?php foreach ($activeReturnGroups as $group): ?>
-            <?php $singleReturnable = (int) $group['borrowed_items'] === 1; ?>
-            <form method="post" class="panel member-return-batch-card" data-return-batch-form<?php echo $singleReturnable ? ' data-return-batch-single="1"' : ''; ?>>
+            <div class="panel member-return-batch-card">
               <div class="member-return-batch-head">
                 <div>
                   <strong class="label-block"><?php echo h(format_batch_reference($group['request_batch'], 'Borrow Ref')); ?></strong>
@@ -317,167 +322,42 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
               </div>
               <div class="stack member-return-batch-list">
                 <?php foreach ($group['items'] as $item): ?>
-                  <label class="empty-state member-return-batch-item">
-                    <span class="member-return-batch-check">
-                      <?php if ($item['status'] === 'borrowed'): ?>
-                        <?php if ($singleReturnable): ?>
-                          <input type="hidden" name="borrow_ids[]" value="<?php echo (int) $item['id']; ?>">
-                          <span class="member-return-batch-check-label muted">Ready</span>
-                        <?php else: ?>
-                          <input type="checkbox" name="borrow_ids[]" value="<?php echo (int) $item['id']; ?>" data-return-batch-checkbox>
-                        <?php endif; ?>
-                      <?php else: ?>
-                        <input type="checkbox" checked disabled>
-                      <?php endif; ?>
-                    </span>
+                  <div class="empty-state member-return-batch-item">
                     <span class="grow">
                       <strong class="label-block meta-top-sm"><?php echo h($item['title']); ?></strong>
                       <span class="muted">
                         <?php echo h($item['author']); ?> |
-                        Due <?php echo h(format_display_datetime((string) (($item['due_at'] ?? '') ?: ($item['due_date'] ?? '')))); ?>
+                        Due <?php echo h(format_display_datetime((string) (($item['due_at'] ?? '') ?: ($item['due_date'] ?? '')))); ?> |
+                        <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
+                          <?php echo (int) ($item['borrowed_count'] ?? 0); ?> copie<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? '' : 's'; ?> ready for return
+                        <?php else: ?>
+                          <?php echo (int) ($item['return_requested_count'] ?? 0); ?> copie<?php echo (int) ($item['return_requested_count'] ?? 0) === 1 ? '' : 's'; ?> waiting for confirmation
+                        <?php endif; ?>
                       </span>
                     </span>
                     <span class="badge">
-                      <span class="status-dot <?php echo h($item['status']); ?>"></span>
-                      <?php echo h(ucfirst(str_replace('_', ' ', (string) $item['status']))); ?>
+                      <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : 'return_requested'; ?>"></span>
+                      <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : 'Return Requested'; ?>
                     </span>
-                  </label>
+                  </div>
+                  <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
+                    <form method="post" class="inline-form" data-confirm="Send a return request for all copies of this book that you are handing over now?">
+                      <?php foreach (($item['borrow_ids'] ?? []) as $borrowId): ?>
+                        <input type="hidden" name="borrow_ids[]" value="<?php echo (int) $borrowId; ?>">
+                      <?php endforeach; ?>
+                      <button type="submit" name="return_books" value="1">Request Return for <?php echo (int) ($item['borrowed_count'] ?? 0); ?> Cop<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? 'y' : 'ies'; ?></button>
+                    </form>
+                  <?php endif; ?>
                 <?php endforeach; ?>
               </div>
               <div class="inline-actions member-workspace-actions">
-                <button type="submit" name="return_books" value="1" data-return-batch-submit disabled>Request Return for Selected</button>
-                <span class="muted" data-return-batch-note>Items already marked as `return requested` stay pending until the librarian confirms physical receipt.</span>
+                <span class="muted">Return requests are now grouped per book title and copy count. Items already marked as return requested stay pending until the librarian confirms physical receipt.</span>
               </div>
-            </form>
+            </div>
           <?php endforeach; ?>
         </div>
       </div>
 
-      <div class="panel member-workspace-history">
-        <div class="card-head">
-          <div class="dashboard-icon icon-checklist" aria-hidden="true"></div>
-          <div>
-            <span class="chip">History</span>
-            <h3 class="heading-top-md">My Borrow Records</h3>
-          </div>
-        </div>
-        <p class="muted copy-bottom">Track due dates, recorded return requests, and completed borrow history in one list.</p>
-        <div class="inline-actions chips-row">
-          <span class="chip">Status = workflow stage (Pending approval, Borrowed, Return requested, Returned)</span>
-          <span class="chip">Borrow State = due-date condition (On Time, Due Today, Overdue)</span>
-        </div>
-        <form method="get" class="toolbar">
-          <div>
-            <label for="history_filter">View</label>
-            <div class="ui-select-shell">
-              <select id="history_filter" name="history" class="ui-select">
-                <option value="all" <?php echo $historyFilter === 'all' ? 'selected' : ''; ?>>All records</option>
-                <option value="overdue" <?php echo $historyFilter === 'overdue' ? 'selected' : ''; ?>>Overdue only</option>
-                <option value="due_today" <?php echo $historyFilter === 'due_today' ? 'selected' : ''; ?>>Due today</option>
-                <option value="active" <?php echo $historyFilter === 'active' ? 'selected' : ''; ?>>Active only</option>
-                <option value="returned" <?php echo $historyFilter === 'returned' ? 'selected' : ''; ?>>Returned only</option>
-              </select>
-              <span class="ui-select-caret" aria-hidden="true"></span>
-            </div>
-          </div>
-          <div class="inline-actions">
-            <button type="submit">Apply</button>
-            <a class="button secondary" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php">Reset</a>
-          </div>
-        </form>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Book</th>
-                <th>Borrow Date</th>
-                <th>Due Date</th>
-                <th>Return Date</th>
-                <th>Borrow State</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php if ($myBorrows->num_rows === 0): ?>
-                <tr><td colspan="8" class="muted">No borrow records yet.</td></tr>
-              <?php endif; ?>
-              <?php while ($record = $myBorrows->fetch_assoc()): ?>
-                <?php
-                $workflowStatus = (string) ($record['status'] ?? '');
-                $derivedLabel = 'Completed';
-                $derivedDot = 'approved';
-                $waitingForStock = $workflowStatus === 'pending' && (int) ($record['qty_available'] ?? 0) <= 0;
-
-                if ($workflowStatus === 'borrowed') {
-                    if ($record['due_date'] < $today) {
-                        $derivedLabel = 'Overdue';
-                        $derivedDot = 'overdue';
-                    } elseif ($record['due_date'] === $today) {
-                        $derivedLabel = 'Due Today';
-                        $derivedDot = 'due';
-                    } else {
-                        $derivedLabel = 'On Time';
-                        $derivedDot = 'approved';
-                    }
-                } elseif ($workflowStatus === 'return_requested') {
-                    if ($record['due_date'] < $today) {
-                        $derivedLabel = 'Overdue (Awaiting return confirmation)';
-                        $derivedDot = 'overdue';
-                    } elseif ($record['due_date'] === $today) {
-                        $derivedLabel = 'Due Today (Awaiting return confirmation)';
-                        $derivedDot = 'due';
-                    } else {
-                        $derivedLabel = 'Awaiting return confirmation';
-                        $derivedDot = 'return_requested';
-                    }
-                } elseif ($workflowStatus === 'pending') {
-                    $derivedLabel = $waitingForStock ? 'Waiting for stock' : 'Pending approval';
-                    $derivedDot = $waitingForStock ? 'waiting_stock' : 'pending';
-                } elseif ($workflowStatus === 'returned') {
-                    $derivedLabel = 'Returned';
-                    $derivedDot = 'approved';
-                }
-                ?>
-                <tr>
-                  <td><?php echo (int) $record['id']; ?></td>
-                  <td><?php echo h($record['title']); ?></td>
-                  <td><?php echo h(format_display_datetime((string) (($record['status'] === 'pending' ? ($record['requested_at'] ?? '') : ($record['approved_at'] ?? '')) ?: ($record['borrow_date'] ?? '')))); ?></td>
-                  <td><?php echo $record['status'] === 'pending' ? '-' : h(format_display_datetime((string) (($record['due_at'] ?? '') ?: ($record['due_date'] ?? '')))); ?></td>
-                  <td><?php echo $record['status'] === 'returned' ? h(format_display_datetime((string) (($record['returned_at'] ?? '') ?: ($record['return_date'] ?? '')), '-')) : '-'; ?></td>
-                  <td>
-                    <span class="badge">
-                      <span class="status-dot <?php echo h($derivedDot); ?>"></span>
-                      <?php echo h($derivedLabel); ?>
-                    </span>
-                  </td>
-                  <td>
-                    <span class="badge">
-                      <span class="status-dot <?php echo h($record['status']); ?>"></span>
-                      <?php echo h(ucfirst(str_replace('_', ' ', $record['status']))); ?>
-                    </span>
-                  </td>
-                  <td>
-                    <?php if ($record['status'] === 'borrowed'): ?>
-                      <form method="post" class="inline-form">
-                        <input type="hidden" name="borrow_id" value="<?php echo (int) $record['id']; ?>">
-                        <button type="submit" name="return_book" value="1">Request Return</button>
-                      </form>
-                    <?php elseif ($record['status'] === 'pending'): ?>
-                      <span class="muted"><?php echo $waitingForStock ? 'Waiting for available copy' : 'Pending approval'; ?></span>
-                    <?php elseif ($record['status'] === 'return_requested'): ?>
-                      <span class="muted">Awaiting return confirmation</span>
-                    <?php else: ?>
-                      <span class="muted">Completed</span>
-                    <?php endif; ?>
-                  </td>
-                </tr>
-              <?php endwhile; ?>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   </div>
 </div>

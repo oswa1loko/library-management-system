@@ -1,4 +1,33 @@
 (function () {
+  var addBookModal = document.querySelector('[data-book-add-modal]');
+  var openAddBookModalButtons = Array.prototype.slice.call(document.querySelectorAll('[data-open-book-add-modal]'));
+  var closeAddBookModalButtons = Array.prototype.slice.call(document.querySelectorAll('[data-close-book-add-modal]'));
+
+  var setAddBookModalState = function (isOpen) {
+    if (!addBookModal) {
+      return;
+    }
+
+    addBookModal.hidden = !isOpen;
+    document.body.classList.toggle('modal-open', isOpen);
+  };
+
+  openAddBookModalButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      setAddBookModalState(true);
+    });
+  });
+
+  closeAddBookModalButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      setAddBookModalState(false);
+    });
+  });
+
+  if (addBookModal && !addBookModal.hidden) {
+    document.body.classList.add('modal-open');
+  }
+
   var addQtyInput = document.getElementById('qty');
   if (addQtyInput) {
     addQtyInput.addEventListener('input', function () {

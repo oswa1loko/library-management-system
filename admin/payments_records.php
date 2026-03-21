@@ -5,6 +5,18 @@ require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('admin');
 
+function payments_filter_query(string $search, string $statusFilter, string $roleFilter): string
+{
+    $query = http_build_query(array_filter([
+        'search' => $search,
+        'status' => $statusFilter,
+        'role' => $roleFilter,
+    ], static fn($value) => $value !== ''));
+
+    return $query !== '' ? '?' . $query : '';
+}
+
+$search = trim($_GET['search'] ?? '');
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
 $rolesAllowed = ['student', 'faculty'];
@@ -19,7 +31,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     $id = (int) ($_POST['id'] ?? 0);
     $newStatus = isset($_POST['approve']) ? 'approved' : 'rejected';
 
-    $fetch = $conn->prepare("SELECT penalty_id, amount, proof_path, status FROM payments WHERE id = ? LIMIT 1");
+    $fetch = $conn->prepare("SELECT penalty_id, payment_batch, amount, proof_path, status FROM payments WHERE id = ? LIMIT 1");
     $fetch->bind_param('i', $id);
     $fetch->execute();
     $current = $fetch->get_result()->fetch_assoc();
@@ -30,28 +42,55 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         exit;
     }
 
-    if ($newStatus === 'approved' && (int) ($current['penalty_id'] ?? 0) > 0) {
+    $linkedPenaltyIds = [];
+    $linkedPenaltyStmt = $conn->prepare("SELECT penalty_id FROM payment_penalty_links WHERE payment_id = ? ORDER BY penalty_id ASC");
+    $linkedPenaltyStmt->bind_param('i', $id);
+    $linkedPenaltyStmt->execute();
+    $linkedPenaltyRows = $linkedPenaltyStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $linkedPenaltyStmt->close();
+
+    foreach ($linkedPenaltyRows as $linkedPenaltyRow) {
+        $linkedPenaltyIds[] = (int) ($linkedPenaltyRow['penalty_id'] ?? 0);
+    }
+
+    if ($linkedPenaltyIds === [] && (int) ($current['penalty_id'] ?? 0) > 0) {
+        $linkedPenaltyIds[] = (int) $current['penalty_id'];
+    }
+    $linkedPenaltyIds = array_values(array_filter(array_unique($linkedPenaltyIds)));
+
+    if ($newStatus === 'approved' && $linkedPenaltyIds !== []) {
+        $placeholders = implode(',', array_fill(0, count($linkedPenaltyIds), '?'));
+        $types = str_repeat('i', count($linkedPenaltyIds));
         $penaltyCheck = $conn->prepare("
             SELECT
+                p.id,
                 p.amount,
                 p.status,
                 br.status AS borrow_status
             FROM penalties p
             LEFT JOIN borrows br ON br.id = p.borrow_id
-            WHERE p.id = ?
-            LIMIT 1
+            WHERE p.id IN ($placeholders)
         ");
-        $penaltyCheck->bind_param('i', $current['penalty_id']);
+        $penaltyCheck->bind_param($types, ...$linkedPenaltyIds);
         $penaltyCheck->execute();
-        $penalty = $penaltyCheck->get_result()->fetch_assoc();
+        $penaltyRows = $penaltyCheck->get_result()->fetch_all(MYSQLI_ASSOC);
         $penaltyCheck->close();
 
-        if (
-            !$penalty
-            || $penalty['status'] === 'paid'
-            || ($penalty['borrow_status'] ?? '') !== 'returned'
-            || (float) $current['amount'] !== (float) $penalty['amount']
-        ) {
+        $expectedAmount = 0.0;
+        $validPenaltyCount = 0;
+        foreach ($penaltyRows as $penalty) {
+            if (
+                !$penalty
+                || ($penalty['status'] ?? '') === 'paid'
+                || ($penalty['borrow_status'] ?? '') !== 'returned'
+            ) {
+                continue;
+            }
+            $validPenaltyCount++;
+            $expectedAmount += (float) ($penalty['amount'] ?? 0);
+        }
+
+        if ($validPenaltyCount !== count($linkedPenaltyIds) || round((float) $current['amount'], 2) !== round($expectedAmount, 2)) {
             header('Location: payments_records.php?notice=' . urlencode('This payment can no longer be approved safely.'));
             exit;
         }
@@ -95,20 +134,21 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         $changed = $stmt->affected_rows === 1;
         $stmt->close();
 
-        $sync = $conn->prepare("
-            UPDATE penalties p
-            JOIN payments pay ON pay.penalty_id = p.id
-            SET p.status = 'paid'
-            WHERE pay.id = ? AND pay.penalty_id IS NOT NULL AND pay.status = 'approved'
-        ");
-        $sync->bind_param('i', $id);
-        $sync->execute();
-        $sync->close();
+        if ($linkedPenaltyIds !== []) {
+            $placeholders = implode(',', array_fill(0, count($linkedPenaltyIds), '?'));
+            $types = str_repeat('i', count($linkedPenaltyIds));
+            $sync = $conn->prepare("UPDATE penalties SET status = 'paid' WHERE id IN ($placeholders)");
+            $sync->bind_param($types, ...$linkedPenaltyIds);
+            $sync->execute();
+            $sync->close();
+        }
 
         if ($changed) {
             audit_log($conn, 'admin.payment.approve', [
                 'payment_id' => $id,
                 'penalty_id' => (int) ($current['penalty_id'] ?? 0),
+                'payment_batch' => (string) ($current['payment_batch'] ?? ''),
+                'linked_penalty_ids' => $linkedPenaltyIds,
             ]);
             create_notification(
                 $conn,
@@ -138,17 +178,10 @@ $summary = $conn->query("
       SUM(status = 'approved') AS approved_records,
       SUM(status = 'rejected') AS rejected_records,
       COALESCE(SUM(amount), 0) AS total_amount,
+      COALESCE(SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END), 0) AS approved_amount,
       COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_amount
     FROM payments
 ")->fetch_assoc();
-
-$recentQueue = $conn->query("
-    SELECT pay.id, u.username, pay.amount, pay.status, pay.created_at
-    FROM payments pay
-    JOIN users u ON u.id = pay.user_id
-    ORDER BY pay.id DESC
-    LIMIT 5
-");
 
 $countSql = "
     SELECT COUNT(*) AS total
@@ -169,6 +202,14 @@ if ($isValidRoleFilter) {
     $types .= 's';
     $params[] = $roleFilter;
 }
+if ($search !== '') {
+    $countSql .= " AND (CAST(pay.id AS CHAR) LIKE ? OR u.username LIKE ? OR u.email LIKE ?)";
+    $term = '%' . $search . '%';
+    $types .= 'sss';
+    $params[] = $term;
+    $params[] = $term;
+    $params[] = $term;
+}
 
 $countStmt = $conn->prepare($countSql);
 if ($types !== '') {
@@ -183,10 +224,25 @@ $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
 $sql = "
-    SELECT pay.*, u.username, u.role, p.status AS penalty_status
+    SELECT
+        pay.*,
+        u.username,
+        u.role,
+        p.status AS penalty_status,
+        b.title AS borrowed_book_title,
+        COALESCE(balance.unpaid_total, 0) AS current_balance,
+        COUNT(DISTINCT ppl.penalty_id) AS linked_penalty_count
     FROM payments pay
     JOIN users u ON u.id = pay.user_id
     LEFT JOIN penalties p ON p.id = pay.penalty_id
+    LEFT JOIN payment_penalty_links ppl ON ppl.payment_id = pay.id
+    LEFT JOIN borrows br ON br.id = p.borrow_id
+    LEFT JOIN books b ON b.id = br.book_id
+    LEFT JOIN (
+        SELECT user_id, COALESCE(SUM(CASE WHEN status = 'unpaid' THEN amount ELSE 0 END), 0) AS unpaid_total
+        FROM penalties
+        GROUP BY user_id
+    ) balance ON balance.user_id = pay.user_id
     WHERE 1=1
 ";
 if ($isValidStatusFilter) {
@@ -195,7 +251,10 @@ if ($isValidStatusFilter) {
 if ($isValidRoleFilter) {
     $sql .= " AND u.role = ?";
 }
-$sql .= " ORDER BY pay.id DESC LIMIT ? OFFSET ?";
+if ($search !== '') {
+    $sql .= " AND (CAST(pay.id AS CHAR) LIKE ? OR u.username LIKE ? OR u.email LIKE ?)";
+}
+$sql .= " GROUP BY pay.id ORDER BY pay.id DESC LIMIT ? OFFSET ?";
 
 $queryTypes = $types . 'ii';
 $queryParams = $params;
@@ -206,6 +265,7 @@ $paymentsStmt = $conn->prepare($sql);
 $paymentsStmt->bind_param($queryTypes, ...$queryParams);
 $paymentsStmt->execute();
 $payments = $paymentsStmt->get_result();
+$filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -214,8 +274,9 @@ $payments = $paymentsStmt->get_result();
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Payment Records</title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
@@ -267,58 +328,14 @@ $payments = $paymentsStmt->get_result();
           <span class="muted">Payments already accepted and applied.</span>
         </div>
         <div class="stat-card">
+          <span class="code-pill">Approved Value</span>
+          <strong><?php echo h(format_currency($summary['approved_amount'] ?? 0)); ?></strong>
+          <span class="muted">Total value of payments already approved by admin.</span>
+        </div>
+        <div class="stat-card">
           <span class="code-pill">Pending Amount</span>
           <strong><?php echo h(format_currency($summary['pending_amount'] ?? 0)); ?></strong>
           <span class="muted">Value currently waiting for approval or rejection.</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid cards">
-      <div class="panel">
-        <div class="card-head">
-          <div class="dashboard-icon icon-recent" aria-hidden="true"></div>
-          <div>
-            <p class="muted eyebrow-compact">Recent Queue</p>
-            <h3 class="heading-card">Latest payment submissions</h3>
-            <p class="muted">Start from the newest uploads so unresolved balances do not stay open longer than necessary.</p>
-          </div>
-        </div>
-        <div class="activity-feed">
-          <?php if (!$recentQueue || $recentQueue->num_rows === 0): ?>
-            <div class="empty-state">No payment submissions yet.</div>
-          <?php endif; ?>
-          <?php while ($queue = $recentQueue->fetch_assoc()): ?>
-            <div class="activity-item">
-              <strong><span class="status-dot <?php echo h($queue['status']); ?>"></span>Payment #<?php echo (int) $queue['id']; ?></strong>
-              <div class="meta"><?php echo h($queue['username']); ?> submitted <?php echo h(format_currency($queue['amount'])); ?></div>
-              <div class="meta meta-top"><?php echo h(date('F j, Y g:i A', strtotime($queue['created_at']))); ?></div>
-            </div>
-          <?php endwhile; ?>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="card-head">
-          <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
-          <div>
-            <p class="muted eyebrow-compact">Review Notes</p>
-            <h3 class="heading-card">Before approving</h3>
-            <p class="muted">Keep payment decisions consistent so member balances, penalty state, and audit records all match.</p>
-          </div>
-        </div>
-        <div class="stack">
-          <div class="empty-state">
-            <strong class="label-block-gap">Proof verification</strong>
-            Check that the uploaded proof matches the full penalty amount and the expected borrower before approving.
-          </div>
-          <div class="empty-state">
-            <strong class="label-block-gap">Penalty sync</strong>
-            Approving a linked full payment marks the related penalty as paid.
-          </div>
-          <div class="empty-state">
-            <strong class="label-block-gap">Rejection handling</strong>
-            Rejecting removes the local proof file when one is attached, so only valid proof remains stored.
-          </div>
         </div>
       </div>
     </div>
@@ -335,11 +352,15 @@ $payments = $paymentsStmt->get_result();
             </div>
           </div>
         </div>
-        <form method="get" class="toolbar grow admin-record-filters">
-          <div>
-            <label for="status_filter">Status</label>
-            <div class="ui-select-shell">
-              <select id="status_filter" name="status" class="ui-select">
+        <form method="get" class="grow admin-record-filters">
+            <div>
+              <label for="payment_search">Search</label>
+              <input id="payment_search" name="search" value="<?php echo h($search); ?>" placeholder="Payment ID, username, or email">
+            </div>
+            <div>
+              <label for="status_filter">Status</label>
+              <div class="ui-select-shell">
+                <select id="status_filter" name="status" class="ui-select">
                 <option value="">All statuses</option>
                 <?php foreach ($statusOptions as $status): ?>
                   <option value="<?php echo h($status); ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>><?php echo h(ucfirst($status)); ?></option>
@@ -378,7 +399,9 @@ $payments = $paymentsStmt->get_result();
               <th>ID</th>
               <th>User</th>
               <th>Role</th>
+              <th>Borrowed Book</th>
               <th>Amount</th>
+              <th>Current Balance</th>
               <th>Status</th>
               <th>Proof</th>
               <th>Penalty</th>
@@ -387,17 +410,37 @@ $payments = $paymentsStmt->get_result();
           </thead>
           <tbody>
             <?php if ($payments->num_rows === 0): ?>
-              <tr><td colspan="8" class="muted">No payment records found.</td></tr>
+              <tr><td colspan="10" class="muted">No payment records found.</td></tr>
             <?php endif; ?>
             <?php while ($payment = $payments->fetch_assoc()): ?>
               <tr>
                 <td><?php echo (int) $payment['id']; ?></td>
                 <td><?php echo h($payment['username']); ?></td>
                 <td><span class="badge"><?php echo h($payment['role']); ?></span></td>
+                <td>
+                  <?php if (trim((string) ($payment['borrowed_book_title'] ?? '')) !== ''): ?>
+                    <?php echo h((string) $payment['borrowed_book_title']); ?>
+                  <?php else: ?>
+                    <span class="muted">Not linked</span>
+                  <?php endif; ?>
+                </td>
                 <td><?php echo h(format_currency($payment['amount'])); ?></td>
+                <td><?php echo h(format_currency($payment['current_balance'] ?? 0)); ?></td>
                 <td><span class="badge"><span class="status-dot <?php echo h($payment['status']); ?>"></span><?php echo h($payment['status']); ?></span></td>
                 <td><?php if (!empty($payment['proof_path'])): ?><a href="/librarymanage/<?php echo h($payment['proof_path']); ?>" target="_blank">View</a><?php else: ?><span class="muted">None</span><?php endif; ?></td>
-                <td><?php echo (int) ($payment['penalty_id'] ?? 0) > 0 ? '#' . (int) $payment['penalty_id'] . ' / ' . h($payment['penalty_status'] ?: 'n/a') : 'Not linked'; ?></td>
+                <td>
+                  <?php
+                  $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
+                  if ($linkedPenaltyCount > 1) {
+                      echo h((string) ($payment['payment_batch'] ?: ('Payment #' . (int) $payment['id'])));
+                      echo ' / ' . $linkedPenaltyCount . ' penalties';
+                  } elseif ((int) ($payment['penalty_id'] ?? 0) > 0) {
+                      echo '#' . (int) $payment['penalty_id'] . ' / ' . h($payment['penalty_status'] ?: 'n/a');
+                  } else {
+                      echo 'Not linked';
+                  }
+                  ?>
+                </td>
                 <td>
                   <?php if ($payment['status'] === 'pending'): ?>
                     <div class="inline-actions">
@@ -424,10 +467,10 @@ $payments = $paymentsStmt->get_result();
       <div class="pagination">
         <span class="current">Page <?php echo (int) $page; ?> of <?php echo (int) $totalPages; ?></span>
         <?php if ($page > 1): ?>
-          <a class="button secondary" href="?status=<?php echo urlencode($statusFilter); ?>&role=<?php echo urlencode($roleFilter); ?>&page=<?php echo $page - 1; ?>">Previous</a>
+          <a class="button secondary" href="<?php echo h(($filterQueryString !== '' ? $filterQueryString . '&' : '?') . 'page=' . ($page - 1)); ?>">Previous</a>
         <?php endif; ?>
         <?php if ($page < $totalPages): ?>
-          <a class="button secondary" href="?status=<?php echo urlencode($statusFilter); ?>&role=<?php echo urlencode($roleFilter); ?>&page=<?php echo $page + 1; ?>">Next</a>
+          <a class="button secondary" href="<?php echo h(($filterQueryString !== '' ? $filterQueryString . '&' : '?') . 'page=' . ($page + 1)); ?>">Next</a>
         <?php endif; ?>
       </div>
     </div>

@@ -33,18 +33,53 @@
   }
 
   function ensureMobileControls(shell) {
-    if (shell.querySelector('.js-mobile-sidebar-toggle')) {
+    var header = shell.querySelector('.member-mobile-header');
+    if (!header) {
+      header = document.createElement('div');
+      header.className = 'member-mobile-header';
+      header.innerHTML =
+        '<div class="member-mobile-brand">' +
+          '<img class="member-mobile-brand-mark" src="/librarymanage/assets/images/RMLOGO.jfif" alt="Regis Marie College logo">' +
+          '<span class="member-mobile-brand-copy">' +
+            '<strong>Regis Marie College</strong>' +
+            '<span>Library Management System</span>' +
+          '</span>' +
+        '</div>' +
+        '<div class="member-mobile-nav-actions"></div>';
+      shell.insertBefore(header, shell.firstChild);
+    }
+
+    var actions = header.querySelector('.member-mobile-nav-actions');
+    if (!actions) {
       return;
     }
 
-    var toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'member-mobile-nav-toggle js-mobile-sidebar-toggle';
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Open navigation menu');
-    toggle.innerHTML = '<span class="member-mobile-nav-toggle-bars" aria-hidden="true"></span>';
+    if (!actions.querySelector('.member-mobile-theme-toggle')) {
+      var themeToggle = document.createElement('button');
+      themeToggle.type = 'button';
+      themeToggle.className = 'theme-toggle member-mobile-theme-toggle';
+      themeToggle.setAttribute('aria-label', 'Toggle theme');
+      themeToggle.innerHTML = '<span class="theme-toggle-icon" aria-hidden="true"></span><span class="theme-toggle-text"></span>';
+      actions.appendChild(themeToggle);
+    }
 
-    shell.appendChild(toggle);
+    if (!actions.querySelector('.js-mobile-sidebar-toggle')) {
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'member-mobile-nav-toggle js-mobile-sidebar-toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Open navigation menu');
+      toggle.innerHTML = '<span class="member-mobile-nav-toggle-bars" aria-hidden="true"></span>';
+      actions.appendChild(toggle);
+    }
+
+    if (typeof window.libraryManageSyncThemeToggles === 'function') {
+      window.libraryManageSyncThemeToggles();
+    }
+
+    if (typeof window.libraryManageEnsureStudentNotifications === 'function') {
+      window.libraryManageEnsureStudentNotifications();
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -78,6 +113,26 @@
           mobileOpen = false;
           setMobileOpen(shell, false);
         });
+      });
+
+      document.addEventListener('click', function (event) {
+        if (!isMobileViewport() || !mobileOpen) {
+          return;
+        }
+
+        var sidebar = shell.querySelector('.member-sidebar');
+        var mobileToggle = shell.querySelector('.js-mobile-sidebar-toggle');
+        var target = event.target;
+        if (!sidebar || !target) {
+          return;
+        }
+
+        if (sidebar.contains(target) || (mobileToggle && mobileToggle.contains(target))) {
+          return;
+        }
+
+        mobileOpen = false;
+        setMobileOpen(shell, false);
       });
 
       document.addEventListener('keydown', function (event) {

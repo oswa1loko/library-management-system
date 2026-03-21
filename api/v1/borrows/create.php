@@ -46,12 +46,39 @@ foreach ($bookRows as $bookRow) {
     $booksById[(int) $bookRow['id']] = $bookRow;
 }
 
+$blockedBookIds = [];
+if ($bookIds !== []) {
+    $penaltyStmt = $conn->prepare("
+        SELECT DISTINCT br.book_id
+        FROM penalties p
+        JOIN borrows br ON br.id = p.borrow_id
+        WHERE p.user_id = ?
+          AND p.status = 'unpaid'
+          AND br.book_id IN ($placeholders)
+    ");
+    $penaltyStmt->bind_param('i' . $bookTypes, $user['id'], ...$bookIds);
+    $penaltyStmt->execute();
+    $penaltyRows = $penaltyStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $penaltyStmt->close();
+
+    foreach ($penaltyRows as $penaltyRow) {
+        $blockedBookIds[] = (int) ($penaltyRow['book_id'] ?? 0);
+    }
+    $blockedBookIds = array_values(array_unique(array_filter($blockedBookIds)));
+}
+
 $missingIds = [];
 $unavailableTitles = [];
 $insufficientStock = [];
+$blockedPenaltyTitles = [];
 foreach ($bookIds as $bookId) {
     if (!isset($booksById[$bookId])) {
         $missingIds[] = $bookId;
+        continue;
+    }
+
+    if (in_array($bookId, $blockedBookIds, true)) {
+        $blockedPenaltyTitles[] = (string) ($booksById[$bookId]['title'] ?? ('Book #' . $bookId));
         continue;
     }
 
@@ -75,6 +102,10 @@ if ($missingIds !== []) {
 
 if ($unavailableTitles !== []) {
     api_error('These books are not available right now: ' . implode(', ', $unavailableTitles) . '.', 409);
+}
+
+if ($blockedPenaltyTitles !== []) {
+    api_error('Settle your unpaid penalty first before borrowing these same book titles again: ' . implode(', ', $blockedPenaltyTitles) . '.', 409);
 }
 
 if ($insufficientStock !== []) {
@@ -129,6 +160,24 @@ audit_log($conn, 'api.borrow.create', [
     'requested_days' => $days,
     'requested_count' => count($createdBorrows),
 ], $user['id'], $user['role']);
+
+$bookLabels = [];
+foreach ($bookIds as $bookId) {
+    $bookTitle = trim((string) ($booksById[$bookId]['title'] ?? ('Book #' . $bookId)));
+    $requestedCopies = (int) ($bookQuantities[$bookId] ?? 1);
+    $bookLabels[] = $bookTitle . ($requestedCopies > 1 ? ' (' . $requestedCopies . ' copies)' : '');
+}
+$copyCount = count($createdBorrows);
+$copyLabel = $copyCount === 1 ? '1 copy' : $copyCount . ' copies';
+$titleCount = count($bookIds);
+$titleLabel = $titleCount === 1 ? '1 title' : $titleCount . ' titles';
+create_notification(
+    $conn,
+    'librarian',
+    'New Borrow Request',
+    role_label((string) $user['role']) . ' ' . $user['username'] . ' requested ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '.',
+    'warning'
+);
 
 api_json([
     'ok' => true,

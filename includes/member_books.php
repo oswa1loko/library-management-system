@@ -12,21 +12,25 @@ $msgType = 'success';
 $requestedBookLimit = 5;
 
 if (isset($_POST['borrow'])) {
-    $bookIdsRaw = $_POST['book_ids'] ?? [];
+    $bookIdsRaw = $_POST['book_ids'] ?? ($_POST['book_id'] ?? []);
     $bookQtyRaw = $_POST['book_qty'] ?? [];
     if (!is_array($bookIdsRaw)) {
         $bookIdsRaw = [$bookIdsRaw];
-    }
-    if (!is_array($bookQtyRaw)) {
-        $bookQtyRaw = [];
     }
 
     $bookIds = array_values(array_unique(array_filter(array_map('intval', $bookIdsRaw), static function (int $id): bool {
         return $id > 0;
     })));
     $bookQuantities = [];
-    foreach ($bookIds as $bookId) {
-        $bookQuantities[$bookId] = max(1, min(5, (int) ($bookQtyRaw[$bookId] ?? 1)));
+    if (is_array($bookQtyRaw)) {
+        foreach ($bookIds as $bookId) {
+            $bookQuantities[$bookId] = max(1, min(5, (int) ($bookQtyRaw[$bookId] ?? 1)));
+        }
+    } else {
+        $singleQty = max(1, min(5, (int) $bookQtyRaw));
+        foreach ($bookIds as $bookId) {
+            $bookQuantities[$bookId] = $singleQty;
+        }
     }
     $requestedCopies = array_sum($bookQuantities);
     $days = (int) ($_POST['days'] ?? 7);
@@ -76,33 +80,77 @@ if (isset($_POST['borrow'])) {
     }
 }
 
-$catalogStats = $conn->query("
-    SELECT
-      COUNT(*) AS total_titles,
-      COALESCE(SUM(qty_total), 0) AS total_copies,
-      COALESCE(SUM(qty_available), 0) AS available_copies,
-      COALESCE(SUM(CASE WHEN qty_available > 0 THEN 1 ELSE 0 END), 0) AS available_titles
-    FROM books
-")->fetch_assoc();
-
 $categoryRows = $conn->query("SELECT DISTINCT category FROM books WHERE category <> '' ORDER BY category ASC");
 $bookCategories = [];
 while ($categoryRows && ($categoryRow = $categoryRows->fetch_assoc())) {
     $bookCategories[] = (string) $categoryRow['category'];
 }
+$initialCategoryFilter = trim((string) ($_GET['category'] ?? ''));
+$initialCategoryFilter = strtolower($initialCategoryFilter);
+if ($initialCategoryFilter !== '' && !in_array($initialCategoryFilter, array_map('strtolower', $bookCategories), true)) {
+    $initialCategoryFilter = '';
+}
+$activeCategoryLabel = '';
+foreach ($bookCategories as $bookCategory) {
+    if (strtolower($bookCategory) === $initialCategoryFilter) {
+        $activeCategoryLabel = $bookCategory;
+        break;
+    }
+}
 
-$books = $conn->query("
-    SELECT b.id, b.title, b.author, b.category, b.cover_path, b.qty_total, b.qty_available,
-           COUNT(br.id) AS times_borrowed
+$booksSql = "
+    SELECT b.id, b.title, b.author, b.category, b.cover_path, b.qty_available
     FROM books b
-    LEFT JOIN borrows br ON br.book_id = b.id
-    GROUP BY b.id, b.title, b.author, b.category, b.cover_path, b.qty_total, b.qty_available
+";
+
+$booksParams = [];
+$booksTypes = '';
+if ($initialCategoryFilter !== '') {
+    $booksSql .= " WHERE LOWER(b.category) = ? ";
+    $booksParams[] = $initialCategoryFilter;
+    $booksTypes .= 's';
+}
+
+$booksSql .= "
     ORDER BY b.title ASC
-");
+";
+
+$books = false;
+if ($booksParams !== []) {
+    $booksStmt = $conn->prepare($booksSql);
+    if ($booksStmt) {
+        $booksStmt->bind_param($booksTypes, ...$booksParams);
+        $booksStmt->execute();
+        $books = $booksStmt->get_result();
+    }
+} else {
+    $books = $conn->query($booksSql);
+}
+
+$blockedBookIds = [];
+$blockedBooksSql = "
+    SELECT DISTINCT br.book_id
+    FROM penalties p
+    JOIN borrows br ON br.id = p.borrow_id
+    WHERE p.user_id = ?
+      AND p.status = 'unpaid'
+";
+$blockedBooksStmt = $conn->prepare($blockedBooksSql);
+if ($blockedBooksStmt) {
+    $blockedBooksStmt->bind_param('i', $userId);
+    $blockedBooksStmt->execute();
+    $blockedBooks = $blockedBooksStmt->get_result();
+    while ($blockedBooks && ($blockedBookRow = $blockedBooks->fetch_assoc())) {
+        $blockedBookIds[(int) ($blockedBookRow['book_id'] ?? 0)] = true;
+    }
+}
+
 $availableBooks = [];
 $unavailableBooks = [];
 while ($books && ($bookRow = $books->fetch_assoc())) {
-    if ((int) ($bookRow['qty_available'] ?? 0) > 0) {
+    $bookId = (int) ($bookRow['id'] ?? 0);
+    $bookRow['blocked_for_penalty'] = isset($blockedBookIds[$bookId]) ? 1 : 0;
+    if ((int) ($bookRow['qty_available'] ?? 0) > 0 && (int) ($bookRow['blocked_for_penalty'] ?? 0) !== 1) {
         $availableBooks[] = $bookRow;
     } else {
         $unavailableBooks[] = $bookRow;
@@ -116,37 +164,44 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo h(page_title($role, 'Books and Borrow')); ?></title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <?php $memberBorrowReturnVersion = (string) filemtime(__DIR__ . '/../assets/member_borrow_return.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
 <div class="site-shell member-shell js-member-sidebar" data-sidebar-key="<?php echo h($role); ?>-books-borrow">
   <aside class="panel member-sidebar">
     <div class="member-sidebar-head">
-      <button type="button" class="member-sidebar-toggle js-sidebar-toggle" aria-expanded="true" aria-label="Collapse sidebar">
-        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+      <div class="member-sidebar-toggle" aria-hidden="true">
         <span class="member-sidebar-label">Main Menu</span>
-      </button>
+      </div>
     </div>
-    <p class="member-sidebar-section member-sidebar-label">Main</p>
     <nav class="member-sidebar-nav">
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/dashboard.php" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
-      <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Books and Borrow">
+      <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Books / Borrow</span>
+        <span class="member-sidebar-label">Books</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/catalog.php" data-tooltip="Catalog">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Catalog</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/ebooks.php" data-tooltip="eBooks">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
-      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="My Borrows and Returns">
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="Returns">
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
-        <span class="member-sidebar-label">My Borrows / Returns</span>
+        <span class="member-sidebar-label">Returns</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/tracking.php" data-tooltip="Records Tracking">
+        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Records Tracking</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/payment_upload.php" data-tooltip="Payments">
         <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
@@ -155,12 +210,15 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
     </nav>
     <p class="member-sidebar-section member-sidebar-label">Account</p>
     <div class="topbar-nav member-sidebar-utilities">
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/profile.php" data-tooltip="Profile">
+        <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Profile</span>
+      </a>
       <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
-        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
         <span class="member-sidebar-label">Logout</span>
       </a>
     </div>
@@ -179,28 +237,16 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
         <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
       <?php endif; ?>
 
-      <div class="panel member-workspace-overview">
-        <p class="muted eyebrow-compact stack-copy">Overview</p>
-        <h3 class="heading-panel">Catalog snapshot</h3>
-        <div class="stat-grid">
-          <div class="stat-card">
-            <strong><?php echo (int) ($catalogStats['total_titles'] ?? 0); ?></strong>
-            <span class="muted">Titles in catalog</span>
+      <?php if ($activeCategoryLabel !== ''): ?>
+        <div class="panel member-books-context">
+          <div class="member-books-context-copy">
+            <span class="chip">Catalog Filter</span>
+            <strong><?php echo h($activeCategoryLabel); ?></strong>
+            <span class="muted">Showing only the books assigned to this catalog section.</span>
           </div>
-          <div class="stat-card">
-            <strong><?php echo (int) ($catalogStats['total_copies'] ?? 0); ?></strong>
-            <span class="muted">Total copies</span>
-          </div>
-          <div class="stat-card">
-            <strong><?php echo (int) ($catalogStats['available_titles'] ?? 0); ?></strong>
-            <span class="muted">Titles available now</span>
-          </div>
-          <div class="stat-card">
-            <strong><?php echo (int) ($catalogStats['available_copies'] ?? 0); ?></strong>
-            <span class="muted">Available copies</span>
-          </div>
+          <a class="button secondary" href="/librarymanage/<?php echo h($role); ?>/catalog.php">Back to Catalog</a>
         </div>
-      </div>
+      <?php endif; ?>
 
       <div class="grid cards member-workspace-grid member-workspace-grid-borrow">
         <div class="panel member-workspace-main">
@@ -208,11 +254,11 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
             <div class="dashboard-icon icon-books" aria-hidden="true"></div>
             <div>
               <span class="chip">Borrowing</span>
-              <h3 class="heading-top-md">Select Books to Borrow</h3>
+              <h3 class="heading-top-md">Choose a Book to Borrow</h3>
             </div>
           </div>
-          <p class="muted">Choose one or more titles and set the borrowing period up to 30 days.</p>
-          <form method="post" class="stack chips-row member-workspace-form">
+          <p class="muted">Tap an available book card to open the borrow request form.</p>
+          <div class="stack chips-row member-workspace-form">
             <div>
               <label for="book_ids">Books</label>
               <div class="member-book-filters">
@@ -221,7 +267,7 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
                   <select class="ui-select" data-book-category>
                     <option value="">All categories</option>
                     <?php foreach ($bookCategories as $bookCategory): ?>
-                      <option value="<?php echo h(strtolower($bookCategory)); ?>"><?php echo h($bookCategory); ?></option>
+                      <option value="<?php echo h(strtolower($bookCategory)); ?>" <?php echo $initialCategoryFilter === strtolower($bookCategory) ? 'selected' : ''; ?>><?php echo h($bookCategory); ?></option>
                     <?php endforeach; ?>
                   </select>
                   <span class="ui-select-caret" aria-hidden="true"></span>
@@ -233,42 +279,31 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
                     <p class="member-book-group-title" data-book-group-title>Available now</p>
                     <div class="member-book-group-grid">
                       <?php foreach ($availableBooks as $book): ?>
-                        <label class="member-book-option" data-book-option data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>" data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
-                          <input type="checkbox" name="book_ids[]" value="<?php echo (int) $book['id']; ?>">
+                        <button
+                          type="button"
+                          class="member-book-option member-book-option-button"
+                          data-book-option
+                          data-book-trigger
+                          data-book-id="<?php echo (int) $book['id']; ?>"
+                          data-book-title="<?php echo h($book['title']); ?>"
+                          data-book-author="<?php echo h($book['author']); ?>"
+                          data-book-category-label="<?php echo h($book['category']); ?>"
+                          data-book-cover="<?php echo h((string) ($book['cover_path'] ?? '')); ?>"
+                          data-book-available="<?php echo (int) $book['qty_available']; ?>"
+                          data-book-max-qty="<?php echo max(1, min(5, (int) $book['qty_available'])); ?>"
+                          data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>"
+                          data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>"
+                        >
                           <?php if (!empty($book['cover_path'])): ?>
                             <img class="member-book-option-cover" src="/librarymanage/<?php echo h($book['cover_path']); ?>" alt="<?php echo h($book['title']); ?>">
                           <?php else: ?>
                             <div class="member-book-option-cover member-book-option-cover-placeholder">No Cover</div>
                           <?php endif; ?>
-                            <span class="member-book-option-copy">
+                          <span class="member-book-option-copy">
                             <strong><?php echo h($book['title']); ?></strong>
                             <span class="muted"><?php echo h($book['author']); ?> - <?php echo h($book['category']); ?></span>
-                            <span class="member-book-option-meta">
-                              <span class="badge"><?php echo (int) $book['qty_available']; ?> available</span>
-                              <span class="chip"><?php echo (int) $book['qty_total']; ?> total copies</span>
-                              <span class="chip"><?php echo (int) $book['times_borrowed']; ?> borrows</span>
-                            </span>
-                            <span class="member-book-quantity">
-                              <span class="muted">Quantity</span>
-                              <span class="ui-select-shell member-book-quantity-shell">
-                                <select
-                                  name="book_qty[<?php echo (int) $book['id']; ?>]"
-                                  class="ui-select member-book-quantity-select"
-                                  data-book-quantity
-                                  data-book-id="<?php echo (int) $book['id']; ?>"
-                                  data-book-available="<?php echo (int) $book['qty_available']; ?>"
-                                  disabled
-                                >
-                                  <?php $bookQtyCap = max(1, min(5, (int) $book['qty_available'])); ?>
-                                  <?php for ($qty = 1; $qty <= $bookQtyCap; $qty++): ?>
-                                    <option value="<?php echo $qty; ?>"><?php echo $qty; ?> copy<?php echo $qty === 1 ? '' : 'ies'; ?></option>
-                                  <?php endfor; ?>
-                                </select>
-                                <span class="ui-select-caret" aria-hidden="true"></span>
-                              </span>
-                            </span>
                           </span>
-                        </label>
+                        </button>
                       <?php endforeach; ?>
                     </div>
                   </section>
@@ -278,8 +313,7 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
                     <p class="member-book-group-title" data-book-group-title>Unavailable right now</p>
                     <div class="member-book-group-grid">
                       <?php foreach ($unavailableBooks as $book): ?>
-                        <label class="member-book-option is-unavailable" data-book-option data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>" data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
-                          <input type="checkbox" name="book_ids[]" value="<?php echo (int) $book['id']; ?>" disabled>
+                        <div class="member-book-option member-book-option-static is-unavailable" data-book-option data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>" data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
                           <?php if (!empty($book['cover_path'])): ?>
                             <img class="member-book-option-cover" src="/librarymanage/<?php echo h($book['cover_path']); ?>" alt="<?php echo h($book['title']); ?>">
                           <?php else: ?>
@@ -289,21 +323,13 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
                             <strong><?php echo h($book['title']); ?></strong>
                             <span class="muted"><?php echo h($book['author']); ?> - <?php echo h($book['category']); ?></span>
                             <span class="member-book-option-meta">
-                              <span class="badge">Unavailable</span>
-                              <span class="chip"><?php echo (int) $book['qty_total']; ?> total copies</span>
-                              <span class="chip"><?php echo (int) $book['times_borrowed']; ?> borrows</span>
-                            </span>
-                            <span class="member-book-quantity">
-                              <span class="muted">Quantity</span>
-                              <span class="ui-select-shell member-book-quantity-shell">
-                                <select class="ui-select member-book-quantity-select" disabled>
-                                  <option value="0">Unavailable</option>
-                                </select>
-                                <span class="ui-select-caret" aria-hidden="true"></span>
-                              </span>
+                              <span class="badge"><?php echo (int) ($book['blocked_for_penalty'] ?? 0) === 1 ? 'Penalty hold' : 'Unavailable'; ?></span>
+                              <?php if ((int) ($book['blocked_for_penalty'] ?? 0) === 1): ?>
+                                <span class="muted">Settle the unpaid penalty for this title before borrowing it again.</span>
+                              <?php endif; ?>
                             </span>
                           </span>
-                        </label>
+                        </div>
                       <?php endforeach; ?>
                     </div>
                   </section>
@@ -313,40 +339,53 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
                 <?php endif; ?>
               </div>
               <div class="empty-state member-book-empty" data-book-empty hidden>No books matched your search.</div>
-              <div class="inline-actions chips-row member-book-summary">
-                <span class="chip" data-book-selected-count>0 selected - 5 book copies max</span>
-                <button type="button" class="button secondary member-book-clear" data-book-clear disabled>Clear selected</button>
-                <span class="muted meta-top-sm" data-book-selection-note>Select one or more titles and set the quantity per title.</span>
-              </div>
             </div>
-            <input type="hidden" name="book_limit" value="<?php echo $requestedBookLimit; ?>" data-book-limit>
-            <div>
-              <label for="days">Days to borrow</label>
-              <input id="days" type="number" name="days" value="7" min="1" max="30">
-            </div>
-            <div class="inline-actions member-workspace-actions">
-              <button type="submit" name="borrow" value="1" data-book-submit disabled>Request Selected Books</button>
-              <span class="muted">Available stock is reduced only after librarian approval.</span>
-            </div>
-          </form>
+          </div>
         </div>
 
-        <div class="panel member-workspace-side">
-          <div class="card-head">
-            <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
-            <div>
-              <span class="chip">Notes</span>
-              <h3 class="heading-top-md">Borrowing Notes</h3>
-            </div>
-          </div>
-          <div class="stack">
-            <div class="empty-state">Books already out of stock stay visible here, but they cannot be selected for request.</div>
-            <div class="empty-state">Borrow requests stay pending until the librarian approves the release.</div>
-            <div class="empty-state">You can request multiple titles at once, but each title is still reviewed separately.</div>
-            <div class="empty-state">Use the My Borrows / Returns page to request returns and check due dates.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="desk-modal member-borrow-modal" data-book-modal hidden>
+  <div class="desk-modal-backdrop member-borrow-modal-backdrop" data-book-modal-close></div>
+  <div class="desk-modal-dialog panel member-borrow-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="member-borrow-modal-title">
+    <div class="desk-modal-head">
+      <div>
+        <p class="muted eyebrow-compact">Borrow Request</p>
+        <h3 id="member-borrow-modal-title" class="heading-card" data-book-modal-title>Request a Book</h3>
+        <p class="muted">Set the quantity and borrowing period, then submit your request for librarian approval.</p>
+      </div>
+      <button type="button" class="button secondary" data-book-modal-close>Close</button>
+    </div>
+    <div class="member-borrow-modal-layout">
+      <div class="empty-state member-borrow-modal-preview">
+        <div class="member-borrow-modal-cover">
+          <div class="member-book-option-cover member-book-option-cover-placeholder" data-book-modal-cover-placeholder>No Cover</div>
+          <img class="member-book-option-cover" src="" alt="" data-book-modal-cover hidden>
+        </div>
+        <strong class="label-block meta-top-sm" data-book-modal-book-title></strong>
+        <span class="muted" data-book-modal-book-meta></span>
+        <span class="badge" data-book-modal-available></span>
+      </div>
+      <form method="post" class="stack member-workspace-form">
+        <input type="hidden" name="book_id" value="" data-book-modal-id>
+        <div>
+          <label for="modal_book_qty">Quantity</label>
+          <div class="ui-select-shell member-book-quantity-shell">
+            <select id="modal_book_qty" name="book_qty" class="ui-select" data-book-modal-qty></select>
+            <span class="ui-select-caret" aria-hidden="true"></span>
           </div>
         </div>
-      </div>
+        <div>
+          <label for="modal_days">Days to borrow</label>
+          <input id="modal_days" type="number" name="days" value="7" min="1" max="30">
+        </div>
+        <div class="inline-actions member-workspace-actions">
+          <button type="submit" name="borrow" value="1">Request This Book</button>
+          <span class="muted">Available stock is reduced only after librarian approval.</span>
+        </div>
+      </form>
     </div>
   </div>
 </div>

@@ -2,10 +2,14 @@ import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.5.207/build
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.5.207/build/pdf.worker.min.mjs';
 
-const DEFAULT_SCALE = 1.1;
-const SCALE_STEP = 0.15;
-const MIN_SCALE = 0.7;
-const MAX_SCALE = 2.2;
+const DEFAULT_ZOOM = 1;
+const ZOOM_STEP = 0.12;
+const MIN_ZOOM = 0.72;
+const MAX_ZOOM = 2.1;
+const VIEWPORT_RENDER_MARGIN = 1.5;
+const PAGE_BUFFER = 2;
+const MOBILE_BATCH_SIZE = 5;
+const MOBILE_LAYOUT_QUERY = '(max-width: 768px)';
 
 async function renderReader(root) {
   const pdfUrl = root.dataset.pdfUrl || '';
@@ -22,20 +26,146 @@ async function renderReader(root) {
   }
 
   let pdfDocument = null;
-  let scale = DEFAULT_SCALE;
+  let zoomLevel = DEFAULT_ZOOM;
   let currentPage = 1;
+  let isRendering = false;
+  let resizeTimer = 0;
+  let scrollFrame = 0;
+  let mobileBatchStart = 1;
+  let lastWindowWidth = window.innerWidth;
+  const pageStates = new Map();
+  const pageMetrics = new Map();
+  const mobileLayout = window.matchMedia(MOBILE_LAYOUT_QUERY);
+  let lastLayoutMode = mobileLayout.matches ? 'mobile' : 'desktop';
+
+  const isMobileLayout = () => mobileLayout.matches;
+  const getPageShells = () => Array.from(stage.querySelectorAll('[data-page-number]'));
+  const getMobileBatchEnd = () => Math.min((pdfDocument?.numPages || 0), mobileBatchStart + MOBILE_BATCH_SIZE - 1);
+
+  const getScaleForDimensions = (baseWidth) => {
+    const stageWidth = Math.max(stage.clientWidth || 0, 320);
+    const usableWidth = Math.max(stageWidth - 36, 220);
+    const fitScale = usableWidth / Math.max(baseWidth, 1);
+    return Math.max(0.8, Math.min(fitScale * zoomLevel, 2.8));
+  };
+
+  const getEffectiveScale = (page) => {
+    const baseViewport = page.getViewport({ scale: 1 });
+    return getScaleForDimensions(baseViewport.width);
+  };
+
+  const getViewportForPageNumber = (pageNumber) => {
+    const metric = pageMetrics.get(pageNumber);
+    if (!metric) {
+      return null;
+    }
+
+    const scale = getScaleForDimensions(metric.width);
+    return {
+      width: Math.floor(metric.width * scale),
+      height: Math.floor(metric.height * scale),
+    };
+  };
+
+  const updateShellHeights = () => {
+    getPageShells().forEach((pageCard) => {
+      const pageNumber = Number(pageCard.getAttribute('data-page-number') || '0');
+      const viewport = getViewportForPageNumber(pageNumber);
+      if (!viewport) {
+        return;
+      }
+
+      pageCard.style.minHeight = `${viewport.height + 56}px`;
+    });
+  };
 
   const updateControls = () => {
     if (!pdfDocument) {
       return;
     }
 
-    pageLabel.textContent = `Page ${currentPage} of ${pdfDocument.numPages} · ${Math.round(scale * 100)}%`;
-    prevButton.disabled = currentPage <= 1;
-    nextButton.disabled = currentPage >= pdfDocument.numPages;
+    if (isMobileLayout()) {
+      const batchEnd = getMobileBatchEnd();
+      pageLabel.textContent = `Pages ${mobileBatchStart}-${batchEnd} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
+      prevButton.textContent = 'Previous 5';
+      nextButton.textContent = 'Next 5';
+      prevButton.disabled = mobileBatchStart <= 1 || isRendering;
+      nextButton.disabled = batchEnd >= pdfDocument.numPages || isRendering;
+      return;
+    }
+
+    pageLabel.textContent = `Page ${currentPage} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
+    prevButton.textContent = 'Previous';
+    nextButton.textContent = 'Next';
+    prevButton.disabled = currentPage <= 1 || isRendering;
+    nextButton.disabled = currentPage >= pdfDocument.numPages || isRendering;
   };
 
-  const renderCurrentPage = async () => {
+  const updateCurrentPageFromScroll = () => {
+    if (!pdfDocument || isMobileLayout()) {
+      return;
+    }
+
+    const pages = getPageShells();
+    if (pages.length === 0) {
+      return;
+    }
+
+    const viewportTop = window.innerHeight * 0.24;
+    let activePage = currentPage;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    pages.forEach((pageCard) => {
+      const pageNumber = Number(pageCard.getAttribute('data-page-number') || '0');
+      const rect = pageCard.getBoundingClientRect();
+      const distance = Math.abs(rect.top - viewportTop);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        activePage = pageNumber;
+      }
+    });
+
+    if (activePage !== currentPage) {
+      currentPage = activePage;
+      updateControls();
+    }
+  };
+
+  const scrollToPage = (pageNumber) => {
+    const target = stage.querySelector(`[data-page-number="${pageNumber}"]`);
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    currentPage = pageNumber;
+    updateControls();
+  };
+
+  const wait = (ms) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+  const animateMobileBatchChange = async () => {
+    if (!isMobileLayout()) {
+      return;
+    }
+
+    stage.classList.add('is-batch-transitioning');
+    stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    await wait(220);
+  };
+
+  const finishMobileBatchChange = async () => {
+    if (!isMobileLayout()) {
+      return;
+    }
+
+    await wait(120);
+    stage.classList.remove('is-batch-transitioning');
+  };
+
+  const buildPageShells = () => {
     if (!pdfDocument) {
       return;
     }
@@ -47,74 +177,335 @@ async function renderReader(root) {
 
     stage.innerHTML = '';
 
-    const page = await pdfDocument.getPage(currentPage);
-    const viewport = page.getViewport({ scale });
-    const pageCard = document.createElement('section');
-    pageCard.className = 'ebook-reader-page';
+    try {
+      const startPage = isMobileLayout() ? mobileBatchStart : 1;
+      const endPage = isMobileLayout() ? getMobileBatchEnd() : pdfDocument.numPages;
 
-    const pageMeta = document.createElement('div');
-    pageMeta.className = 'ebook-reader-page-meta';
-    pageMeta.textContent = `Page ${currentPage}`;
+      for (let pageNumber = startPage; pageNumber <= endPage; pageNumber += 1) {
+        const pageCard = document.createElement('section');
+        pageCard.className = 'ebook-reader-page';
+        pageCard.setAttribute('data-page-number', String(pageNumber));
 
-    const canvas = document.createElement('canvas');
-    canvas.className = 'ebook-reader-canvas';
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
+        const pageMeta = document.createElement('div');
+        pageMeta.className = 'ebook-reader-page-meta';
+        pageMeta.textContent = `Page ${pageNumber}`;
 
-    const context = canvas.getContext('2d', { alpha: false });
-    await page.render({
-      canvasContext: context,
-      viewport,
-    }).promise;
+        const canvasHost = document.createElement('div');
+        canvasHost.className = 'ebook-reader-canvas-host';
+        canvasHost.setAttribute('data-ebook-canvas-host', 'true');
+        const viewport = getViewportForPageNumber(pageNumber);
+        if (viewport) {
+          canvasHost.style.minHeight = `${viewport.height}px`;
+        }
 
-    pageCard.appendChild(pageMeta);
-    pageCard.appendChild(canvas);
-    stage.appendChild(pageCard);
-    stage.style.minHeight = '';
+        pageCard.appendChild(pageMeta);
+        pageCard.appendChild(canvasHost);
+        stage.appendChild(pageCard);
+        pageStates.set(pageNumber, { rendered: false, rendering: false });
+      }
+
+      updateShellHeights();
+      updateControls();
+    } finally {
+      stage.style.minHeight = '';
+    }
+  };
+
+  const renderPage = async (pageNumber) => {
+    if (!pdfDocument) {
+      return;
+    }
+
+    const pageCard = stage.querySelector(`[data-page-number="${pageNumber}"]`);
+    const canvasHost = pageCard?.querySelector('[data-ebook-canvas-host]');
+    const pageState = pageStates.get(pageNumber);
+
+    if (!pageCard || !canvasHost || !pageState || pageState.rendered || pageState.rendering) {
+      return;
+    }
+
+    pageState.rendering = true;
+
+    try {
+      const page = await pdfDocument.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: getEffectiveScale(page) });
+
+      const canvas = document.createElement('canvas');
+      canvas.className = 'ebook-reader-canvas';
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+
+      const context = canvas.getContext('2d', { alpha: false });
+      canvasHost.innerHTML = '';
+      canvasHost.appendChild(canvas);
+
+      await page.render({
+        canvasContext: context,
+        viewport,
+      }).promise;
+
+      pageState.rendered = true;
+      pageCard.setAttribute('data-ebook-rendered-page', 'true');
+    } finally {
+      pageState.rendering = false;
+      updateControls();
+    }
+  };
+
+  const getVisiblePageRange = () => {
+    if (isMobileLayout()) {
+      return {
+        start: mobileBatchStart,
+        end: getMobileBatchEnd(),
+      };
+    }
+
+    const pages = getPageShells();
+    if (pages.length === 0) {
+      return { start: 1, end: 1 };
+    }
+
+    const renderTop = -window.innerHeight * VIEWPORT_RENDER_MARGIN;
+    const renderBottom = window.innerHeight * (1 + VIEWPORT_RENDER_MARGIN);
+    let start = null;
+    let end = null;
+
+    pages.forEach((pageCard, index) => {
+      const rect = pageCard.getBoundingClientRect();
+      const inRange = rect.bottom >= renderTop && rect.top <= renderBottom;
+      if (!inRange) {
+        return;
+      }
+
+      if (start === null) {
+        start = index + 1;
+      }
+      end = index + 1;
+    });
+
+    if (start === null || end === null) {
+      return {
+        start: Math.max(1, currentPage - PAGE_BUFFER),
+        end: Math.min(pdfDocument?.numPages || currentPage, currentPage + PAGE_BUFFER),
+      };
+    }
+
+    return {
+      start: Math.max(1, start - PAGE_BUFFER),
+      end: Math.min(pdfDocument?.numPages || end, end + PAGE_BUFFER),
+    };
+  };
+
+  const syncVisiblePages = async () => {
+    if (!pdfDocument || isRendering) {
+      return;
+    }
+
+    isRendering = true;
     updateControls();
+
+    try {
+      const { start, end } = getVisiblePageRange();
+
+      for (let pageNumber = start; pageNumber <= end; pageNumber += 1) {
+        await renderPage(pageNumber);
+      }
+    } finally {
+      isRendering = false;
+      updateControls();
+    }
+  };
+
+  const rebuildReader = async ({ scrollToTop = false } = {}) => {
+    pageStates.clear();
+    buildPageShells();
+    await syncVisiblePages();
+
+    if (isMobileLayout()) {
+      if (scrollToTop) {
+        stage.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+      return;
+    }
+
+    if (scrollToTop) {
+      stage.scrollIntoView({ behavior: 'auto', block: 'start' });
+      return;
+    }
+
+    scrollToPage(currentPage);
+  };
+
+  const goToPreviousPage = async () => {
+    if (!pdfDocument || isRendering) {
+      return;
+    }
+
+    if (isMobileLayout()) {
+      if (mobileBatchStart <= 1) {
+        return;
+      }
+
+      mobileBatchStart = Math.max(1, mobileBatchStart - MOBILE_BATCH_SIZE);
+      currentPage = mobileBatchStart;
+      pageLabel.textContent = 'Loading pages...';
+      await animateMobileBatchChange();
+      await rebuildReader();
+      await finishMobileBatchChange();
+      return;
+    }
+
+    if (currentPage <= 1) {
+      return;
+    }
+
+    scrollToPage(currentPage - 1);
+  };
+
+  const goToNextPage = async () => {
+    if (!pdfDocument || isRendering) {
+      return;
+    }
+
+    if (isMobileLayout()) {
+      const batchEnd = getMobileBatchEnd();
+      if (batchEnd >= pdfDocument.numPages) {
+        return;
+      }
+
+      mobileBatchStart = batchEnd + 1;
+      currentPage = mobileBatchStart;
+      pageLabel.textContent = 'Loading pages...';
+      await animateMobileBatchChange();
+      await rebuildReader();
+      await finishMobileBatchChange();
+      return;
+    }
+
+    if (currentPage >= pdfDocument.numPages) {
+      return;
+    }
+
+    scrollToPage(currentPage + 1);
   };
 
   prevButton.addEventListener('click', async () => {
-    if (!pdfDocument || currentPage <= 1) {
-      return;
-    }
-
-    currentPage -= 1;
-    pageLabel.textContent = 'Loading page...';
-    await renderCurrentPage();
+    await goToPreviousPage();
   });
 
   nextButton.addEventListener('click', async () => {
-    if (!pdfDocument || currentPage >= pdfDocument.numPages) {
+    await goToNextPage();
+  });
+
+  document.addEventListener('keydown', async (event) => {
+    const target = event.target;
+    const tagName = target instanceof HTMLElement ? target.tagName : '';
+    const isTypingTarget =
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' ||
+        tagName === 'BUTTON');
+
+    if (isTypingTarget || !pdfDocument || isMobileLayout()) {
       return;
     }
 
-    currentPage += 1;
-    pageLabel.textContent = 'Loading page...';
-    await renderCurrentPage();
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      await goToPreviousPage();
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      await goToNextPage();
+    }
   });
 
   zoomOutButton.addEventListener('click', async () => {
-    scale = Math.max(MIN_SCALE, +(scale - SCALE_STEP).toFixed(2));
-    pageLabel.textContent = 'Refreshing page...';
-    await renderCurrentPage();
+    zoomLevel = Math.max(MIN_ZOOM, +(zoomLevel - ZOOM_STEP).toFixed(2));
+    pageLabel.textContent = isMobileLayout() ? 'Refreshing pages...' : 'Refreshing page...';
+    await rebuildReader();
   });
 
   zoomInButton.addEventListener('click', async () => {
-    scale = Math.min(MAX_SCALE, +(scale + SCALE_STEP).toFixed(2));
-    pageLabel.textContent = 'Refreshing page...';
-    await renderCurrentPage();
+    zoomLevel = Math.min(MAX_ZOOM, +(zoomLevel + ZOOM_STEP).toFixed(2));
+    pageLabel.textContent = isMobileLayout() ? 'Refreshing pages...' : 'Refreshing page...';
+    await rebuildReader();
   });
 
+  window.addEventListener('resize', () => {
+    if (!pdfDocument || isRendering) {
+      return;
+    }
+
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      const nextLayoutMode = isMobileLayout() ? 'mobile' : 'desktop';
+      const widthChanged = window.innerWidth !== lastWindowWidth;
+      const layoutChanged = nextLayoutMode !== lastLayoutMode;
+
+      if (nextLayoutMode === 'mobile' && !widthChanged && !layoutChanged) {
+        return;
+      }
+
+      lastWindowWidth = window.innerWidth;
+      lastLayoutMode = nextLayoutMode;
+
+      if (isMobileLayout()) {
+        const maxBatchStart = Math.max(1, pdfDocument.numPages - MOBILE_BATCH_SIZE + 1);
+        mobileBatchStart = Math.min(mobileBatchStart, maxBatchStart);
+        currentPage = Math.max(mobileBatchStart, Math.min(currentPage, getMobileBatchEnd()));
+      }
+
+      rebuildReader()
+        .then(() => {
+          if (!isMobileLayout()) {
+            updateCurrentPageFromScroll();
+          }
+        })
+        .catch(() => null);
+    }, 120);
+  });
+
+  window.addEventListener('scroll', () => {
+    if (!pdfDocument || isRendering || isMobileLayout()) {
+      return;
+    }
+
+    if (scrollFrame) {
+      window.cancelAnimationFrame(scrollFrame);
+    }
+
+    scrollFrame = window.requestAnimationFrame(() => {
+      updateCurrentPageFromScroll();
+      syncVisiblePages().catch(() => null);
+      scrollFrame = 0;
+    });
+  }, { passive: true });
+
   try {
-    const task = pdfjsLib.getDocument({
+    pdfDocument = await pdfjsLib.getDocument({
       url: pdfUrl,
       withCredentials: true,
-    });
-    pdfDocument = await task.promise;
+    }).promise;
     loading.remove();
+
+    for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+      const page = await pdfDocument.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 1 });
+      pageMetrics.set(pageNumber, {
+        width: viewport.width,
+        height: viewport.height,
+      });
+    }
+
+    mobileBatchStart = 1;
     updateControls();
-    await renderCurrentPage();
+    buildPageShells();
+    await syncVisiblePages();
   } catch (error) {
     console.error('Unable to load eBook PDF.', error);
     loading.textContent = 'Unable to load this eBook right now.';

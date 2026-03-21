@@ -70,11 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Please wait ' . $resendWaitSeconds . ' seconds before requesting a new verification code.';
                 } else {
                     $issued = issue_login_otp($conn, $pendingUserId);
-                    $sent = send_login_otp_email($pendingEmail, $pendingFullName, $pendingRole, $issued['code']);
+                    $queued = enqueue_login_otp_email_job($conn, $pendingEmail, $pendingFullName, $pendingRole, $issued['code']);
 
-                    if ($sent) {
+                    if ($queued) {
                         $_SESSION['pending_login_otp']['otp_attempts'] = 0;
-                        loginpage_set_flash('info', 'New code sent to ' . $pendingEmail . '.');
+                        loginpage_set_flash('info', 'New code is being sent to ' . $pendingEmail . '.');
                         header('Location: /librarymanage/loginpage.php');
                         exit;
                     } else {
@@ -150,9 +150,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $error = 'This account does not have a valid email address for verification. Please contact the librarian.';
                         } else {
                             $issued = issue_login_otp($conn, (int) $id);
-                            $sent = send_login_otp_email($dbEmail, $dbFullName, $dbRole, $issued['code']);
+                            $queued = enqueue_login_otp_email_job($conn, $dbEmail, $dbFullName, $dbRole, $issued['code']);
 
-                            if ($sent) {
+                            if ($queued) {
                                 $_SESSION['pending_login_otp'] = [
                                     'user_id' => (int) $id,
                                     'fullname' => $dbFullName,
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'role' => $dbRole,
                                     'otp_attempts' => 0,
                                 ];
-                                loginpage_set_flash('info', 'Code sent to ' . $dbEmail . '.');
+                                loginpage_set_flash('info', 'Verification code is being sent to ' . $dbEmail . '.');
                                 $stmt->close();
                                 header('Location: /librarymanage/loginpage.php');
                                 exit;
@@ -205,12 +205,11 @@ if ($isOtpStep) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login | Library</title>
-<script src="/librarymanage/assets/theme.js"></script>
 <link rel="stylesheet" href="assets/app.css">
 </head>
-<body>
+<body class="auth-page">
 <div class="auth-shell<?php echo $isOtpStep ? ' auth-shell-otp' : ''; ?>">
-  <div class="card auth-card-shell<?php echo $isOtpStep ? ' auth-card-shell-otp' : ''; ?>">
+  <div class="auth-card-shell<?php echo $isOtpStep ? ' auth-card-shell-otp' : ''; ?>">
     <div class="split auth-split">
       <div class="auth-panel auth-panel-main<?php echo $isOtpStep ? ' auth-panel-main-otp' : ''; ?>">
         <p class="muted auth-kicker"><?php echo $isOtpStep ? 'Account Verification' : 'Secure Access'; ?></p>
@@ -461,6 +460,7 @@ if ($isOtpStep) {
   }, 1000);
 })();
 </script>
+<script src="/librarymanage/assets/login_email_queue_worker.js"></script>
 <?php endif; ?>
 </body>
 </html>

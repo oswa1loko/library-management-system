@@ -104,11 +104,22 @@ $recentActivity = $conn->query("
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Dashboard</title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
+<div class="site-desktop-header member-mobile-hide">
+  <a class="site-footer-brand" href="/librarymanage/index.php">
+    <img class="site-footer-brand-mark" src="/librarymanage/assets/images/RMLOGO.jfif" alt="Regis Marie College logo">
+    <span class="site-footer-copy">
+      <strong>Regis Marie College</strong>
+      <span>Library Management System</span>
+    </span>
+  </a>
+  <div class="site-desktop-header-theme"></div>
+</div>
 <div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-dashboard" data-sidebar-default="expanded" data-sidebar-lock="expanded">
   <?php
   $sidebarPage = 'dashboard';
@@ -187,6 +198,7 @@ $recentActivity = $conn->query("
       </div>
     </div>
     </div>
+  </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>

@@ -3,20 +3,26 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
 ?>
 <aside class="panel member-sidebar">
   <div class="member-sidebar-head">
-    <button type="button" class="member-sidebar-toggle js-sidebar-toggle" aria-expanded="true" aria-label="Collapse sidebar">
-      <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+    <div class="member-sidebar-toggle" aria-hidden="true">
       <span class="member-sidebar-label">Main Menu</span>
-    </button>
+    </div>
   </div>
-  <p class="member-sidebar-section member-sidebar-label">Main</p>
   <nav class="member-sidebar-nav">
     <a class="member-sidebar-link <?php echo $sidebarPage === 'dashboard' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/dashboard.php" data-tooltip="Dashboard">
       <span class="dashboard-icon icon-view" aria-hidden="true"></span>
       <span class="member-sidebar-label">Dashboard</span>
     </a>
-    <a class="member-sidebar-link <?php echo $sidebarPage === 'borrows' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_borrows.php" data-tooltip="Borrow Desk">
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'borrow_requests' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_borrow_requests.php" data-tooltip="Pending Borrow Requests">
       <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
-      <span class="member-sidebar-label">Borrow Desk</span>
+      <span class="member-sidebar-label">Borrow Requests</span>
+    </a>
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'return_requests' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_return_requests.php" data-tooltip="Return Requests">
+      <span class="dashboard-icon icon-recent" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Return Requests</span>
+    </a>
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'borrow_records' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_borrow_records.php" data-tooltip="Borrow Records">
+      <span class="dashboard-icon icon-books" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Borrow Records</span>
     </a>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'books' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_books.php" data-tooltip="Books">
       <span class="dashboard-icon icon-books" aria-hidden="true"></span>

@@ -23,6 +23,13 @@ $items = [];
 while ($row = $result->fetch_assoc()) {
     $row['id'] = (int) $row['id'];
     $row['book_id'] = (int) $row['book_id'];
+
+    if ((string) ($row['status'] ?? '') === 'pending') {
+        $row['borrow_date'] = null;
+        $row['due_date'] = null;
+        $row['return_date'] = null;
+    }
+
     $items[] = $row;
 }
 $stmt->close();

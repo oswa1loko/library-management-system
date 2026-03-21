@@ -11,26 +11,19 @@ function initBorrowSelection() {
 
   const options = Array.from(document.querySelectorAll('[data-book-option]'));
   const emptyState = document.querySelector('[data-book-empty]');
-  const selectedCount = document.querySelector('[data-book-selected-count]');
-  const selectionNote = document.querySelector('[data-book-selection-note]');
-  const clearButton = document.querySelector('[data-book-clear]');
-  const submitButton = document.querySelector('[data-book-submit]');
   const categorySelect = document.querySelector('[data-book-category]');
-  const limitSelect = document.querySelector('[data-book-limit]');
   const groups = Array.from(document.querySelectorAll('[data-book-group]'));
-  const getCheckbox = (option) => option.querySelector('input[type="checkbox"]');
-  const getQuantitySelect = (option) => option.querySelector('[data-book-quantity]');
-
-  const getSelectedCopies = () => options.reduce((total, option) => {
-    const checkbox = getCheckbox(option);
-    const quantitySelect = getQuantitySelect(option);
-    if (!checkbox || !checkbox.checked) {
-      return total;
-    }
-
-    const quantity = quantitySelect ? Math.max(1, parseInt(quantitySelect.value || '1', 10)) : 1;
-    return total + quantity;
-  }, 0);
+  const modal = document.querySelector('[data-book-modal]');
+  const modalTriggers = Array.from(document.querySelectorAll('[data-book-trigger]'));
+  const modalCloseButtons = Array.from(document.querySelectorAll('[data-book-modal-close]'));
+  const modalIdInput = document.querySelector('[data-book-modal-id]');
+  const modalTitle = document.querySelector('[data-book-modal-title]');
+  const modalBookTitle = document.querySelector('[data-book-modal-book-title]');
+  const modalBookMeta = document.querySelector('[data-book-modal-book-meta]');
+  const modalAvailable = document.querySelector('[data-book-modal-available]');
+  const modalCover = document.querySelector('[data-book-modal-cover]');
+  const modalCoverPlaceholder = document.querySelector('[data-book-modal-cover-placeholder]');
+  const modalQty = document.querySelector('[data-book-modal-qty]');
 
   const applyFilter = () => {
     const query = searchInput.value.trim().toLowerCase();
@@ -56,118 +49,71 @@ function initBorrowSelection() {
 
     groups.forEach((group) => {
       const groupOptions = Array.from(group.querySelectorAll('[data-book-option]'));
-      const hasVisibleOption = groupOptions.some((option) => !option.hidden);
-      group.hidden = !hasVisibleOption;
+      group.hidden = !groupOptions.some((option) => !option.hidden);
     });
   };
 
-  const updateSelectionCount = () => {
-    const selectedLimit = limitSelect ? Math.max(1, parseInt(limitSelect.value || '1', 10)) : options.length;
-    let totalCopies = 0;
-
-    options.forEach((option) => {
-      const checkbox = getCheckbox(option);
-      const quantitySelect = getQuantitySelect(option);
-      if (!checkbox || !quantitySelect || !checkbox.checked) {
-        return;
-      }
-
-      const availableCopies = Math.max(1, parseInt(quantitySelect.getAttribute('data-book-available') || '1', 10));
-      const remainingAllowance = Math.max(1, selectedLimit - totalCopies);
-      const maxAllowed = Math.max(1, Math.min(availableCopies, selectedLimit, remainingAllowance));
-      const requestedQuantity = Math.max(1, parseInt(quantitySelect.value || '1', 10));
-
-      if (requestedQuantity > maxAllowed) {
-        quantitySelect.value = String(maxAllowed);
-      }
-
-      totalCopies += Math.max(1, parseInt(quantitySelect.value || '1', 10));
-    });
-
-    if (selectedCount) {
-      const limitLabel = selectedLimit === 1 ? '1 book copy max' : `${selectedLimit} book copies max`;
-      selectedCount.textContent = `${totalCopies} selected - ${limitLabel}`;
+  const closeModal = () => {
+    if (!modal) {
+      return;
     }
 
-    if (clearButton) {
-      clearButton.disabled = totalCopies === 0;
-    }
-
-    if (submitButton) {
-      submitButton.disabled = totalCopies === 0;
-    }
-
-    if (selectionNote) {
-      if (totalCopies === 0) {
-        selectionNote.textContent = 'Select one or more titles and set the quantity per title.';
-      } else if (totalCopies >= selectedLimit) {
-        selectionNote.textContent = 'Selection limit reached. Uncheck a title or lower a quantity to pick another book.';
-      } else {
-        const remainingCopies = selectedLimit - totalCopies;
-        const remainingLabel = remainingCopies === 1 ? '1 more copy' : `${remainingCopies} more copies`;
-        selectionNote.textContent = `You can still add ${remainingLabel} in this submission.`;
-      }
-    }
-
-    options.forEach((option) => {
-      const checkbox = getCheckbox(option);
-      const quantitySelect = getQuantitySelect(option);
-      if (!checkbox) {
-        return;
-      }
-
-      option.classList.toggle('is-selected', Boolean(checkbox.checked));
-
-      if (option.classList.contains('is-unavailable')) {
-        checkbox.disabled = true;
-        if (quantitySelect) {
-          quantitySelect.disabled = true;
-        }
-        option.classList.remove('is-limit-locked');
-        return;
-      }
-
-      if (quantitySelect) {
-        const availableCopies = Math.max(1, parseInt(quantitySelect.getAttribute('data-book-available') || '1', 10));
-        const otherSelectedCopies = Math.max(0, getSelectedCopies() - (checkbox.checked ? Math.max(1, parseInt(quantitySelect.value || '1', 10)) : 0));
-        const remainingAllowance = Math.max(1, selectedLimit - otherSelectedCopies);
-        const maxAllowed = Math.max(1, Math.min(availableCopies, selectedLimit, remainingAllowance));
-
-        if (parseInt(quantitySelect.value || '1', 10) > maxAllowed) {
-          quantitySelect.value = String(maxAllowed);
-        }
-
-        quantitySelect.disabled = !checkbox.checked;
-        quantitySelect.querySelectorAll('option').forEach((optionNode) => {
-          const optionValue = parseInt(optionNode.value || '1', 10);
-          optionNode.hidden = optionValue > maxAllowed;
-          optionNode.disabled = optionValue > maxAllowed;
-        });
-      }
-
-      if (!checkbox.checked && getSelectedCopies() >= selectedLimit) {
-        checkbox.disabled = true;
-        option.classList.add('is-limit-locked');
-      } else {
-        checkbox.disabled = false;
-        option.classList.remove('is-limit-locked');
-      }
-    });
+    modal.hidden = true;
+    document.body.classList.remove('modal-open');
   };
 
-  const clearSelected = () => {
-    options.forEach((option) => {
-      const checkbox = getCheckbox(option);
-      const quantitySelect = getQuantitySelect(option);
-      if (checkbox && !option.classList.contains('is-unavailable')) {
-        checkbox.checked = false;
+  const populateQtyOptions = (maxQty) => {
+    if (!modalQty) {
+      return;
+    }
+
+    modalQty.innerHTML = '';
+    for (let qty = 1; qty <= maxQty; qty += 1) {
+      const option = document.createElement('option');
+      option.value = String(qty);
+      option.textContent = `${qty} cop${qty === 1 ? 'y' : 'ies'}`;
+      modalQty.appendChild(option);
+    }
+  };
+
+  const openModal = (trigger) => {
+    if (!modal || !modalIdInput || !modalTitle || !modalBookTitle || !modalBookMeta || !modalQty) {
+      return;
+    }
+
+    const bookId = trigger.getAttribute('data-book-id') || '';
+    const title = trigger.getAttribute('data-book-title') || 'Book';
+    const author = trigger.getAttribute('data-book-author') || '';
+    const category = trigger.getAttribute('data-book-category-label') || '';
+    const coverPath = trigger.getAttribute('data-book-cover') || '';
+    const availableCopies = Math.max(1, parseInt(trigger.getAttribute('data-book-available') || '1', 10));
+    const maxQty = Math.max(1, parseInt(trigger.getAttribute('data-book-max-qty') || '1', 10));
+
+    modalIdInput.value = bookId;
+    modalTitle.textContent = `Request ${title}`;
+    modalBookTitle.textContent = title;
+    modalBookMeta.textContent = [author, category].filter(Boolean).join(' - ');
+    if (modalAvailable) {
+      modalAvailable.textContent = `${availableCopies} available cop${availableCopies === 1 ? 'y' : 'ies'}`;
+    }
+    populateQtyOptions(maxQty);
+
+    if (modalCover && modalCoverPlaceholder) {
+      if (coverPath !== '') {
+        modalCover.src = `/librarymanage/${coverPath}`;
+        modalCover.alt = title;
+        modalCover.hidden = false;
+        modalCoverPlaceholder.hidden = true;
+      } else {
+        modalCover.src = '';
+        modalCover.alt = '';
+        modalCover.hidden = true;
+        modalCoverPlaceholder.hidden = false;
       }
-      if (quantitySelect) {
-        quantitySelect.value = '1';
-        quantitySelect.disabled = true;
-      }
-    });
-    updateSelectionCount();
+    }
+
+    modal.hidden = false;
+    document.body.classList.add('modal-open');
   };
 
   searchInput.addEventListener('input', applyFilter);
@@ -176,27 +122,21 @@ function initBorrowSelection() {
     categorySelect.addEventListener('change', applyFilter);
   }
 
-  if (limitSelect) {
-    limitSelect.addEventListener('change', updateSelectionCount);
-  }
+  modalTriggers.forEach((trigger) => {
+    trigger.addEventListener('click', () => openModal(trigger));
+  });
 
-  if (clearButton) {
-    clearButton.addEventListener('click', clearSelected);
-  }
+  modalCloseButtons.forEach((node) => {
+    node.addEventListener('click', closeModal);
+  });
 
-  options.forEach((option) => {
-    const checkbox = getCheckbox(option);
-    const quantitySelect = getQuantitySelect(option);
-    if (checkbox) {
-      checkbox.addEventListener('change', updateSelectionCount);
-    }
-    if (quantitySelect) {
-      quantitySelect.addEventListener('change', updateSelectionCount);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeModal();
     }
   });
 
   applyFilter();
-  updateSelectionCount();
 }
 
 function initReturnBatchSelection() {

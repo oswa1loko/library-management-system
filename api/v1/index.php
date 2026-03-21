@@ -15,6 +15,7 @@ api_json([
         'GET /librarymanage/api/v1/books/index.php',
         'GET /librarymanage/api/v1/borrows/my.php',
         'POST /librarymanage/api/v1/borrows/create.php (Bearer token + write scope required)',
+        'POST /librarymanage/api/v1/borrows/cancel_request.php (Bearer token + write scope required)',
         'POST /librarymanage/api/v1/borrows/return_request.php (Bearer token + write scope required)',
         'GET /librarymanage/api/v1/penalties/my.php',
         'GET /librarymanage/api/v1/payments/my.php',

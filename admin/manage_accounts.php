@@ -63,12 +63,13 @@ function manage_accounts_filter_query(string $search, string $roleFilter): strin
 $message = '';
 $messageType = 'success';
 $rolesAllowed = system_roles();
+$courseOptions = student_course_options();
 $search = trim($_GET['search'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
 $printMode = isset($_GET['print']) && $_GET['print'] === '1';
 $printUserId = (int) ($_GET['user_id'] ?? 0);
 $printUserIds = array_values(array_filter(array_map('intval', explode(',', (string) ($_GET['user_ids'] ?? '')))));
-$createData = ['fullname' => '', 'email' => '', 'username' => '', 'role' => 'student'];
+$createData = ['fullname' => '', 'email' => '', 'username' => '', 'role' => 'student', 'course' => ''];
 
 if (isset($_GET['updated'])) {
     $message = 'User updated successfully.';
@@ -114,7 +115,8 @@ if (isset($_POST['create'])) {
     $username = trim($_POST['username'] ?? '');
     $role = trim($_POST['role'] ?? '');
     $password = trim($_POST['password'] ?? '');
-    $createData = ['fullname' => $fullname, 'email' => $email, 'username' => $username, 'role' => $role];
+    $course = trim($_POST['course'] ?? '');
+    $createData = ['fullname' => $fullname, 'email' => $email, 'username' => $username, 'role' => $role, 'course' => $course];
 
     if ($fullname === '' || $email === '' || $username === '' || $role === '' || $password === '') {
         $message = 'Complete all required fields.';
@@ -128,6 +130,9 @@ if (isset($_POST['create'])) {
     } elseif (!in_array($role, $rolesAllowed, true)) {
         $message = 'Invalid role selected.';
         $messageType = 'error';
+    } elseif ($role === 'student' && ($course === '' || !array_key_exists($course, $courseOptions))) {
+        $message = 'Select a valid course for the student account.';
+        $messageType = 'error';
     } else {
         $check = $conn->prepare("SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1");
         $check->bind_param('ss', $email, $username);
@@ -139,17 +144,19 @@ if (isset($_POST['create'])) {
             $messageType = 'error';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $insert = $conn->prepare("INSERT INTO users (fullname, email, username, password, role) VALUES (?, ?, ?, ?, ?)");
-            $insert->bind_param('sssss', $fullname, $email, $username, $hash, $role);
+            $courseValue = $role === 'student' ? $course : null;
+            $insert = $conn->prepare("INSERT INTO users (fullname, email, username, password, role, course) VALUES (?, ?, ?, ?, ?, ?)");
+            $insert->bind_param('ssssss', $fullname, $email, $username, $hash, $role, $courseValue);
 
             if ($insert->execute()) {
                 $newUserId = (int) $insert->insert_id;
                 $message = 'User created successfully.';
-                $createData = ['fullname' => '', 'email' => '', 'username' => '', 'role' => 'student'];
+                $createData = ['fullname' => '', 'email' => '', 'username' => '', 'role' => 'student', 'course' => ''];
                 audit_log($conn, 'admin.user.create', [
                     'user_id' => $newUserId,
                     'role' => $role,
                     'username' => $username,
+                    'course' => $courseValue,
                 ]);
             } else {
                 $message = 'Unable to create user.';
@@ -180,7 +187,7 @@ $stats = $conn->query("
     FROM users
 ")->fetch_assoc();
 
-$sql = "SELECT id, fullname, email, username, role, created_at FROM users WHERE 1=1";
+$sql = "SELECT id, fullname, email, username, role, course, created_at FROM users WHERE 1=1";
 $types = '';
 $params = [];
 apply_manage_accounts_filters($sql, $types, $params, $search, $roleFilter, $rolesAllowed);
@@ -190,7 +197,7 @@ $users = run_manage_accounts_query($conn, $sql, $types, $params);
 $printUsers = null;
 
 if ($printMode) {
-    $printSql = "SELECT id, fullname, email, username, role, created_at FROM users WHERE 1=1";
+    $printSql = "SELECT id, fullname, email, username, role, course, created_at FROM users WHERE 1=1";
     $printTypes = '';
     $printParams = [];
     apply_manage_accounts_filters($printSql, $printTypes, $printParams, $search, $roleFilter, $rolesAllowed);
@@ -224,8 +231,9 @@ $filterQueryString = manage_accounts_filter_query($search, $roleFilter);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Manage Accounts</title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>

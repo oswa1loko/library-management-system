@@ -27,6 +27,18 @@
           <span class="ui-select-caret" aria-hidden="true"></span>
         </div>
       </div>
+      <div>
+        <label>Course</label>
+        <div class="ui-select-shell">
+          <select name="course" class="ui-select">
+            <option value="">Select course</option>
+            <?php foreach ($courseOptions as $courseValue => $courseLabel): ?>
+              <option value="<?php echo h($courseValue); ?>" <?php echo ($createData['course'] ?? '') === $courseValue ? 'selected' : ''; ?>><?php echo h($courseLabel); ?></option>
+            <?php endforeach; ?>
+          </select>
+          <span class="ui-select-caret" aria-hidden="true"></span>
+        </div>
+      </div>
       <div><label>Password</label><input type="password" name="password" required></div>
       <div class="align-end"><button type="submit" name="create" value="1">Create User</button></div>
     </form>

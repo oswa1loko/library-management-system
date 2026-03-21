@@ -106,13 +106,15 @@ audit_log($conn, 'api.payment.create', [
     'amount' => $amount,
 ], $user['id'], $user['role']);
 
-create_notification(
-    $conn,
-    'admin',
-    'New Payment Submission',
-    'Payment #' . $paymentId . ' was submitted by ' . $user['username'] . '.',
-    'warning'
-);
+if (($user['role'] ?? '') === 'student') {
+    create_notification(
+        $conn,
+        'admin',
+        'New Payment Submission',
+        'Payment #' . $paymentId . ' was submitted by ' . $user['username'] . '.',
+        'warning'
+    );
+}
 
 api_json([
     'ok' => true,

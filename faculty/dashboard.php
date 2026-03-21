@@ -6,57 +6,9 @@ require_once __DIR__ . '/../includes/helpers.php';
 require_role('faculty');
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
-
-$borrowStats = $conn->prepare("
-    SELECT
-      COALESCE(SUM(CASE WHEN status IN ('borrowed', 'return_requested') THEN 1 ELSE 0 END), 0) AS active_borrows,
-      COALESCE(SUM(CASE WHEN status IN ('borrowed', 'return_requested') AND due_date < CURDATE() THEN 1 ELSE 0 END), 0) AS overdue_borrows
-    FROM borrows
-    WHERE user_id = ?
-");
-$borrowStats->bind_param('i', $userId);
-$borrowStats->execute();
-$borrowSummary = $borrowStats->get_result()->fetch_assoc();
-$borrowStats->close();
-
-$dueSoonStmt = $conn->prepare("
-    SELECT b.title, br.due_date, br.status
-    FROM borrows br
-    JOIN books b ON b.id = br.book_id
-    WHERE br.user_id = ?
-      AND br.status IN ('borrowed', 'return_requested')
-      AND br.due_date >= CURDATE()
-      AND br.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
-    ORDER BY br.due_date ASC
-    LIMIT 5
-");
-$dueSoonStmt->bind_param('i', $userId);
-$dueSoonStmt->execute();
-$dueSoonBooks = $dueSoonStmt->get_result();
-$dueSoonStmt->close();
-
-$paymentStats = $conn->prepare("
-    SELECT
-      COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_payments
-    FROM payments
-    WHERE user_id = ?
-");
-$paymentStats->bind_param('i', $userId);
-$paymentStats->execute();
-$paymentSummary = $paymentStats->get_result()->fetch_assoc();
-$paymentStats->close();
-
-$penaltyStats = $conn->prepare("
-    SELECT
-      COALESCE(SUM(CASE WHEN status = 'unpaid' THEN 1 ELSE 0 END), 0) AS unpaid_penalties,
-      COALESCE(SUM(CASE WHEN status = 'unpaid' THEN amount ELSE 0 END), 0) AS unpaid_total
-    FROM penalties
-    WHERE user_id = ?
-");
-$penaltyStats->bind_param('i', $userId);
-$penaltyStats->execute();
-$penaltySummary = $penaltyStats->get_result()->fetch_assoc();
-$penaltyStats->close();
+$dashboardSummary = get_member_dashboard_summary($conn, $userId);
+$dueSoonBooks = get_member_due_soon_books($conn, $userId, 5);
+$catalogHighlights = get_member_catalog_highlights($conn, 4);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,50 +17,70 @@ $penaltyStats->close();
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Faculty Dashboard</title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
+<div class="site-desktop-header member-mobile-hide">
+  <a class="site-footer-brand" href="/librarymanage/index.php">
+    <img class="site-footer-brand-mark" src="/librarymanage/assets/images/RMLOGO.jfif" alt="Regis Marie College logo">
+    <span class="site-footer-copy">
+      <strong>Regis Marie College</strong>
+      <span>Library Management System</span>
+    </span>
+  </a>
+  <div class="site-desktop-header-theme"></div>
+</div>
 <div class="site-shell member-shell js-member-sidebar" data-sidebar-key="faculty-dashboard">
   <aside class="panel member-sidebar">
     <div class="member-sidebar-head">
-      <button type="button" class="member-sidebar-toggle js-sidebar-toggle" aria-expanded="true" aria-label="Collapse sidebar">
-        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+      <div class="member-sidebar-toggle" aria-hidden="true">
         <span class="member-sidebar-label">Main Menu</span>
-      </button>
+      </div>
     </div>
-    <p class="member-sidebar-section member-sidebar-label">Main</p>
     <nav class="member-sidebar-nav">
       <a class="member-sidebar-link is-active" href="dashboard.php" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
-      <a class="member-sidebar-link" href="borrow_return.php" data-tooltip="Borrow and Return">
+      <a class="member-sidebar-link" href="books.php" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Borrow and Return</span>
+        <span class="member-sidebar-label">Books</span>
+      </a>
+      <a class="member-sidebar-link" href="catalog.php" data-tooltip="Catalog">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Catalog</span>
       </a>
       <a class="member-sidebar-link" href="ebooks.php" data-tooltip="eBooks">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
+      <a class="member-sidebar-link" href="borrow_return.php" data-tooltip="Returns">
+        <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Returns</span>
+      </a>
+      <a class="member-sidebar-link" href="tracking.php" data-tooltip="Records Tracking">
+        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Records Tracking</span>
+      </a>
       <a class="member-sidebar-link" href="payment_upload.php" data-tooltip="Payments">
         <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
         <span class="member-sidebar-label">Payments</span>
       </a>
-      <a class="member-sidebar-link" href="books.php" data-tooltip="Catalog">
-        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Catalog</span>
-      </a>
     </nav>
     <p class="member-sidebar-section member-sidebar-label">Account</p>
     <div class="topbar-nav member-sidebar-utilities">
+      <a class="member-sidebar-link" href="profile.php" data-tooltip="Profile">
+        <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Profile</span>
+      </a>
       <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
-        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
         <span class="member-sidebar-label">Logout</span>
       </a>
     </div>
@@ -126,9 +98,9 @@ $penaltyStats->close();
 
     <?php
     $noticeItems = [];
-    if ($dueSoonBooks->num_rows > 0) {
+    if ($dueSoonBooks !== []) {
         $dueAlerts = [];
-        while ($dueBook = $dueSoonBooks->fetch_assoc()) {
+        foreach ($dueSoonBooks as $dueBook) {
             $line = (string) $dueBook['title'] . ' is due on ' . format_display_date((string) $dueBook['due_date']);
             if (($dueBook['status'] ?? '') === 'return_requested') {
                 $line .= ' and is waiting for librarian confirmation.';
@@ -145,19 +117,19 @@ $penaltyStats->close();
       <h3 class="heading-panel">Faculty library snapshot</h3>
       <div class="stat-grid">
         <div class="stat-card">
-          <strong><?php echo (int) ($borrowSummary['active_borrows'] ?? 0); ?></strong>
+          <strong><?php echo (int) ($dashboardSummary['active_borrows'] ?? 0); ?></strong>
           <span class="muted">Books currently borrowed</span>
         </div>
         <div class="stat-card">
-          <strong><?php echo (int) ($borrowSummary['overdue_borrows'] ?? 0); ?></strong>
+          <strong><?php echo (int) ($dashboardSummary['overdue_borrows'] ?? 0); ?></strong>
           <span class="muted">Overdue returns</span>
         </div>
         <div class="stat-card">
-          <strong><?php echo (int) ($penaltySummary['unpaid_penalties'] ?? 0); ?></strong>
+          <strong><?php echo (int) ($dashboardSummary['unpaid_penalties'] ?? 0); ?></strong>
           <span class="muted">Unpaid penalties</span>
         </div>
         <div class="stat-card">
-          <strong><?php echo h(format_currency($penaltySummary['unpaid_total'] ?? 0)); ?></strong>
+          <strong><?php echo h(format_currency($dashboardSummary['unpaid_total'] ?? 0)); ?></strong>
           <span class="muted">Outstanding balance</span>
         </div>
       </div>
@@ -168,8 +140,8 @@ $penaltyStats->close();
         <p class="muted eyebrow-compact stack-copy">Attention</p>
         <h3 class="stack-copy-md">Priority checks</h3>
         <div class="stack">
-          <div class="empty-state">Active borrowed books: <strong><?php echo (int) ($borrowSummary['active_borrows'] ?? 0); ?></strong></div>
-          <div class="empty-state">Pending payment reviews: <strong><?php echo (int) ($paymentSummary['pending_payments'] ?? 0); ?></strong></div>
+          <div class="empty-state">Active borrowed books: <strong><?php echo (int) ($dashboardSummary['active_borrows'] ?? 0); ?></strong></div>
+          <div class="empty-state">Pending payment reviews: <strong><?php echo (int) ($dashboardSummary['pending_payments'] ?? 0); ?></strong></div>
           <div class="empty-state">Return overdue items early to avoid higher balances.</div>
         </div>
       </div>

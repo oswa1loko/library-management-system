@@ -1,153 +1,154 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  BookOpen,
-  ClipboardList,
-  Users,
-  MessageSquare,
-  LogIn,
-  MapPin,
-  Mail,
-  Phone,
-  Sun,
-  Moon,
-  Menu,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Gauge,
-  ShieldCheck,
-  ScanSearch,
   ArrowRight,
+  BookOpen,
+  BriefcaseBusiness,
+  Building2,
+  CalendarClock,
+  GraduationCap,
+  Library,
+  LogIn,
+  Mail,
+  MapPin,
+  Menu,
+  Moon,
+  Phone,
+  Quote,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  Users,
+  X,
 } from "lucide-react";
 
 const navLinks = [
   { label: "Home", href: "#top" },
-  { label: "Services", href: "#services" },
-  { label: "Access", href: "#access" },
+  { label: "About", href: "#about" },
+  { label: "Library", href: "#library" },
   { label: "Contact", href: "#contact" },
 ];
 
-const coreActions = [
+const schoolHighlights = [
   {
-    title: "Collection Access",
-    description: "Browse available titles quickly and find what you need in fewer steps.",
-    icon: BookOpen,
-    href: "/librarymanage/loginpage.php",
-    cta: "Open collection",
+    title: "Character-centered learning",
+    description: "A school environment shaped to help students grow in discipline, values, and academic confidence.",
+    icon: ShieldCheck,
   },
   {
-    title: "Circulation Records",
-    description: "Track borrowing history and monitor returns with clear status updates.",
-    icon: ClipboardList,
-    href: "/librarymanage/loginpage.php",
-    cta: "View records",
+    title: "Accessible quality education",
+    description: "Public-facing school information highlights a practical, student-focused approach to learning in Parañaque.",
+    icon: GraduationCap,
   },
   {
-    title: "Staff Management",
-    description: "Support librarian workflows with organized tools for daily operations.",
-    icon: Users,
-    href: "/librarymanage/loginpage.php",
-    cta: "Manage staff",
-  },
-  {
-    title: "Reader Support",
-    description: "Keep assistance simple with direct channels for concerns and guidance.",
-    icon: MessageSquare,
-    href: "/librarymanage/feedback.php",
-    cta: "Get support",
+    title: "Library-supported study flow",
+    description: "The portal connects catalog access, borrowing, and return tracking in one organized experience.",
+    icon: Library,
   },
 ];
-const quickAccessTiles = [
+
+const programCards = [
   {
-    title: "Open Login",
-    helper: "Sign in as admin, student, faculty, or librarian.",
-    icon: LogIn,
-    href: "/librarymanage/loginpage.php",
+    title: "Basic Education",
+    description: "Introduces students and visitors to a school-focused academic environment.",
+    icon: Building2,
   },
   {
-    title: "Complain",
-    helper: "Report account or library service concerns.",
-    icon: MessageSquare,
-    href: "/librarymanage/feedback.php",
+    title: "College Readiness",
+    description: "Supports a more guided and organized path toward academic readiness.",
+    icon: BriefcaseBusiness,
   },
   {
-    title: "Library Desk",
-    helper: "Contact the desk via email for support.",
-    icon: Mail,
-    href: "mailto:itsupport@regismarie-college.com",
+    title: "Student Services",
+    description: "The library portal supports daily campus needs through clearer records and easier access.",
+    icon: Users,
+  },
+];
+
+const portalFeatures = [
+  {
+    label: "Catalog access",
+    value: "Search titles and availability with fewer clicks.",
+    icon: BookOpen,
   },
   {
-    title: "Campus Library",
-    helper: "Open location details in maps.",
-    icon: MapPin,
-    href: "https://maps.google.com/?q=14%C2%B028%2736.0%22N+121%C2%B000%2702.3%22E",
+    label: "Borrow monitoring",
+    value: "Track requests, due dates, and returns in one place.",
+    icon: CalendarClock,
+  },
+  {
+    label: "Multi-role portal",
+    value: "Built for admin, faculty, students, and librarians.",
+    icon: Users,
   },
 ];
 
 const contacts = [
-  { label: "Phone", value: "8671-0199 | 0961-437-6209", icon: Phone },
-  { label: "Email", value: "itsupport@regismarie-college.com", icon: Mail },
-  { label: "Address", value: "Villanueva Village Basketball Court, Lire Ln, Parañaque, 1709 Metro Manila", icon: MapPin },
+  { label: "Phone", value: "8671-0199 | 0961-437-6209", href: "tel:+6386710199", icon: Phone },
+  { label: "Email", value: "itsupport@regismarie-college.com", href: "mailto:itsupport@regismarie-college.com", icon: Mail },
+  {
+    label: "Address",
+    value: "Villanueva Village Basketball Court, Lire Ln, Parañaque, 1709 Metro Manila",
+    icon: MapPin,
+  },
 ];
 
-const featureChips = [
-  { label: "Fast search", icon: ScanSearch },
-  { label: "Borrow tracking", icon: Gauge },
-  { label: "Role-based access", icon: ShieldCheck },
+const quickLinks = [
+  { label: "Open Library Portal", href: "/librarymanage/loginpage.php" },
+  { label: "Visit Official School Page", href: "https://www.regismariecollege.com/" },
+  { label: "Go to Contact Details", href: "#contact" },
+  { label: "Send Feedback", href: "/librarymanage/feedback.php" },
 ];
 
-const statsMini = [
-  { label: "Catalog", value: "3k+ Titles", icon: BookOpen },
-  { label: "Loans", value: "Daily Tracking", icon: ClipboardList },
-  { label: "Requests", value: "Live Queue", icon: Gauge },
-];
+const quickAccessImage =
+  "https://images.unsplash.com/photo-1741699427799-3fbb70fce948?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600";
 
-const roleShortcuts = [
-  { label: "Admin", href: "/librarymanage/loginpage.php?role=admin" },
-  { label: "Student", href: "/librarymanage/loginpage.php?role=student" },
-  { label: "Faculty", href: "/librarymanage/loginpage.php?role=faculty" },
-  { label: "Librarian", href: "/librarymanage/loginpage.php?role=librarian" },
-];
-
-const statusStrip = [
-  { label: "System Status", value: "Online" },
+const campusFacts = [
+  { label: "Campus", value: "Parañaque City" },
+  { label: "Identity", value: "Home of Educators" },
   { label: "Support Hours", value: "Mon-Sat 8:00 AM-5:00 PM" },
-  { label: "Location", value: "Villanueva Village Basketball Court, Lire Ln, Parañaque, 1709 Metro Manila" },
 ];
 
-// Replace these URLs with your official campus/library photos when available.
-const heroSlides = [
+const schoolStory = [
+  "Regis Marie College presents itself as a learning community focused on developing students through academic excellence, character formation, and practical preparation.",
+  "This library portal extends that mission online by giving readers a clearer way to discover books, manage requests, and stay connected with campus support.",
+  "By bringing school information, library access, and support details together in one homepage, the system creates a more welcoming first impression for visitors and a more organized starting point for campus users.",
+  "It also helps present the library as an active part of campus life by making important services, records, and school-connected details easier to reach from the moment a user arrives on the page.",
+];
+
+const heroImages = [
   {
-    src: "/librarymanage/assets/images/IMG_6927.JPG",
-    alt: "Regis Marie College campus library",
+    src: "/librarymanage/assets/images/rmc-wildcats.png",
+    alt: "RMC Wildcats graphic",
   },
   {
-    src: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1600&q=80",
-    alt: "Library shelves",
+    src: "/librarymanage/assets/images/pikyur.jpg",
+    alt: "Regis Marie College image",
+  },
+];
+
+const builderProfiles = [
+  {
+    name: "Stromiles Vidal",
+    role: "Project Manager, Full Stack Developer, UI/UX Designer, Documentation",
+    note: "Led the project direction while helping build the system, shape the interface, and organize key documentation.",
+    src: "/librarymanage/assets/images/builder-miles.gif",
   },
   {
-    src: "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1600&q=80",
-    alt: "Library reading area",
+    name: "Joshua Pasaporte",
+    role: "System Analyst, Full Stack Developer, UI/UX Designer, Documentation",
+    note: "Helped analyze system needs, build core features, refine the user experience, and support the project documentation.",
+    src: "/librarymanage/assets/images/builder-joshua.jfif",
   },
   {
-    src: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1600&q=80",
-    alt: "Books in library corridor",
+    name: "Kyrus Tan",
+    role: "Documentation",
+    note: "Focused on documenting the system clearly to support understanding, usage, and project presentation.",
+    src: "/librarymanage/assets/images/builder-kyrus.jfif",
   },
 ];
 
 const focusBase =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950";
-
-const panelBase =
-  "rounded-2xl border border-slate-200/85 bg-white/85 p-6 shadow-[0_14px_30px_-18px_rgba(15,23,42,0.28)] backdrop-blur md:p-8 dark:border-white/14 dark:bg-[linear-gradient(180deg,rgba(12,29,49,0.96),rgba(6,18,31,0.94))] dark:shadow-[0_22px_42px_-20px_rgba(0,0,0,0.5)]";
-
-const cardBase =
-  "group rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-all duration-200 ease-out hover:-translate-y-1 hover:border-cyan-400/60 hover:shadow-[0_16px_30px_-20px_rgba(6,182,212,0.35)] dark:border-white/14 dark:bg-[linear-gradient(180deg,rgba(13,31,52,0.94),rgba(7,20,35,0.92))]";
-
-const softCardBase =
-  "rounded-xl border border-slate-200/85 bg-white/80 p-3 shadow-sm transition-all duration-200 ease-out dark:border-white/14 dark:bg-[linear-gradient(180deg,rgba(14,34,56,0.9),rgba(8,22,39,0.86))]";
-
-const THEME_STORAGE_KEY = "librarymanage-theme";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#081119]";
 
 function RevealSection({ id, className = "", delay = 0, children }) {
   const ref = useRef(null);
@@ -166,7 +167,7 @@ function RevealSection({ id, className = "", delay = 0, children }) {
           }
         });
       },
-      { threshold: 0.14, rootMargin: "0px 0px -8% 0px" },
+      { threshold: 0.16, rootMargin: "0px 0px -10% 0px" },
     );
 
     observer.observe(node);
@@ -179,7 +180,7 @@ function RevealSection({ id, className = "", delay = 0, children }) {
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
       className={`${className} transition-all duration-700 ease-out ${
-        visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+        visible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
       }`}
     >
       {children}
@@ -188,90 +189,71 @@ function RevealSection({ id, className = "", delay = 0, children }) {
 }
 
 export default function LandingPage() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === "undefined") {
-      return "dark";
-    }
-
-    const attrTheme = document.documentElement.getAttribute("data-theme");
-    const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const initial = saved || attrTheme || "dark";
-    return initial === "light" ? "light" : "dark";
-  });
+  const [theme, setTheme] = useState("dark");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isSliderPaused, setIsSliderPaused] = useState(false);
   const [activeSection, setActiveSection] = useState("Home");
+  const [currentImage, setCurrentImage] = useState(0);
+  const [currentBuilder, setCurrentBuilder] = useState(0);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const isDark = theme === "dark";
-    root.classList.toggle("dark", isDark);
-    root.setAttribute("data-theme", theme);
-    root.style.colorScheme = isDark ? "dark" : "light";
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
+    const timer = window.setInterval(() => {
+      setCurrentImage((value) => (value + 1) % heroImages.length);
+    }, 4200);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentBuilder((value) => (value + 1) % builderProfiles.length);
+    }, 3600);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const sections = [
+      { id: "about", label: "About" },
+      { id: "library", label: "Library" },
+      { id: "contact", label: "Contact" },
+    ];
+
+    const onScroll = () => {
+      const marker = window.scrollY + 160;
+      let current = "Home";
+
+      sections.forEach((section) => {
+        const node = document.getElementById(section.id);
+        if (node && node.offsetTop <= marker) {
+          current = section.label;
+        }
+      });
+
+      setActiveSection(current);
+    };
+
     onScroll();
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    const sectionMap = [
-      { id: "services", label: "Services" },
-      { id: "access", label: "Access" },
-      { id: "contact", label: "Contact" },
-    ];
+  const toggleTheme = () => setTheme((value) => (value === "dark" ? "light" : "dark"));
+  const isLightTheme = theme === "light";
 
-    const updateActive = () => {
-      const scrollPos = window.scrollY + 140;
-      let current = "Home";
-
-      for (const section of sectionMap) {
-        const node = document.getElementById(section.id);
-        if (!node) continue;
-        if (node.offsetTop <= scrollPos) {
-          current = section.label;
-        }
-      }
-
-      setActiveSection(current);
-    };
-
-    updateActive();
-    window.addEventListener("scroll", updateActive);
-    return () => window.removeEventListener("scroll", updateActive);
-  }, []);
-
-  useEffect(() => {
-    if (isSliderPaused) return undefined;
-    const timer = window.setInterval(() => {
-      setCurrentSlide((v) => (v + 1) % heroSlides.length);
-    }, 5000);
-    return () => window.clearInterval(timer);
-  }, [isSliderPaused]);
-
-  const toggleTheme = () => setTheme((v) => (v === "dark" ? "light" : "dark"));
-  const nextSlide = () => setCurrentSlide((v) => (v + 1) % heroSlides.length);
-  const prevSlide = () => setCurrentSlide((v) => (v - 1 + heroSlides.length) % heroSlides.length);
-  const closeMobileMenu = () => setMenuOpen(false);
   const handleNavClick = (event, href) => {
-    if (!href.startsWith("#")) {
-      return;
-    }
+    if (!href.startsWith("#")) return;
 
     event.preventDefault();
     const target = document.querySelector(href);
-    if (!target) {
-      return;
-    }
+    if (!target) return;
 
-    const headerOffset = 92;
-    const targetTop = target.getBoundingClientRect().top + window.scrollY - headerOffset;
+    const targetTop = target.getBoundingClientRect().top + window.scrollY - 84;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
     setMenuOpen(false);
   };
@@ -279,34 +261,25 @@ export default function LandingPage() {
   return (
     <div
       id="top"
-      className="relative min-h-screen scroll-smooth overflow-x-hidden bg-slate-50 text-slate-900 dark:bg-[linear-gradient(160deg,#04101d_0%,#07182a_52%,#0d2848_100%)] dark:text-[#f5f7ff]"
+      className="relative min-h-screen overflow-x-hidden bg-[#071321] text-[#e9f1fb] dark:bg-[#071321] dark:text-[#f8f6f1]"
     >
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.07)_1px,transparent_1px)] bg-[size:34px_34px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)]" />
-        <div className="absolute -top-20 left-[-8%] h-[22rem] w-[22rem] rounded-full bg-cyan-500/12 blur-3xl dark:bg-[#47b4ff]/12" />
-        <div className="absolute right-[-10%] top-[30%] h-[20rem] w-[20rem] rounded-full bg-cyan-400/8 blur-3xl dark:bg-[#8fd3ff]/8" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(15,23,42,0.1)_100%)] dark:bg-[radial-gradient(circle_at_center,transparent_42%,rgba(4,11,20,0.78)_100%)]" />
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,#071321_0%,#0a1a2b_52%,#0d2136_100%)] sm:bg-[linear-gradient(rgba(7,19,33,0.86),rgba(11,27,45,0.94)),url('/librarymanage/assets/images/awitmo.jfif')] sm:bg-cover sm:bg-center sm:bg-fixed sm:bg-no-repeat" />
+        <div className="absolute inset-0 bg-[url('/librarymanage/assets/images/awitmo.jfif')] bg-cover bg-[center_top] bg-no-repeat opacity-30 sm:hidden" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(122,200,255,0.06),rgba(7,19,33,0.76)),linear-gradient(180deg,rgba(7,19,33,0.18),rgba(11,27,45,0.66))] sm:bg-[radial-gradient(circle_at_center,rgba(7,19,33,0.16),rgba(7,19,33,0.56)),radial-gradient(circle_at_top_left,rgba(122,200,255,0.12),transparent_30%),radial-gradient(circle_at_right,rgba(185,231,255,0.08),transparent_18%),linear-gradient(180deg,rgba(7,19,33,0.94),rgba(11,27,45,0.96))]" />
       </div>
 
-      <header
-        className={`sticky top-0 z-50 border-b border-slate-200/85 bg-white/82 backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/18 dark:bg-[linear-gradient(135deg,rgba(7,19,34,0.97),rgba(5,14,26,0.95))] ${
-          scrolled ? "py-1" : "py-0"
-        }`}
-      >
-        <nav
-          className={`mx-auto flex max-w-7xl items-center justify-between px-4 transition-all duration-200 ease-out sm:px-6 lg:px-8 ${
-            scrolled ? "py-2" : "py-4"
-          }`}
-        >
-          <a href="/librarymanage/" className={`flex items-center gap-3 ${focusBase}`}>
+      <header className="fixed top-0 right-0 left-0 z-[120] border-b border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(11,26,45,0.97),rgba(7,18,32,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-[14px] dark:border-white/10 md:sticky md:z-50 md:bg-[#081422]/88 md:shadow-none md:backdrop-blur-xl">
+        <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-0 py-3 md:py-[18px]">
+          <a href="/librarymanage/" className={`flex min-w-0 flex-nowrap items-center gap-2.5 md:gap-3 ${focusBase}`}>
             <img
               src="/librarymanage/assets/images/RMLOGO.jfif"
               alt="Regis Marie College logo"
-              className="h-10 w-10 rounded-full border border-cyan-400/40 object-cover"
+              className="h-[30px] w-[30px] rounded-full border border-[rgba(143,211,255,0.22)] object-cover md:h-11 md:w-11 md:border-cyan-400/40 md:shadow-lg md:shadow-cyan-500/15"
             />
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Regis Marie College</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">Library Management System</p>
+            <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-118px)]">
+              <p className="truncate text-[11px] leading-[1.1] font-medium tracking-[0] text-[rgba(214,226,238,0.72)] md:text-sm md:font-semibold md:tracking-[0.2em] md:text-cyan-300">RMC</p>
+              <p className="truncate text-[14px] leading-[1.1] font-bold text-[#f4f8ff] md:text-sm md:font-medium md:text-slate-200">Regis Marie College Library</p>
             </div>
           </a>
 
@@ -316,10 +289,10 @@ export default function LandingPage() {
                 key={link.label}
                 href={link.href}
                 onClick={(event) => handleNavClick(event, link.href)}
-                className={`text-sm transition-all duration-200 ease-out ${focusBase} ${
+                className={`text-sm transition-colors ${focusBase} ${
                   activeSection === link.label
                     ? "text-cyan-600 dark:text-cyan-300"
-                    : "text-slate-700 hover:text-cyan-500 dark:text-slate-300"
+                    : "text-slate-600 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-300"
                 }`}
               >
                 {link.label}
@@ -330,349 +303,435 @@ export default function LandingPage() {
           <div className="hidden items-center gap-2 md:flex">
             <a
               href="/librarymanage/loginpage.php"
-              className={`inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 transition-all duration-200 ease-out hover:-translate-y-1 hover:bg-cyan-400 ${focusBase}`}
+              className={`inline-flex items-center gap-2 rounded-full bg-cyan-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-cyan-400 ${focusBase}`}
             >
               <LogIn className="h-4 w-4" />
-              Login
+              Open Portal
             </a>
             <button
               onClick={toggleTheme}
-              className={`rounded-xl border border-slate-200 bg-white p-2.5 text-slate-700 transition-all duration-200 ease-out hover:-translate-y-1 hover:border-cyan-400 hover:text-cyan-500 dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-200 ${focusBase}`}
-              aria-label="Toggle theme"
+              className={`inline-flex min-h-[38px] items-center gap-[6px] rounded-full border border-[#75a8db]/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] px-[10px] py-[6px] text-[#eef6ff] transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(143,211,255,0.22)] ${isLightTheme ? "border-[rgba(47,109,255,0.12)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(245,249,255,0.88))] text-[#233853] shadow-[0_8px_18px_rgba(34,63,112,0.05)]" : "bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))]"} ${focusBase}`}
+              aria-label={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
+              aria-pressed={isLightTheme}
             >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <span className={`inline-flex min-h-7 min-w-[34px] items-center justify-center rounded-full px-1 text-[currentColor] shadow-[0_2px_6px_rgba(0,0,0,0.12)] transition-all duration-300 ${isLightTheme ? "translate-x-[2px] bg-[linear-gradient(135deg,rgba(26,45,71,0.12),rgba(26,45,71,0.05))] shadow-[0_2px_6px_rgba(34,63,112,0.12)]" : "-translate-x-[2px] bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.06))]"}`}>
+                {isLightTheme ? <Sun className="h-[15px] w-[15px] rotate-[8deg] transition-transform duration-300" /> : <Moon className="h-[15px] w-[15px] -rotate-[7deg] transition-transform duration-300" />}
+              </span>
+              <span className={`min-w-9 text-center text-xs font-extrabold tracking-[0.01em] transition-transform duration-300 ${isLightTheme ? "translate-x-px" : "-translate-x-px"}`}>{isLightTheme ? "Light" : "Dark"}</span>
             </button>
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
             <button
               onClick={toggleTheme}
-              className={`rounded-xl border border-slate-200 bg-white p-2.5 text-slate-700 transition-all duration-200 ease-out dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-200 ${focusBase}`}
-              aria-label="Toggle theme"
+              className={`inline-flex h-9 w-9 appearance-none items-center justify-center border-0 rounded-none bg-transparent p-0 text-[#eef6ff] shadow-none transition-none [-webkit-tap-highlight-color:transparent] focus:outline-none ${focusBase}`}
+              aria-label={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
+              aria-pressed={isLightTheme}
             >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isLightTheme ? <Sun className="h-[18px] w-[18px] translate-x-px rotate-[8deg] transition-transform duration-300" /> : <Moon className="h-[18px] w-[18px] -translate-x-px -rotate-[7deg] transition-transform duration-300" />}
             </button>
             <button
-              onClick={() => setMenuOpen((v) => !v)}
-              className={`rounded-xl border border-slate-200 bg-white p-2.5 text-slate-700 transition-all duration-200 ease-out dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-200 ${focusBase}`}
+              onClick={() => setMenuOpen((value) => !value)}
+              className={`inline-flex h-9 w-9 appearance-none items-center justify-center border-0 rounded-none bg-transparent p-0 text-[#eef6ff] shadow-none transition-none [-webkit-tap-highlight-color:transparent] focus:outline-none ${focusBase}`}
               aria-label="Toggle menu"
             >
-              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {menuOpen ? <X className="h-[18px] w-[18px]" /> : <Menu className="h-[18px] w-[18px]" />}
             </button>
           </div>
         </nav>
 
         {menuOpen && (
-          <div className="border-t border-slate-200/80 bg-white/85 px-4 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/80 md:hidden">
-            <div className="mx-auto flex max-w-7xl flex-col gap-3">
+          <div className="absolute left-0 right-0 top-full z-[60] border-t border-slate-200/70 bg-white/88 px-3 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#09131c]/96 md:hidden">
+            <div className="mx-auto flex w-full max-w-[1380px] flex-col gap-3">
               {navLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
                   onClick={(event) => handleNavClick(event, link.href)}
-                  className={`rounded-xl px-3 py-2 text-sm transition-all duration-200 ease-out ${focusBase} ${
+                  className={`rounded-2xl px-3 py-2 text-sm ${focusBase} ${
                     activeSection === link.label
-                      ? "bg-cyan-400/10 text-cyan-600 dark:text-cyan-300"
-                      : "text-slate-700 hover:bg-cyan-400/10 hover:text-cyan-600 dark:text-slate-200 dark:hover:text-cyan-300"
+                      ? "bg-cyan-400/15 text-cyan-700 dark:text-cyan-300"
+                      : "text-slate-700 dark:text-slate-100"
                   }`}
                 >
                   {link.label}
                 </a>
               ))}
-              <a
-                href="/librarymanage/loginpage.php"
-                onClick={closeMobileMenu}
-                className={`mt-1 inline-flex w-fit items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-white ${focusBase}`}
-              >
-                <LogIn className="h-4 w-4" />
-                Login
-              </a>
             </div>
           </div>
         )}
       </header>
 
-      <main className="space-y-12 py-12 md:space-y-16 md:py-16">
-        <RevealSection className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-14 lg:px-8">
-          <div>
-            <span className="inline-flex items-center rounded-full border border-cyan-400/35 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-700 dark:text-cyan-300">
-              Library Platform
-            </span>
-            <h1 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-slate-900 md:text-5xl lg:text-6xl dark:text-slate-100">
-              Regis Marie College Library portal for faster search, cleaner borrowing, and clearer access.
+      <main className="mx-auto flex w-full max-w-[1380px] flex-col gap-8 px-0 py-[72px] md:gap-16 md:py-14">
+        <RevealSection className="grid items-center gap-3 sm:gap-8 lg:min-h-[calc(100vh-7rem)] lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:gap-10">
+          <div className="order-1 relative sm:order-none">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#75a8db]/25 bg-[#14283f]/88 px-3 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-cyan-200 shadow-sm sm:mb-4 sm:px-4 sm:text-xs sm:tracking-[0.26em] dark:border-cyan-300/20 dark:bg-white/5 dark:text-cyan-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Home of Educators
+            </div>
+            <h1 className="mt-0 max-w-[14ch] md:max-w-[13ch] text-[1.92rem] font-semibold leading-[1] tracking-[-0.04em] text-white sm:text-4xl md:text-[clamp(2.8rem,5.2vw,5rem)] dark:text-white">
+              Regis Marie College Library Management System for simpler access, borrowing, and support.
             </h1>
-            <p className="mt-5 text-base text-slate-600 md:text-lg dark:text-slate-300/80">
-              Access one system for catalog browsing, borrow tracking, return requests, and payment review across admin, student, faculty, and librarian roles.
+            <p className="mt-3 max-w-[640px] text-[0.92rem] leading-[1.65] text-slate-300 sm:mt-5 sm:text-base sm:leading-7 md:text-[1rem] md:leading-[1.75] dark:text-slate-300/85">
+              A clearer homepage for students, faculty, and staff, bringing library access, school information,
+              and support details into one more connected first screen.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-[18px] flex flex-col gap-2 sm:mt-7 sm:gap-3 md:mt-[26px] sm:flex-row">
               <a
                 href="/librarymanage/loginpage.php"
-                className={`inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 transition-all duration-200 ease-out hover:-translate-y-1 hover:bg-cyan-400 sm:w-auto ${focusBase}`}
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-full bg-cyan-500 px-6 py-3 text-sm font-medium text-white shadow-xl shadow-cyan-500/25 transition-transform duration-200 hover:-translate-y-1 hover:bg-cyan-400 sm:w-auto ${focusBase}`}
               >
                 <LogIn className="h-4 w-4" />
                 Enter Library Portal
               </a>
               <a
-                href="#services"
-                className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-all duration-200 ease-out hover:-translate-y-1 hover:border-cyan-400/40 hover:text-cyan-600 dark:border-white/20 dark:bg-slate-900/30 dark:text-slate-200 dark:hover:text-cyan-300 sm:w-auto ${focusBase}`}
+                href="#about"
+                onClick={(event) => handleNavClick(event, "#about")}
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-6 py-3 text-sm font-medium text-slate-700 transition-transform duration-200 hover:-translate-y-1 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 sm:w-auto ${focusBase}`}
               >
-                <BookOpen className="h-4 w-4" />
-                Explore Services
+                Explore the School
+                <ArrowRight className="h-4 w-4" />
               </a>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {roleShortcuts.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className={`inline-flex items-center rounded-full border border-cyan-400/35 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-700 transition-all duration-200 hover:border-cyan-400/60 hover:bg-cyan-400/15 dark:text-cyan-300 ${focusBase}`}
+            <div className="hidden sm:mt-9 sm:grid sm:gap-4 sm:grid-cols-3">
+              {campusFacts.map((fact) => (
+                <div
+                  key={fact.label}
+                  className="rounded-[1.25rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-4 shadow-[0_20px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:min-h-[124px] sm:rounded-[1.5rem] sm:p-5 dark:border-white/10 dark:bg-white/5"
                 >
-                  {item.label} Login
-                </a>
-              ))}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {featureChips.map((chip) => (
-                <span
-                  key={chip.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/35 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-700 transition-all duration-200 hover:border-cyan-400/60 hover:bg-cyan-400/15 dark:text-cyan-300"
-                >
-                  <chip.icon className="h-3.5 w-3.5" />
-                  {chip.label}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-7 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {statsMini.map((item, idx) => (
-                <div key={item.label} className={`${softCardBase} ${idx < 2 ? "sm:relative" : ""}`}>
-                  {idx < 2 && <span className="pointer-events-none absolute right-0 top-3 hidden h-8 w-px bg-slate-200 dark:bg-white/10 sm:block" />}
-                  <div className="flex items-center gap-2">
-                    <item.icon className="h-3.5 w-3.5 text-cyan-500" />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{item.label}</p>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{item.value}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{fact.label}</p>
+                  <p className="mt-2 text-sm font-semibold text-white dark:text-white">{fact.value}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className={panelBase}>
-            <div
-              className="relative overflow-hidden rounded-xl border border-white/20 bg-slate-950/40"
-              role="button"
-              tabIndex={0}
-              onMouseEnter={() => setIsSliderPaused(true)}
-              onMouseLeave={() => setIsSliderPaused(false)}
-              onFocusCapture={() => setIsSliderPaused(true)}
-              onBlurCapture={() => setIsSliderPaused(false)}
-              onClick={nextSlide}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  nextSlide();
-                }
-              }}
-              aria-label="Preview next library image"
-            >
-              <div className="flex items-center gap-1.5 border-b border-white/10 bg-slate-900/70 px-3 py-2">
-                {heroSlides.map((slide, index) => (
-                  <button
-                    key={`top-dot-${slide.src}`}
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setCurrentSlide(index);
-                    }}
-                    className={`h-2 w-2 rounded-full transition-all duration-200 ${
-                      index === currentSlide ? "bg-cyan-400" : "bg-white/35 hover:bg-white/60"
-                    } ${focusBase}`}
-                    aria-label={`Go to slide ${index + 1}`}
+          <div className="order-2 relative sm:order-none">
+            <div className="relative min-w-0 overflow-hidden rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.12),rgba(8,18,30,0.68))] p-2 shadow-[0_28px_70px_-30px_rgba(0,0,0,0.55)] backdrop-blur-[10px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] max-md:rounded-[1.75rem] max-md:p-2.5 sm:rounded-[2rem] sm:p-3 dark:border-white/10 dark:bg-white/5">
+              <div className="relative h-[230px] overflow-hidden rounded-[1.1rem] border border-blue-500/20 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] backdrop-blur-[8px] max-md:h-[300px] max-md:rounded-[1.35rem] sm:h-[360px] sm:rounded-[1.6rem] md:h-[420px]">
+                {heroImages.map((image, index) => (
+                  <img
+                    key={image.src}
+                    src={image.src}
+                    alt={image.alt}
+                    className={`absolute inset-0 h-full w-full overflow-hidden rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] object-cover object-[center_28%] transition-all duration-700 max-md:rounded-[1.35rem] sm:rounded-[1.6rem] sm:object-center ${
+                      currentImage === index ? "z-[1] scale-100 opacity-100" : "scale-110 opacity-0"
+                    } ${index === 1 ? "object-cover object-center" : ""}`}
                   />
                 ))}
-              </div>
-
-              <div className="relative h-[340px] w-full sm:h-[420px]">
-                <img
-                  key={heroSlides[currentSlide].src}
-                  src={heroSlides[currentSlide].src}
-                  alt={heroSlides[currentSlide].alt}
-                  className="h-full w-full object-cover transition-opacity duration-300"
-                />
-              </div>
-
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 top-8 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-
-              <button
-                type="button"
-                className={`absolute left-3 top-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-slate-950/55 p-2 text-white transition-all duration-200 hover:border-cyan-400/60 hover:bg-slate-900/80 ${focusBase}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  prevSlide();
-                }}
-                aria-label="Previous image"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-slate-950/55 p-2 text-white transition-all duration-200 hover:border-cyan-400/60 hover:bg-slate-900/80 ${focusBase}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  nextSlide();
-                }}
-                aria-label="Next image"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-
-              <div className="absolute inset-x-4 bottom-4 rounded-xl border border-white/15 bg-slate-950/60 p-4 text-white backdrop-blur">
-                <p className="text-xs font-medium uppercase tracking-[0.14em] text-cyan-300">Library Online</p>
-                <p className="mt-1 text-sm text-slate-100">Search shelves. Track records. Keep borrowing simple.</p>
-                <p className="sr-only" aria-live="polite">
-                  Showing image {currentSlide + 1} of {heroSlides.length}
-                </p>
-              </div>
-            </div>
-          </div>
-        </RevealSection>
-
-        <RevealSection delay={20} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-3 rounded-2xl border border-slate-200/85 bg-white/85 p-4 shadow-sm sm:grid-cols-3 dark:border-white/12 dark:bg-slate-900/45">
-            {statusStrip.map((item) => (
-              <div key={item.label} className="rounded-xl border border-slate-200/85 bg-white/70 p-3 dark:border-white/12 dark:bg-slate-950/40">
-                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{item.label}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </RevealSection>
-
-        <RevealSection id="services" delay={40} className="mx-auto max-w-7xl border-t border-slate-200/70 px-4 pt-12 sm:px-6 md:pt-16 lg:px-8 dark:border-white/10">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold md:text-2xl">Core Actions</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300/75">
-              Essential workflows for managing access, records, staff operations, and reader support in one system.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {coreActions.map((item) => (
-              <a key={item.title} href={item.href} className={`${cardBase} ${focusBase} flex h-full flex-col`}>
-                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/35 bg-cyan-400/10 text-cyan-400">
-                  <item.icon className="h-5 w-5" />
+                <div className="absolute inset-0 z-[2] rounded-[1.1rem] bg-[linear-gradient(180deg,rgba(13,27,40,0.03),rgba(13,27,40,0.58))] max-md:rounded-[1.35rem] sm:rounded-[1.6rem]" />
+                <div className="absolute bottom-3 left-3 right-3 z-[4] text-white sm:bottom-0 sm:left-0 sm:right-0 sm:p-5">
+                  <p className="text-[0.58rem] uppercase tracking-[0.2em] text-cyan-300 sm:text-xs sm:tracking-[0.3em]">Regis Marie College</p>
+                  <p className="mt-2 text-[1rem] font-semibold leading-[1.4] sm:max-w-sm sm:text-lg sm:leading-tight">Designed to make library access feel like a natural part of campus life.</p>
                 </div>
-                <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300/80">{item.description}</p>
-                <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm text-cyan-600 opacity-0 transition-all duration-200 group-hover:opacity-100 dark:text-cyan-300">
-                  {item.cta} <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </a>
-            ))}
+              </div>
+
+              <div className="mt-2.5 grid gap-2.5 sm:mt-[18px] sm:gap-4 sm:grid-cols-3">
+                {portalFeatures.map((feature) => (
+                  <div
+                    key={feature.label}
+                    className="h-full rounded-[1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-3.5 backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.3rem] sm:p-4 dark:border-white/10 dark:bg-[#0d1a26]"
+                  >
+                    <feature.icon className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
+                    <p className="mt-3 text-sm font-semibold text-white dark:text-white">{feature.label}</p>
+                    <p className="mt-1 text-xs leading-6 text-slate-300 dark:text-slate-300/80">{feature.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+
         </RevealSection>
 
-        <RevealSection id="access" delay={80} className="mx-auto max-w-7xl border-t border-slate-200/70 px-4 pt-12 sm:px-6 md:pt-16 lg:px-8 dark:border-white/10">
-          <div className={panelBase}>
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold md:text-2xl">Start with the library action you need most</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300/75">
-                Open common actions quickly from one section.
-              </p>
+        <RevealSection id="about" delay={40} className="order-3 grid gap-3 sm:order-none sm:gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
+          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] text-white shadow-[0_26px_60px_-26px_rgba(6,182,212,0.45)] backdrop-blur-[8px] sm:rounded-[2rem] sm:p-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.22em]">
+              <Quote className="h-3.5 w-3.5" />
+              About the school
             </div>
-            <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {quickAccessTiles.map((tile) => (
-                <a key={tile.title} href={tile.href} className={`${cardBase} ${focusBase}`}>
-                  <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-400/35 bg-cyan-400/10 text-cyan-400">
-                    <tile.icon className="h-4.5 w-4.5" />
-                  </div>
-                  <p className="text-sm font-semibold">{tile.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300/80">{tile.helper}</p>
-                </a>
+            <h2 className="mt-5 max-w-[14ch] text-3xl font-semibold tracking-tight">Regis Marie College builds learning around values, growth, and academic direction.</h2>
+            <div className="mt-4 space-y-3 text-sm leading-[1.65] text-white/82 sm:mt-5 sm:space-y-4 sm:leading-7">
+              {schoolStory.map((paragraph, index) => (
+                <p key={paragraph} className={index >= 2 ? "hidden sm:block" : ""}>
+                  {paragraph}
+                </p>
               ))}
             </div>
           </div>
-        </RevealSection>
 
-        <RevealSection id="contact" delay={120} className="mx-auto max-w-7xl border-t border-slate-200/70 px-4 pt-12 sm:px-6 md:pt-16 lg:px-8 dark:border-white/10">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold md:text-2xl">Keep the library team and readers connected</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300/75">
-              Reach the support team quickly through official contact channels and campus location details.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {contacts.map((item) => (
-              <article key={item.label} className={cardBase}>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/35 bg-cyan-400/10 text-cyan-400">
+          <div className="grid gap-3 sm:gap-4">
+            {schoolHighlights.map((item) => (
+              <article
+                key={item.title}
+                className="min-w-0 rounded-[1.2rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.7rem] sm:p-6 dark:border-white/10 dark:bg-white/5"
+              >
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[#a7f3ff]/15 bg-[linear-gradient(145deg,rgba(34,211,238,0.2),rgba(96,165,250,0.14))] text-[#c9f7ff] shadow-[0_10px_24px_-14px_rgba(34,211,238,0.55)] dark:text-cyan-300">
                   <item.icon className="h-5 w-5" />
                 </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{item.label}</p>
-                <p className="mt-1 break-words text-sm font-medium leading-relaxed">{item.value}</p>
+                <h3 className="mt-4 text-xl font-semibold text-white dark:text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-300 dark:text-slate-300/80">{item.description}</p>
               </article>
             ))}
           </div>
         </RevealSection>
-      </main>
 
-      <footer className="mt-14 border-t border-slate-200/80 py-10 dark:border-white/10 md:mt-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 border-b border-slate-200/80 pb-8 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10">
-            <div>
-              <p className="text-sm font-semibold">Regis Marie College</p>
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Library Management System</p>
+        <section className="order-4 grid gap-2.5 sm:hidden">
+          {campusFacts.map((fact) => (
+            <div
+              key={`mobile-${fact.label}`}
+              className="rounded-[1.25rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-4 shadow-[0_20px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] dark:border-white/10 dark:bg-white/5"
+            >
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{fact.label}</p>
+              <p className="mt-2 text-sm font-semibold text-white dark:text-white">{fact.value}</p>
             </div>
-            <div>
-              <p className="text-sm font-semibold">Product</p>
-              <div className="mt-2 grid gap-1.5 text-xs">
-                <a href="/librarymanage/loginpage.php" className="text-slate-500 transition-colors hover:text-cyan-500 dark:text-slate-400">
-                  Portal
-                </a>
-                <a href="#services" className="text-slate-500 transition-colors hover:text-cyan-500 dark:text-slate-400">
-                  Services
-                </a>
-                <a href="#access" className="text-slate-500 transition-colors hover:text-cyan-500 dark:text-slate-400">
-                  Access
-                </a>
-                <a href="#contact" className="text-slate-500 transition-colors hover:text-cyan-500 dark:text-slate-400">
-                  Contact
-                </a>
+          ))}
+        </section>
+
+        <RevealSection delay={70} className="order-5 grid gap-3 sm:order-none sm:gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-8 dark:border-white/10 dark:bg-white/5">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">School snapshot</p>
+                <h2 className="mt-2 max-w-[14ch] text-2xl font-semibold text-white dark:text-white">A homepage that feels more aligned with the school brand.</h2>
               </div>
+              <img
+                src="/librarymanage/assets/images/RMLOGO.jfif"
+                alt="Regis Marie College badge"
+                className="h-14 w-14 rounded-full border border-cyan-500/35 object-cover"
+              />
             </div>
-            <div>
-              <p className="text-sm font-semibold">Support</p>
-              <div className="mt-2 grid gap-1.5 text-xs">
-                <a href="mailto:itsupport@regismarie-college.com" className="text-slate-500 transition-colors hover:text-cyan-500 dark:text-slate-400">
-                  Contact
-                </a>
-                <a href="/librarymanage/feedback.php" className="text-slate-500 transition-colors hover:text-cyan-500 dark:text-slate-400">
-                  Complaint Form
-                </a>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Legal</p>
-              <div className="mt-2 grid gap-1.5 text-xs">
-                <a href="/librarymanage/loginpage.php" className="text-slate-500 transition-colors hover:text-cyan-500 dark:text-slate-400">
-                  Portal Access
-                </a>
-                <a href="#top" className="text-cyan-600 transition-colors hover:text-cyan-500 dark:text-cyan-300">
-                  Back to top
-                </a>
-              </div>
+            <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
+              {programCards.map((card) => (
+                <div key={card.title} className="h-full rounded-[1.1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-4 backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.5rem] sm:p-5 dark:border-white/10 dark:bg-[#0d1a26]">
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#a7f3ff]/15 bg-[linear-gradient(145deg,rgba(34,211,238,0.2),rgba(96,165,250,0.14))] text-[#c9f7ff] shadow-[0_10px_24px_-14px_rgba(34,211,238,0.55)] dark:text-cyan-300">
+                    <card.icon className="h-5 w-5 text-cyan-600 dark:text-cyan-300" />
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-white dark:text-white">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-300 dark:text-slate-300/80">{card.description}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="pt-5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              © {new Date().getFullYear()} Regis Marie College. All rights reserved.
+          <div className="relative min-w-0 overflow-hidden rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] text-white shadow-[0_26px_60px_-26px_rgba(15,23,42,0.6)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-8 dark:border-white/10">
+            <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-400/15 blur-3xl" />
+            <div className="relative mb-5 min-h-[180px] overflow-hidden rounded-[1.5rem] bg-[#0b1623]">
+              <img
+                src={quickAccessImage}
+                alt="Students studying in a large library"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,18,30,0.22),rgba(8,18,30,0.82))]" />
+              <div className="absolute bottom-4 left-4 right-4">
+                <p className="text-base font-semibold leading-[1.45] text-white">
+                  Useful library and school links can stay in one cleaner starting point.
+                </p>
+              </div>
+            </div>
+            <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">Quick access</p>
+            <h2 className="mt-2 max-w-[16ch] text-2xl font-semibold">Start with the portal, school page, and support links visitors need most.</h2>
+            <div className="mt-6 grid gap-3">
+              {quickLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className={`group flex items-center justify-between rounded-[1.3rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.1),rgba(8,18,30,0.68))] px-4 py-4 text-sm transition-all duration-200 hover:border-cyan-300/40 hover:bg-white/10 ${focusBase}`}
+                >
+                  <span>{link.label}</span>
+                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                </a>
+              ))}
+            </div>
+          </div>
+        </RevealSection>
+
+        <RevealSection id="library" delay={100} className="grid gap-3 sm:gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-2 backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-3 dark:border-white/10 dark:bg-white/5">
+            <div className="relative h-full min-h-[240px] overflow-hidden rounded-[1.05rem] sm:min-h-[360px] sm:rounded-[1.5rem]">
+              <img
+                src="/librarymanage/assets/images/rmc-logo.jpg"
+                alt="Regis Marie College logo"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,19,28,0.06),rgba(9,19,28,0.78))]" />
+              <div className="absolute bottom-0 left-0 right-0 rounded-[1.2rem] border border-[#75a8db]/10 bg-[linear-gradient(180deg,rgba(8,18,30,0.1),rgba(8,18,30,0.76))] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-[8px] sm:m-6 sm:rounded-[1.4rem] sm:p-6">
+                <p className="text-xs uppercase tracking-[0.24em] text-cyan-300 [text-shadow:0_8px_24px_rgba(0,0,0,0.42)]">Offered course</p>
+                <p className="mt-2 max-w-sm text-lg font-semibold [text-shadow:0_8px_24px_rgba(0,0,0,0.42)]">Programs, student growth, and school identity can be introduced in one stronger visual section.</p>
+              </div>
+            </div>
+            <div className="mt-7 grid gap-2.5 px-2 pb-2 sm:mt-8 sm:px-3 sm:pb-3 lg:grid-cols-3">
+              {[
+                {
+                  code: "BSCS",
+                  description: "Focuses on computing, programming, and problem-solving skills for digital systems.",
+                },
+                {
+                  code: "BSOA",
+                  description: "Supports office administration, organization, communication, and practical business tasks.",
+                },
+                {
+                  code: "BSEd",
+                  description: "Prepares future educators through training in teaching, learning strategies, and student guidance.",
+                },
+                {
+                  code: "Certificate of Proficiency",
+                  description: "Offers practical training that helps learners develop focused skills for specific career-related tasks.",
+                },
+                {
+                  code: "College Readiness",
+                  description: "Helps learners prepare for higher study with stronger academic direction and practical readiness.",
+                },
+                {
+                  code: "Student Services",
+                  description: "Connects students to organized support, records, and campus-related academic assistance.",
+                },
+              ].map((course) => (
+                <div
+                  key={course.code}
+                  className="rounded-[1.1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.18),rgba(8,18,30,0.72))] p-3.5 backdrop-blur-[8px]"
+                >
+                  <p className="text-[0.82rem] font-bold tracking-[0.04em] text-slate-50">{course.code}</p>
+                  <p className="mt-2 text-[0.82rem] leading-6 text-slate-200/90">{course.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-8 dark:border-white/10 dark:bg-white/5">
+            <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Library portal</p>
+            <h2 className="mt-2 max-w-[14ch] text-3xl font-semibold tracking-tight text-white dark:text-white">Library tools, school details, and support information in one cleaner experience.</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+              The landing page now introduces the library system more clearly, with school-aligned visuals,
+              easier access points, and a more organized first impression for visitors.
             </p>
+
+            <div className="mt-6 grid gap-3 sm:gap-4 lg:grid-cols-3">
+              {portalFeatures.map((feature) => (
+                <div key={feature.label} className="h-full rounded-[1.1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-4 backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.5rem] sm:p-5 dark:border-white/10 dark:bg-[#0d1a26]">
+                  <feature.icon className="h-5 w-5 text-cyan-700 dark:text-cyan-300" />
+                  <p className="mt-4 text-sm font-semibold text-white dark:text-white">{feature.label}</p>
+                  <p className="mt-2 text-sm leading-7 text-slate-300 dark:text-slate-300/80">{feature.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </RevealSection>
+
+        <RevealSection delay={118} className="grid gap-3 sm:gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-8 dark:border-white/10 dark:bg-white/5">
+            <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Who built this app</p>
+            <h2 className="mt-2 max-w-[16ch] text-3xl font-semibold tracking-tight text-white dark:text-white">Meet the team behind this library management system.</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+              This library management application was developed for the Regis Marie College community as a school-focused platform for catalog access, borrowing records, and support information.
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+              The project reflects their effort to build a cleaner, more connected, and more school-aligned digital library experience for students, faculty, librarians, and administrators.
+            </p>
+          </div>
+
+          <div className="relative min-w-0 overflow-hidden rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.12),rgba(8,18,30,0.68))] p-2 shadow-[0_28px_70px_-30px_rgba(0,0,0,0.55)] backdrop-blur-[10px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-3 dark:border-white/10 dark:bg-white/5">
+            <div className="relative h-[280px] overflow-hidden rounded-[1.2rem] sm:h-[420px] sm:rounded-[1.6rem]">
+              {builderProfiles.map((builder, index) => (
+                <img
+                  key={builder.name}
+                  src={builder.src}
+                  alt={builder.name}
+                  className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ${
+                    currentBuilder === index ? "scale-100 opacity-100" : "scale-110 opacity-0"
+                  }`}
+                />
+              ))}
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,19,28,0.06),rgba(9,19,28,0.74))]" />
+              <div className="absolute bottom-0 left-0 right-0 z-[3] p-5 text-white sm:p-6">
+                <p className="text-[0.62rem] uppercase tracking-[0.24em] text-cyan-300 sm:text-xs">Development team</p>
+                <p className="mt-2 text-xl font-semibold">{builderProfiles[currentBuilder].name}</p>
+                <p className="mt-1 text-sm font-medium text-cyan-200">{builderProfiles[currentBuilder].role}</p>
+                <p className="mt-2 max-w-md text-sm leading-6 text-slate-200/90">{builderProfiles[currentBuilder].note}</p>
+              </div>
+            </div>
+          </div>
+        </RevealSection>
+
+        <RevealSection id="contact" delay={130} className="rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_22px_55px_-28px_rgba(0,0,0,0.45)] sm:rounded-[2rem] sm:p-8 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,17,25,0.82))]">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Contact</p>
+              <h2 className="mt-2 max-w-[14ch] text-3xl font-semibold tracking-tight text-white dark:text-white">Reach the campus and library support team through the official public channels.</h2>
+              <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+                This section keeps the school location and support details visible for visitors who arrive on the landing page before signing in.
+              </p>
+              <div className="mt-6">
+                <a
+                  href="https://www.regismariecollege.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-400/10 px-5 py-3 text-sm font-medium text-cyan-800 transition-transform duration-200 hover:-translate-y-0.5 dark:text-cyan-300 ${focusBase}`}
+                >
+                  Visit official school page
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
+              {contacts.map((item) => {
+                const itemHref =
+                  item.href ||
+                  (item.label === "Address"
+                    ? "https://www.google.com/maps/search/?api=1&query=Villanueva+Village+Basketball+Court+Lire+Ln+Paranaque+1709+Metro+Manila"
+                    : null);
+
+                return itemHref ? (
+                  <a
+                    key={item.label}
+                    href={itemHref}
+                    className="h-full rounded-[1.1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-4 backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:text-cyan-300 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.5rem] sm:p-5 dark:border-white/10 dark:bg-white/5"
+                  >
+                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#a7f3ff]/15 bg-[linear-gradient(145deg,rgba(34,211,238,0.2),rgba(96,165,250,0.14))] text-[#c9f7ff] shadow-[0_10px_24px_-14px_rgba(34,211,238,0.55)] dark:text-cyan-300">
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    <p className="mt-4 text-sm text-slate-400 dark:text-slate-400">{item.label}</p>
+                    <p className="mt-2 text-sm font-medium leading-7 text-white transition-colors dark:text-white">{item.value}</p>
+                  </a>
+                ) : (
+                  <article
+                    key={item.label}
+                    className="h-full rounded-[1.1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-4 backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.5rem] sm:p-5 dark:border-white/10 dark:bg-white/5"
+                  >
+                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#a7f3ff]/15 bg-[linear-gradient(145deg,rgba(34,211,238,0.2),rgba(96,165,250,0.14))] text-[#c9f7ff] shadow-[0_10px_24px_-14px_rgba(34,211,238,0.55)] dark:text-cyan-300">
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    <p className="mt-4 text-sm text-slate-400 dark:text-slate-400">{item.label}</p>
+                    <p className="mt-2 text-sm font-medium leading-7 text-white dark:text-white">{item.value}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </RevealSection>
+      </main>
+
+      <footer className="border-t border-slate-200/70 py-8 dark:border-white/10">
+        <div className="mx-auto flex w-full max-w-[1380px] flex-col gap-3 px-0 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Regis Marie College Library Management System</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Designed to reflect the school identity and streamline library access.</p>
+          </div>
+          <div className="flex flex-wrap gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <a href="#top" onClick={(event) => handleNavClick(event, "#top")} className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
+              Back to top
+            </a>
+            <a href="/librarymanage/loginpage.php" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
+              Portal login
+            </a>
+            <a href="/librarymanage/feedback.php" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
+              Feedback
+            </a>
           </div>
         </div>
       </footer>
     </div>
   );
 }
-

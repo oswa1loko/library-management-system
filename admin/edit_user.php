@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/helpers.php';
 require_role('admin');
 
 $rolesAllowed = system_roles();
+$courseOptions = student_course_options();
 $message = '';
 $messageType = 'success';
 $editId = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
@@ -16,7 +17,7 @@ if ($editId <= 0) {
     exit;
 }
 
-$loadUser = $conn->prepare("SELECT id, fullname, email, username, role, created_at FROM users WHERE id = ? LIMIT 1");
+$loadUser = $conn->prepare("SELECT id, fullname, email, username, role, course, created_at FROM users WHERE id = ? LIMIT 1");
 $loadUser->bind_param('i', $editId);
 $loadUser->execute();
 $editUser = $loadUser->get_result()->fetch_assoc();
@@ -33,6 +34,7 @@ if (isset($_POST['update'])) {
     $username = trim($_POST['username'] ?? '');
     $role = trim($_POST['role'] ?? '');
     $newPassword = trim($_POST['new_password'] ?? '');
+    $course = trim($_POST['course'] ?? '');
 
     if ($fullname === '' || $email === '' || $username === '' || $role === '') {
         $message = 'Complete all required fields.';
@@ -46,6 +48,9 @@ if (isset($_POST['update'])) {
     } elseif (!in_array($role, $rolesAllowed, true)) {
         $message = 'Invalid role selected.';
         $messageType = 'error';
+    } elseif ($role === 'student' && ($course === '' || !array_key_exists($course, $courseOptions))) {
+        $message = 'Select a valid course for the student account.';
+        $messageType = 'error';
     } else {
         $check = $conn->prepare("SELECT id FROM users WHERE (email = ? OR username = ?) AND id <> ? LIMIT 1");
         $check->bind_param('ssi', $email, $username, $editId);
@@ -58,11 +63,13 @@ if (isset($_POST['update'])) {
         } else {
             if ($newPassword !== '') {
                 $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-                $update = $conn->prepare("UPDATE users SET fullname = ?, email = ?, username = ?, role = ?, password = ? WHERE id = ?");
-                $update->bind_param('sssssi', $fullname, $email, $username, $role, $hash, $editId);
+                $courseValue = $role === 'student' ? $course : null;
+                $update = $conn->prepare("UPDATE users SET fullname = ?, email = ?, username = ?, role = ?, course = ?, password = ? WHERE id = ?");
+                $update->bind_param('ssssssi', $fullname, $email, $username, $role, $courseValue, $hash, $editId);
             } else {
-                $update = $conn->prepare("UPDATE users SET fullname = ?, email = ?, username = ?, role = ? WHERE id = ?");
-                $update->bind_param('ssssi', $fullname, $email, $username, $role, $editId);
+                $courseValue = $role === 'student' ? $course : null;
+                $update = $conn->prepare("UPDATE users SET fullname = ?, email = ?, username = ?, role = ?, course = ? WHERE id = ?");
+                $update->bind_param('sssssi', $fullname, $email, $username, $role, $courseValue, $editId);
             }
 
             if ($update->execute()) {
@@ -71,6 +78,7 @@ if (isset($_POST['update'])) {
                     'user_id' => $editId,
                     'username' => $username,
                     'role' => $role,
+                    'course' => $courseValue,
                     'password_changed' => $newPassword !== '',
                 ]);
                 header('Location: manage_accounts.php?updated=1');
@@ -89,6 +97,7 @@ if (isset($_POST['update'])) {
     $editUser['email'] = $email;
     $editUser['username'] = $username;
     $editUser['role'] = $role;
+    $editUser['course'] = $role === 'student' ? $course : null;
 }
 ?>
 <!DOCTYPE html>
@@ -97,8 +106,10 @@ if (isset($_POST['update'])) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Edit User</title>
-<script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="/librarymanage/assets/app.css">
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
 <div class="auth-shell">
@@ -145,6 +156,18 @@ if (isset($_POST['update'])) {
                 <select id="role" name="role" class="ui-select" required>
                   <?php foreach ($rolesAllowed as $roleOption): ?>
                     <option value="<?php echo h($roleOption); ?>" <?php echo $editUser['role'] === $roleOption ? 'selected' : ''; ?>><?php echo h(role_label($roleOption)); ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <span class="ui-select-caret" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div>
+              <label for="course">Course</label>
+              <div class="ui-select-shell">
+                <select id="course" name="course" class="ui-select">
+                  <option value="">Select course</option>
+                  <?php foreach ($courseOptions as $courseValue => $courseLabel): ?>
+                    <option value="<?php echo h($courseValue); ?>" <?php echo ((string) ($editUser['course'] ?? '')) === $courseValue ? 'selected' : ''; ?>><?php echo h($courseLabel); ?></option>
                   <?php endforeach; ?>
                 </select>
                 <span class="ui-select-caret" aria-hidden="true"></span>

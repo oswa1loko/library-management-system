@@ -87,12 +87,161 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>Feedback | Library</title>
 <script src="/librarymanage/assets/theme.js"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css">
+<style>
+  .feedback-page .feedback-card {
+    width: min(100%, 1040px);
+  }
+
+  .feedback-page .feedback-layout {
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    gap: 0;
+  }
+
+  .feedback-page .feedback-main,
+  .feedback-page .feedback-side {
+    min-width: 0;
+  }
+
+  .feedback-page .feedback-form {
+    gap: 18px;
+  }
+
+  .feedback-page .feedback-form .grid.form {
+    gap: 16px;
+  }
+
+  .feedback-page .feedback-actions {
+    align-items: stretch;
+  }
+
+  .feedback-page .feedback-actions .button,
+  .feedback-page .feedback-actions button {
+    min-height: 46px;
+  }
+
+  .feedback-page .feedback-side .empty-state {
+    line-height: 1.65;
+  }
+
+  @media (max-width: 900px) {
+    .feedback-page {
+      padding: 18px;
+    }
+
+    .feedback-page .feedback-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .feedback-page .feedback-main,
+    .feedback-page .feedback-side {
+      padding: 24px 20px;
+    }
+
+    .feedback-page .feedback-side {
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .feedback-page {
+      padding: 12px;
+      align-items: start;
+    }
+
+    .feedback-page .feedback-card {
+      border-radius: 20px;
+    }
+
+    .feedback-page .feedback-layout {
+      gap: 0;
+    }
+
+    .feedback-page .feedback-main,
+    .feedback-page .feedback-side {
+      padding: 18px 16px;
+    }
+
+    .feedback-page .feedback-main .card-head,
+    .feedback-page .feedback-side .card-head {
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .feedback-page .feedback-main .card-head > div:last-child,
+    .feedback-page .feedback-side .card-head > div:last-child {
+      min-width: 0;
+    }
+
+    .feedback-page .feedback-main .text-measure,
+    .feedback-page .feedback-side .muted {
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .feedback-page .feedback-tags {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .feedback-page .feedback-tags .chip {
+      width: 100%;
+      justify-content: center;
+      text-align: center;
+      padding: 9px 12px;
+      border-radius: 14px;
+    }
+
+    .feedback-page .feedback-form {
+      gap: 14px;
+    }
+
+    .feedback-page .feedback-form .grid.form {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .feedback-page .feedback-form .empty-state {
+      padding: 14px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .feedback-page textarea {
+      min-height: 180px;
+    }
+
+    .feedback-page .feedback-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .feedback-page .feedback-actions .button,
+    .feedback-page .feedback-actions button {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .feedback-page .feedback-side .stack {
+      gap: 12px;
+    }
+
+    .feedback-page .feedback-side .panel-soft-glass {
+      margin-top: 14px;
+    }
+
+    .feedback-page .feedback-side .empty-state {
+      padding: 14px;
+    }
+  }
+</style>
 </head>
 <body>
-<div class="auth-shell">
-  <div class="card surface-shell-wide">
-    <div class="split split-stretch">
-      <div class="panel-pad-lg">
+<div class="auth-shell feedback-page">
+  <div class="card surface-shell-wide feedback-card">
+    <div class="split split-stretch feedback-layout">
+      <div class="panel-pad-lg feedback-main">
         <div class="card-head">
           <div class="dashboard-icon icon-edit" aria-hidden="true"></div>
           <div>
@@ -102,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </div>
 
-        <div class="inline-actions flow-top-md">
+        <div class="inline-actions flow-top-md feedback-tags">
           <span class="chip">Direct to admin</span>
           <span class="chip">Mobile number required</span>
           <span class="chip">Status starts as new</span>
@@ -112,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
         <?php endif; ?>
 
-        <form method="post" class="stack flow-top-md">
+        <form method="post" class="stack flow-top-md feedback-form">
           <div class="grid form">
             <div>
               <label for="fullname">Full Name</label>
@@ -147,14 +296,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="message">Complaint / Report Details</label>
             <textarea id="message" name="message" rows="7"><?php echo h($formData['message']); ?></textarea>
           </div>
-          <div class="inline-actions">
+          <div class="inline-actions feedback-actions">
             <button type="submit">Submit Complaint</button>
             <a class="button secondary" href="/librarymanage/index.php">Back Home</a>
           </div>
         </form>
       </div>
 
-      <div class="panel-pad-lg hero-panel-dark">
+      <div class="panel-pad-lg hero-panel-dark feedback-side">
         <div class="card-head">
           <div class="dashboard-icon icon-feedback" aria-hidden="true"></div>
           <div>

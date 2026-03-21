@@ -62,8 +62,9 @@ $logs = $stmt->get_result();
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audit Logs</title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
@@ -87,7 +88,7 @@ $logs = $stmt->get_result();
           <p class="muted eyebrow-compact">Filter</p>
           <h3 class="heading-card">Audit stream</h3>
         </div>
-        <form method="get" class="toolbar grow admin-record-filters">
+        <form method="get" class="grow admin-record-filters audit-log-filters">
           <div class="grow">
             <label for="event">Event</label>
             <input id="event" name="event" value="<?php echo h($eventFilter); ?>" placeholder="event name contains">

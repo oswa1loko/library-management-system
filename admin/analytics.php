@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
@@ -62,7 +62,6 @@ $monthlyBorrowTotals = $conn->query("
     WHERE status IN ('borrowed', 'return_requested', 'returned')
     GROUP BY DATE_FORMAT(borrow_date, '%Y-%m')
     ORDER BY borrow_month DESC
-    LIMIT 6
 ");
 
 $borrowTrend = [];
@@ -73,9 +72,52 @@ if ($monthlyBorrowTotals) {
     $borrowTrend = array_reverse($borrowTrend);
 }
 
-$currentTrend = !empty($borrowTrend) ? $borrowTrend[count($borrowTrend) - 1] : null;
-$previousTrend = count($borrowTrend) > 1 ? $borrowTrend[count($borrowTrend) - 2] : null;
-$currentBorrowMonth = (string) ($currentTrend['borrow_month'] ?? date('Y-m'));
+$requestedBorrowMonth = isset($_GET['borrow_month']) ? trim((string) $_GET['borrow_month']) : '';
+$requestedBorrowYear = isset($_GET['year']) ? (int) $_GET['year'] : 0;
+$monthPattern = '/^\d{4}\-\d{2}$/';
+$analyticsYears = range(2026, 2030);
+$borrowTrendMonths = [];
+$borrowTrendMap = [];
+foreach ($borrowTrend as $trendRow) {
+    $trendMonth = (string) ($trendRow['borrow_month'] ?? '');
+    $borrowTrendMonths[] = $trendMonth;
+    $borrowTrendMap[$trendMonth] = $trendRow;
+}
+$defaultBorrowMonth = !empty($borrowTrend) ? (string) ($borrowTrend[count($borrowTrend) - 1]['borrow_month'] ?? '2026-01') : '2026-01';
+$defaultBorrowYear = (int) substr($defaultBorrowMonth, 0, 4);
+if (!in_array($defaultBorrowYear, $analyticsYears, true)) {
+    $defaultBorrowYear = 2026;
+    $defaultBorrowMonth = '2026-01';
+}
+$selectedBorrowYear = in_array($requestedBorrowYear, $analyticsYears, true) ? $requestedBorrowYear : $defaultBorrowYear;
+$currentBorrowMonth = '';
+if (preg_match($monthPattern, $requestedBorrowMonth) === 1) {
+    $requestedMonthYear = (int) substr($requestedBorrowMonth, 0, 4);
+    if (in_array($requestedMonthYear, $analyticsYears, true)) {
+        $selectedBorrowYear = $requestedMonthYear;
+        $currentBorrowMonth = $requestedBorrowMonth;
+    }
+}
+if ($currentBorrowMonth === '') {
+    $monthsForYear = array_values(array_filter($borrowTrendMonths, static function (string $month) use ($selectedBorrowYear): bool {
+        return strpos($month, (string) $selectedBorrowYear . '-') === 0;
+    }));
+    $currentBorrowMonth = $monthsForYear !== []
+        ? (string) $monthsForYear[count($monthsForYear) - 1]
+        : ((string) $selectedBorrowYear . '-01');
+}
+$borrowTrendFilters = [];
+for ($month = 1; $month <= 12; $month++) {
+    $borrowTrendFilters[] = [
+        'borrow_month' => $selectedBorrowYear . '-' . str_pad((string) $month, 2, '0', STR_PAD_LEFT),
+    ];
+}
+$currentTrend = $borrowTrendMap[$currentBorrowMonth] ?? [
+    'borrow_month' => $currentBorrowMonth,
+    'borrow_count' => 0,
+];
+$previousBorrowMonth = date('Y-m', strtotime($currentBorrowMonth . '-01 -1 month'));
+$previousTrend = $borrowTrendMap[$previousBorrowMonth] ?? null;
 $currentBorrowCount = (int) ($currentTrend['borrow_count'] ?? 0);
 $previousBorrowCount = (int) ($previousTrend['borrow_count'] ?? 0);
 $borrowDelta = $currentBorrowCount - $previousBorrowCount;
@@ -84,29 +126,24 @@ $borrowDeltaLabel = $previousTrend
     : 'First tracked month';
 $borrowDeltaTone = $borrowDelta > 0 ? 'good' : ($borrowDelta < 0 ? 'warning' : 'neutral');
 
-$weeklyBorrowRowsStmt = $conn->prepare("
+$dailyBorrowRowsStmt = $conn->prepare("
     SELECT
-      CASE
-        WHEN DAYOFMONTH(borrow_date) <= 7 THEN 1
-        WHEN DAYOFMONTH(borrow_date) <= 14 THEN 2
-        WHEN DAYOFMONTH(borrow_date) <= 21 THEN 3
-        ELSE 4
-      END AS week_slot,
+      DATE(borrow_date) AS borrow_day,
       COUNT(*) AS borrow_count
     FROM borrows
     WHERE DATE_FORMAT(borrow_date, '%Y-%m') = ?
       AND status IN ('borrowed', 'return_requested', 'returned')
-    GROUP BY week_slot
-    ORDER BY week_slot ASC
+    GROUP BY DATE(borrow_date)
+    ORDER BY borrow_day ASC
 ");
-$weeklyBorrowRowsStmt->bind_param('s', $currentBorrowMonth);
-$weeklyBorrowRowsStmt->execute();
-$weeklyBorrowRowsResult = $weeklyBorrowRowsStmt->get_result();
-$weeklyBorrowMap = [];
-while ($weeklyBorrowRowsResult && ($row = $weeklyBorrowRowsResult->fetch_assoc())) {
-    $weeklyBorrowMap[(int) ($row['week_slot'] ?? 0)] = (int) ($row['borrow_count'] ?? 0);
+$dailyBorrowRowsStmt->bind_param('s', $currentBorrowMonth);
+$dailyBorrowRowsStmt->execute();
+$dailyBorrowRowsResult = $dailyBorrowRowsStmt->get_result();
+$dailyBorrowMap = [];
+while ($dailyBorrowRowsResult && ($row = $dailyBorrowRowsResult->fetch_assoc())) {
+    $dailyBorrowMap[(string) ($row['borrow_day'] ?? '')] = (int) ($row['borrow_count'] ?? 0);
 }
-$weeklyBorrowRowsStmt->close();
+$dailyBorrowRowsStmt->close();
 
 $monthStart = strtotime($currentBorrowMonth . '-01');
 $monthEnd = strtotime(date('Y-m-t', $monthStart));
@@ -117,7 +154,12 @@ for ($week = 1; $week <= 4; $week++) {
     $rangeEndDay = $week === 4 ? (int) date('t', $monthStart) : min((int) date('t', $monthStart), $week * 7);
     $rangeStart = strtotime($currentBorrowMonth . '-' . str_pad((string) $rangeStartDay, 2, '0', STR_PAD_LEFT));
     $rangeEnd = strtotime($currentBorrowMonth . '-' . str_pad((string) $rangeEndDay, 2, '0', STR_PAD_LEFT));
-    $count = (int) ($weeklyBorrowMap[$week] ?? 0);
+    $dailyCounts = [];
+    for ($day = $rangeStartDay; $day <= $rangeEndDay; $day++) {
+        $dayKey = $currentBorrowMonth . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+        $dailyCounts[] = (int) ($dailyBorrowMap[$dayKey] ?? 0);
+    }
+    $count = array_sum($dailyCounts);
     $weeklyBorrowTrend[] = [
         'label' => 'Week ' . $week,
         'range' => date('M j', $rangeStart) . ' - ' . date('M j', min($rangeEnd, $monthEnd)),
@@ -153,7 +195,6 @@ $weeklyInsight = $currentBorrowCount > 0
         date('F Y', strtotime($currentBorrowMonth . '-01'))
     )
     : 'No borrowing activity has been recorded for this month yet.';
-
 $topBooksThisMonthResult = $conn->prepare("
     SELECT
       b.title,
@@ -252,8 +293,9 @@ foreach ($allBooksShareSegments as $index => $segment) {
     $offset = (int) ($segmentOffsets[$index]['offset'] ?? 0);
     $midAngle = -90 + (($offset + ($percent / 2)) * 3.6);
     $angleRad = deg2rad($midAngle);
-    $x = (int) round(cos($angleRad) * 72);
-    $y = (int) round(sin($angleRad) * 68);
+    $labelRadius = 74;
+    $x = (int) round(cos($angleRad) * $labelRadius);
+    $y = (int) round(sin($angleRad) * $labelRadius);
 
     $donutLabels[] = [
         'percent' => $percent,
@@ -271,7 +313,21 @@ foreach ($allBooksShareSegments as $index => $segment) {
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <?php $adminDashboardVersion = (string) filemtime(__DIR__ . '/../assets/admin_dashboard.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script>
+if (window.history && 'scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual';
+}
+try {
+  var preservedAnalyticsScroll = window.sessionStorage.getItem('admin-analytics-scroll-y');
+  if (preservedAnalyticsScroll !== null) {
+    window.sessionStorage.removeItem('admin-analytics-scroll-y');
+    window.scrollTo(0, parseInt(preservedAnalyticsScroll, 10) || 0);
+  }
+} catch (error) {
+}
+</script>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
@@ -298,6 +354,19 @@ foreach ($allBooksShareSegments as $index => $segment) {
             <p class="analytics-print-note">For best print results, enable browser background graphics when saving this report as PDF.</p>
           </div>
           <div class="inline-actions analytics-print-actions">
+            <form method="get" class="analytics-year-filter">
+              <label for="analytics-year" class="sr-only">Select analytics year</label>
+              <div class="ui-select-shell">
+                <select id="analytics-year" name="year" class="ui-select" onchange="this.form.submit()">
+                  <?php foreach ($analyticsYears as $analyticsYear): ?>
+                    <option value="<?php echo (int) $analyticsYear; ?>" <?php echo $analyticsYear === (int) $selectedBorrowYear ? 'selected' : ''; ?>>
+                      <?php echo (int) $analyticsYear; ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <span class="ui-select-caret" aria-hidden="true"></span>
+              </div>
+            </form>
             <button type="button" class="button secondary" onclick="window.print()">Print Report</button>
           </div>
         </div>
@@ -337,7 +406,7 @@ foreach ($allBooksShareSegments as $index => $segment) {
           </div>
         </div>
 
-        <div class="dashboard-chart">
+        <div class="dashboard-chart" id="analytics-borrow-chart">
           <div class="inline-actions inline-actions-spread">
             <span class="muted">Borrow volume by week</span>
             <span class="code-pill"><?php echo h(date('F Y', strtotime($currentBorrowMonth . '-01'))); ?> | 4 weeks</span>
@@ -383,19 +452,19 @@ foreach ($allBooksShareSegments as $index => $segment) {
                       $weekCount = (int) ($weekRow['borrow_count'] ?? 0);
                       $isPeakWeek = $highestWeeklyBorrow && $weekCount === (int) ($highestWeeklyBorrow['borrow_count'] ?? -1) && $weekCount > 0;
                       $weekShare = $currentBorrowCount > 0 ? (int) round(($weekCount / $currentBorrowCount) * 100) : 0;
+                      $barHeight = $weeklyChartScaleMax > 0 ? max(18, round(($weekCount / $weeklyChartScaleMax) * 320, 2)) : 18;
                     ?>
                     <div class="analytics-week-col<?php echo $isPeakWeek ? ' is-peak' : ''; ?>">
                       <div class="analytics-week-bar-wrap">
                         <?php if ($isPeakWeek): ?>
                           <span class="analytics-week-badge">Peak</span>
                         <?php endif; ?>
-                        <div
-                          class="analytics-week-bar<?php echo $weekCount === 0 ? ' is-empty' : ''; ?>"
-                          data-week-bar
-                          data-value="<?php echo $weekCount; ?>"
-                          data-max="<?php echo max(1, $weeklyChartScaleMax); ?>"
-                        >
-                          <span class="analytics-week-bar-value"><?php echo $weekCount === 0 ? 'No borrows' : $weekCount; ?></span>
+                        <div class="analytics-week-bar<?php echo $weekCount === 0 ? ' is-empty' : ''; ?>"
+                             data-week-bar
+                             data-target-height="<?php echo $barHeight; ?>">
+                          <span class="analytics-week-bar-value">
+                            <?php echo $weekCount === 0 ? 'No borrows' : $weekCount; ?>
+                          </span>
                         </div>
                       </div>
                       <div class="chart-label"><?php echo h($weekRow['label']); ?></div>
@@ -403,9 +472,22 @@ foreach ($allBooksShareSegments as $index => $segment) {
                       <div class="analytics-week-range"><?php echo h($weekRow['range']); ?></div>
                     </div>
                   <?php endforeach; ?>
-                  </div>
-                </div>
               </div>
+            </div>
+          <div class="analytics-month-filters analytics-month-filters-below">
+            <?php foreach ($borrowTrendFilters as $filterRow): ?>
+              <?php
+                $filterMonth = (string) ($filterRow['borrow_month'] ?? '');
+                $isActiveMonth = $filterMonth === $currentBorrowMonth;
+              ?>
+              <a class="analytics-month-filter<?php echo $isActiveMonth ? ' is-active' : ''; ?>"
+                 data-preserve-scroll
+                 href="?year=<?php echo urlencode((string) $selectedBorrowYear); ?>&borrow_month=<?php echo urlencode($filterMonth); ?>">
+                <?php echo h(date('M Y', strtotime($filterMonth . '-01'))); ?>
+              </a>
+            <?php endforeach; ?>
+          </div>
+        </div>
             </div>
 
             <div class="analytics-donut-panel">
@@ -571,3 +653,4 @@ foreach ($allBooksShareSegments as $index => $segment) {
 <script src="/librarymanage/assets/admin_dashboard.js?v=<?php echo urlencode($adminDashboardVersion); ?>"></script>
 </body>
 </html>
+

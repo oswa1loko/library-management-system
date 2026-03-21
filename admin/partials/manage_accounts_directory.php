@@ -1,15 +1,5 @@
 <div class="panel">
   <div class="toolbar manage-users-toolbar">
-    <div class="grow">
-      <div class="card-head manage-users-head">
-        <div class="dashboard-icon icon-accounts" aria-hidden="true"></div>
-        <div>
-          <p class="muted eyebrow-compact">Account Directory</p>
-          <h3 class="heading-card">All Users</h3>
-          <p class="muted">Search by full name, email, or username and filter by role.</p>
-        </div>
-      </div>
-    </div>
     <form method="get" class="toolbar grow manage-users-filters">
       <div class="grow">
         <label for="search">Search</label>
@@ -66,13 +56,14 @@
           <th>Email</th>
           <th>Username</th>
           <th>Role</th>
+          <th>Course</th>
           <th>Created</th>
           <th>Action</th>
         </tr>
       </thead>
       <tbody>
         <?php if ($users->num_rows === 0): ?>
-          <tr><td colspan="8" class="muted">No users matched your filters.</td></tr>
+          <tr><td colspan="9" class="muted">No users matched your filters.</td></tr>
         <?php endif; ?>
         <?php while ($user = $users->fetch_assoc()): ?>
           <tr>
@@ -92,10 +83,13 @@
             <td><?php echo h($user['email']); ?></td>
             <td><?php echo h($user['username']); ?></td>
             <td><span class="badge"><?php echo h(role_label((string) $user['role'])); ?></span></td>
+            <td><?php echo h((string) (($user['role'] ?? '') === 'student' ? ($user['course'] ?? '-') : '-')); ?></td>
             <td><?php echo h(format_display_date((string) $user['created_at'])); ?></td>
             <td>
               <div class="inline-actions manage-users-actions">
-                <a class="button secondary" href="manage_accounts.php?print=1&user_id=<?php echo (int) $user['id']; ?>">Print</a>
+                <?php if (($user['role'] ?? '') === 'student'): ?>
+                  <a class="button secondary" href="view_user.php?id=<?php echo (int) $user['id']; ?>">View Profile</a>
+                <?php endif; ?>
                 <a class="button secondary" href="edit_user.php?id=<?php echo (int) $user['id']; ?>">Edit</a>
                 <form method="post" class="inline-form js-confirm-delete-user">
                   <input type="hidden" name="id" value="<?php echo (int) $user['id']; ?>">

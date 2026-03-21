@@ -41,48 +41,69 @@ function upload_payment_proof(array $file, int $userId): array
 }
 
 if (isset($_POST['pay'])) {
-    $penaltyId = (int) ($_POST['penalty_id'] ?? 0);
+    $bookId = (int) ($_POST['payment_group_book_id'] ?? 0);
     $amount = (float) ($_POST['amount'] ?? 0);
 
-    $penaltyCheck = $conn->prepare("
-        SELECT
-            p.id,
-            p.amount,
-            p.status,
-            br.status AS borrow_status
-        FROM penalties p
-        LEFT JOIN borrows br ON br.id = p.borrow_id
-        WHERE p.id = ? AND p.user_id = ?
-        LIMIT 1
-    ");
-    $penaltyCheck->bind_param('ii', $penaltyId, $userId);
-    $penaltyCheck->execute();
-    $penalty = $penaltyCheck->get_result()->fetch_assoc();
-    $penaltyCheck->close();
-
-    if (!$penalty) {
-        $msg = 'Selected penalty was not found.';
-        $msgType = 'error';
-    } elseif (($penalty['borrow_status'] ?? '') !== 'returned') {
-        $msg = 'You can only pay this penalty after the book is confirmed returned.';
-        $msgType = 'error';
-    } elseif ($penalty['status'] === 'paid') {
-        $msg = 'This penalty is already marked as paid.';
-        $msgType = 'error';
-    } elseif ($amount !== (float) $penalty['amount']) {
-        $msg = 'Payment amount must match the full penalty amount.';
+    if ($bookId <= 0) {
+        $msg = 'Select a grouped penalty first.';
         $msgType = 'error';
     } elseif ($amount <= 0) {
         $msg = 'Enter a valid payment amount.';
         $msgType = 'error';
     } else {
-        $existingPending = $conn->prepare("SELECT id FROM payments WHERE user_id = ? AND penalty_id = ? AND status = 'pending' LIMIT 1");
-        $existingPending->bind_param('ii', $userId, $penaltyId);
-        $existingPending->execute();
-        $existingPending->store_result();
+        $groupCheck = $conn->prepare("
+            SELECT
+                p.id,
+                p.amount,
+                p.status,
+                b.title,
+                br.status AS borrow_status,
+                (
+                    SELECT pay.status
+                    FROM payments pay
+                    LEFT JOIN payment_penalty_links ppl ON ppl.payment_id = pay.id
+                    WHERE pay.user_id = p.user_id
+                      AND (
+                        pay.penalty_id = p.id
+                        OR ppl.penalty_id = p.id
+                      )
+                    ORDER BY pay.id DESC
+                    LIMIT 1
+                ) AS latest_payment_status
+            FROM penalties p
+            JOIN borrows br ON br.id = p.borrow_id
+            JOIN books b ON b.id = br.book_id
+            WHERE p.user_id = ? AND br.book_id = ?
+            ORDER BY p.id ASC
+        ");
+        $groupCheck->bind_param('ii', $userId, $bookId);
+        $groupCheck->execute();
+        $groupRows = $groupCheck->get_result()->fetch_all(MYSQLI_ASSOC);
+        $groupCheck->close();
 
-        if ($existingPending->num_rows > 0) {
-            $msg = 'There is already a pending payment submission for this penalty.';
+        $eligiblePenaltyIds = [];
+        $groupTitle = '';
+        $expectedAmount = 0.0;
+        foreach ($groupRows as $groupRow) {
+            $groupTitle = $groupTitle !== '' ? $groupTitle : (string) ($groupRow['title'] ?? '');
+            if (
+                (string) ($groupRow['status'] ?? '') === 'unpaid'
+                && (string) ($groupRow['borrow_status'] ?? '') === 'returned'
+                && (string) ($groupRow['latest_payment_status'] ?? '') !== 'pending'
+            ) {
+                $eligiblePenaltyIds[] = (int) ($groupRow['id'] ?? 0);
+                $expectedAmount += (float) ($groupRow['amount'] ?? 0);
+            }
+        }
+
+        $eligiblePenaltyIds = array_values(array_filter(array_unique($eligiblePenaltyIds)));
+        $expectedAmount = round($expectedAmount, 2);
+
+        if ($eligiblePenaltyIds === []) {
+            $msg = 'No payable grouped penalties are available for this book right now.';
+            $msgType = 'error';
+        } elseif (round($amount, 2) !== $expectedAmount) {
+            $msg = 'Payment amount must match the full grouped penalty amount.';
             $msgType = 'error';
         } else {
             $upload = upload_payment_proof($_FILES['proof'] ?? [], $userId);
@@ -91,28 +112,64 @@ if (isset($_POST['pay'])) {
                 $msgType = 'error';
             } else {
                 $proofPath = $upload['path'];
-                $insert = $conn->prepare("INSERT INTO payments (user_id, penalty_id, amount, proof_path, status) VALUES (?, ?, ?, ?, 'pending')");
-                $insert->bind_param('iids', $userId, $penaltyId, $amount, $proofPath);
+                $paymentBatch = 'pay-' . bin2hex(random_bytes(8));
+                $representativePenaltyId = (int) $eligiblePenaltyIds[0];
 
-                if ($insert->execute()) {
-                    $msg = 'Payment submitted. Wait for admin review.';
-                } else {
+                $conn->begin_transaction();
+                try {
+                    $insert = $conn->prepare("
+                        INSERT INTO payments (user_id, penalty_id, payment_batch, amount, proof_path, status)
+                        VALUES (?, ?, ?, ?, ?, 'pending')
+                    ");
+                    $insert->bind_param('iisds', $userId, $representativePenaltyId, $paymentBatch, $expectedAmount, $proofPath);
+                    $insert->execute();
+                    $paymentId = (int) $insert->insert_id;
+                    $insert->close();
+
+                    $linkStmt = $conn->prepare("INSERT INTO payment_penalty_links (payment_id, penalty_id) VALUES (?, ?)");
+                    foreach ($eligiblePenaltyIds as $linkedPenaltyId) {
+                        $linkStmt->bind_param('ii', $paymentId, $linkedPenaltyId);
+                        $linkStmt->execute();
+                    }
+                    $linkStmt->close();
+
+                    $conn->commit();
+                    $copyCount = count($eligiblePenaltyIds);
+                    $copyLabel = $copyCount === 1 ? '1 copy' : $copyCount . ' copies';
+                    if ($role === 'student') {
+                        create_notification(
+                            $conn,
+                            'admin',
+                            'New Payment Submission',
+                            'A student payment proof was submitted by ' . (string) ($_SESSION['username'] ?? 'a member')
+                                . ' for ' . $copyLabel . ' of ' . ($groupTitle !== '' ? $groupTitle : 'a book') . '.',
+                            'warning'
+                        );
+                    }
+                    $msg = 'Payment submitted for ' . $copyLabel . ' of ' . ($groupTitle !== '' ? $groupTitle : 'this book') . '. Wait for admin review.';
+                } catch (Throwable $e) {
+                    $conn->rollback();
                     remove_relative_file($proofPath);
-                    $msg = 'Unable to save payment right now.';
+                    $msg = 'Unable to save grouped payment right now.';
                     $msgType = 'error';
                 }
-
-                $insert->close();
             }
         }
-
-        $existingPending->close();
     }
 }
 
 $penaltiesStmt = $conn->prepare("
     SELECT p.id, p.amount, p.reason, p.status, p.created_at,
-           (SELECT pay.status FROM payments pay WHERE pay.penalty_id = p.id ORDER BY pay.id DESC LIMIT 1) AS latest_payment_status
+           (SELECT pay.status
+              FROM payments pay
+              LEFT JOIN payment_penalty_links ppl ON ppl.payment_id = pay.id
+             WHERE pay.user_id = p.user_id
+               AND (
+                 pay.penalty_id = p.id
+                 OR ppl.penalty_id = p.id
+               )
+             ORDER BY pay.id DESC
+             LIMIT 1) AS latest_payment_status
     FROM penalties p
     WHERE p.user_id = ?
     ORDER BY p.id DESC
@@ -123,10 +180,24 @@ $penalties = $penaltiesStmt->get_result();
 $penaltiesStmt->close();
 
 $paymentsStmt = $conn->prepare("
-    SELECT id, penalty_id, amount, proof_path, status, created_at
-    FROM payments
-    WHERE user_id = ?
-    ORDER BY id DESC
+    SELECT
+        pay.id,
+        pay.penalty_id,
+        pay.payment_batch,
+        pay.amount,
+        pay.proof_path,
+        pay.status,
+        pay.created_at,
+        COUNT(ppl.penalty_id) AS linked_penalty_count,
+        MAX(b.title) AS linked_book_title
+    FROM payments pay
+    LEFT JOIN payment_penalty_links ppl ON ppl.payment_id = pay.id
+    LEFT JOIN penalties p ON p.id = ppl.penalty_id
+    LEFT JOIN borrows br ON br.id = p.borrow_id
+    LEFT JOIN books b ON b.id = br.book_id
+    WHERE pay.user_id = ?
+    GROUP BY pay.id, pay.penalty_id, pay.payment_batch, pay.amount, pay.proof_path, pay.status, pay.created_at
+    ORDER BY pay.id DESC
 ");
 $paymentsStmt->bind_param('i', $userId);
 $paymentsStmt->execute();
@@ -164,10 +235,22 @@ $penaltyOptionStmt = $conn->prepare("
       p.reason,
       p.status,
       p.created_at,
+      br.book_id,
+      b.title,
       br.status AS borrow_status,
-      (SELECT pay.status FROM payments pay WHERE pay.penalty_id = p.id ORDER BY pay.id DESC LIMIT 1) AS latest_payment_status
+      (SELECT pay.status
+         FROM payments pay
+         LEFT JOIN payment_penalty_links ppl ON ppl.payment_id = pay.id
+        WHERE pay.user_id = p.user_id
+          AND (
+            pay.penalty_id = p.id
+            OR ppl.penalty_id = p.id
+          )
+        ORDER BY pay.id DESC
+        LIMIT 1) AS latest_payment_status
     FROM penalties p
     LEFT JOIN borrows br ON br.id = p.borrow_id
+    LEFT JOIN books b ON b.id = br.book_id
     WHERE p.user_id = ?
     ORDER BY p.id DESC
 ");
@@ -183,6 +266,8 @@ while ($penaltyRow = $penaltyOptionRows->fetch_assoc()) {
     $penaltyAmount = (float) ($penaltyRow['amount'] ?? 0);
     $penaltyReason = (string) ($penaltyRow['reason'] ?? '');
     $penaltyStatus = (string) ($penaltyRow['status'] ?? '');
+    $bookId = (int) ($penaltyRow['book_id'] ?? 0);
+    $bookTitle = (string) ($penaltyRow['title'] ?? '');
     $borrowStatus = (string) ($penaltyRow['borrow_status'] ?? '');
     $latestPaymentStatus = (string) ($penaltyRow['latest_payment_status'] ?? '');
 
@@ -196,20 +281,39 @@ while ($penaltyRow = $penaltyOptionRows->fetch_assoc()) {
     }
 
     if ($blockReason === '') {
-        $payablePenaltyOptions[] = [
-            'id' => $penaltyId,
-            'amount' => $penaltyAmount,
-            'reason' => $penaltyReason,
-        ];
+        if ($bookId > 0) {
+            if (!isset($payablePenaltyOptions[$bookId])) {
+                $payablePenaltyOptions[$bookId] = [
+                    'book_id' => $bookId,
+                    'title' => $bookTitle !== '' ? $bookTitle : ('Book #' . $bookId),
+                    'amount' => 0.0,
+                    'copy_count' => 0,
+                ];
+            }
+
+            $payablePenaltyOptions[$bookId]['amount'] += $penaltyAmount;
+            $payablePenaltyOptions[$bookId]['copy_count']++;
+        } else {
+            $payablePenaltyOptions['penalty-' . $penaltyId] = [
+                'book_id' => 0,
+                'title' => $penaltyReason !== '' ? $penaltyReason : ('Penalty #' . $penaltyId),
+                'amount' => $penaltyAmount,
+                'copy_count' => 1,
+            ];
+        }
     } else {
         $blockedPenaltyNotes[] = [
             'id' => $penaltyId,
             'amount' => $penaltyAmount,
-            'reason' => $penaltyReason,
+            'reason' => $bookTitle !== '' ? $bookTitle . ' - ' . $penaltyReason : $penaltyReason,
             'block_reason' => $blockReason,
         ];
     }
 }
+$payablePenaltyOptions = array_values(array_map(static function (array $option): array {
+    $option['amount'] = round((float) ($option['amount'] ?? 0), 2);
+    return $option;
+}, $payablePenaltyOptions));
 $canSubmitPayment = count($payablePenaltyOptions) > 0;
 ?>
 <!DOCTYPE html>
@@ -219,50 +323,60 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo h(page_title($role, 'Payments')); ?></title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
 <div class="site-shell member-shell js-member-sidebar" data-sidebar-key="<?php echo h($role); ?>-payments">
   <aside class="panel member-sidebar">
     <div class="member-sidebar-head">
-      <button type="button" class="member-sidebar-toggle js-sidebar-toggle" aria-expanded="true" aria-label="Collapse sidebar">
-        <span class="dashboard-icon icon-view" aria-hidden="true"></span>
+      <div class="member-sidebar-toggle" aria-hidden="true">
         <span class="member-sidebar-label">Main Menu</span>
-      </button>
+      </div>
     </div>
-    <p class="member-sidebar-section member-sidebar-label">Main</p>
     <nav class="member-sidebar-nav">
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/dashboard.php" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
-      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="Borrow and Return">
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Borrow and Return</span>
+        <span class="member-sidebar-label">Books</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/catalog.php" data-tooltip="Catalog">
+        <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Catalog</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/ebooks.php" data-tooltip="eBooks">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="Returns">
+        <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Returns</span>
+      </a>
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/tracking.php" data-tooltip="Records Tracking">
+        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Records Tracking</span>
+      </a>
       <a class="member-sidebar-link is-active" href="/librarymanage/<?php echo h($role); ?>/payment_upload.php" data-tooltip="Payments">
         <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
         <span class="member-sidebar-label">Payments</span>
       </a>
-      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Catalog">
-        <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Catalog</span>
-      </a>
     </nav>
     <p class="member-sidebar-section member-sidebar-label">Account</p>
     <div class="topbar-nav member-sidebar-utilities">
+      <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/profile.php" data-tooltip="Profile">
+        <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Profile</span>
+      </a>
       <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
-        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
         <span class="member-sidebar-label">Logout</span>
       </a>
     </div>
@@ -315,14 +429,14 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
         </div>
         <form method="post" enctype="multipart/form-data" class="stack chips-row member-workspace-form">
           <div>
-            <label for="penalty_id">Penalty</label>
+            <label for="payment_group_book_id">Penalty Group</label>
             <div class="ui-select-shell">
-              <select id="penalty_id" name="penalty_id" class="ui-select" required <?php echo $canSubmitPayment ? '' : 'disabled'; ?>>
+              <select id="payment_group_book_id" name="payment_group_book_id" class="ui-select" required <?php echo $canSubmitPayment ? '' : 'disabled'; ?>>
                 <?php if ($canSubmitPayment): ?>
-                  <option value="" disabled selected>Select a penalty</option>
+                  <option value="" disabled selected>Select a grouped penalty</option>
                   <?php foreach ($payablePenaltyOptions as $option): ?>
-                    <option value="<?php echo (int) $option['id']; ?>">
-                      #<?php echo (int) $option['id']; ?> - <?php echo h(format_currency($option['amount'])); ?> - <?php echo h($option['reason']); ?>
+                    <option value="<?php echo (int) $option['book_id']; ?>">
+                      <?php echo h($option['title']); ?> - <?php echo (int) $option['copy_count']; ?> cop<?php echo (int) $option['copy_count'] === 1 ? 'y' : 'ies'; ?> - <?php echo h(format_currency($option['amount'])); ?>
                     </option>
                   <?php endforeach; ?>
                 <?php else: ?>
@@ -362,7 +476,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
           <div class="empty-state">Payment proof files are stored locally in <code>uploads/proofs</code>.</div>
           <div class="empty-state">Payments are only allowed after the linked borrow record is marked as returned.</div>
           <div class="empty-state">Pending submissions still need admin approval before penalties are fully settled.</div>
-          <div class="empty-state">Payment submissions must match the full linked penalty amount.</div>
+          <div class="empty-state">Multiple penalty copies of the same book are grouped into one payment submission.</div>
         </div>
       </div>
     </div>
@@ -457,7 +571,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
           <thead>
             <tr>
               <th>ID</th>
-              <th>Penalty ID</th>
+              <th>Penalty Ref</th>
               <th>Amount</th>
               <th>Status</th>
               <th>Proof</th>
@@ -471,7 +585,17 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
             <?php while ($payment = $payments->fetch_assoc()): ?>
               <tr>
                 <td><?php echo (int) $payment['id']; ?></td>
-                <td><?php echo (int) $payment['penalty_id']; ?></td>
+                <td>
+                  <?php
+                  $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
+                  if ($linkedPenaltyCount > 1) {
+                      echo h((string) ($payment['payment_batch'] ?: ('Payment #' . (int) $payment['id'])));
+                      echo ' / ' . $linkedPenaltyCount . ' penalties';
+                  } else {
+                      echo (int) $payment['penalty_id'];
+                  }
+                  ?>
+                </td>
                 <td><?php echo h(format_currency($payment['amount'])); ?></td>
                 <td><span class="badge"><span class="status-dot <?php echo h($payment['status']); ?>"></span><?php echo h($payment['status']); ?></span></td>
                 <td>

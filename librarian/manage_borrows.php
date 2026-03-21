@@ -9,6 +9,8 @@ $msg = '';
 $msgType = 'success';
 $search = trim($_GET['search'] ?? '');
 $statusFilter = trim($_GET['status'] ?? 'all');
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$perPage = 20;
 $today = date('Y-m-d');
 
 function approve_pending_borrow(mysqli $conn, int $borrowId): array
@@ -380,6 +382,47 @@ $summary = $conn->query("
     WHERE status IN ('pending', 'borrowed', 'return_requested')
 ")->fetch_assoc();
 
+$whereSql = "
+    WHERE br.status IN ('pending', 'borrowed', 'return_requested')
+";
+
+$params = [];
+$types = '';
+if ($search !== '') {
+
+    $whereSql .= " AND (u.fullname LIKE ? OR u.username LIKE ? OR b.title LIKE ? OR b.author LIKE ?)";
+    $term = '%' . $search . '%';
+    $params[] = $term;
+    $params[] = $term;
+    $params[] = $term;
+    $params[] = $term;
+    $types .= 'ssss';
+}
+
+if ($statusFilter === 'overdue') {
+    $whereSql .= " AND br.status IN ('borrowed', 'return_requested') AND br.due_date < CURDATE()";
+} elseif ($statusFilter === 'due_today') {
+    $whereSql .= " AND br.status IN ('borrowed', 'return_requested') AND br.due_date = CURDATE()";
+}
+
+$countSql = "
+    SELECT COUNT(*) AS total
+    FROM borrows br
+    JOIN users u ON u.id = br.user_id
+    JOIN books b ON b.id = br.book_id
+    {$whereSql}
+";
+$countStmt = $conn->prepare($countSql);
+if ($types !== '') {
+    $countStmt->bind_param($types, ...$params);
+}
+$countStmt->execute();
+$countRow = $countStmt->get_result()->fetch_assoc();
+$totalRows = (int) ($countRow['total'] ?? 0);
+$totalPages = max(1, (int) ceil($totalRows / $perPage));
+$page = min($page, $totalPages);
+$offset = ($page - 1) * $perPage;
+
 $sql = "
     SELECT
       br.id,
@@ -398,40 +441,23 @@ $sql = "
     FROM borrows br
     JOIN users u ON u.id = br.user_id
     JOIN books b ON b.id = br.book_id
-    WHERE br.status IN ('pending', 'borrowed', 'return_requested')
+    {$whereSql}
+    ORDER BY br.due_date ASC, br.id DESC
+    LIMIT ? OFFSET ?
 ";
 
-$params = [];
-$types = '';
-
-if ($search !== '') {
-    $sql .= " AND (u.fullname LIKE ? OR u.username LIKE ? OR b.title LIKE ? OR b.author LIKE ?)";
-    $term = '%' . $search . '%';
-    $params[] = $term;
-    $params[] = $term;
-    $params[] = $term;
-    $params[] = $term;
-    $types .= 'ssss';
-}
-
-if ($statusFilter === 'overdue') {
-    $sql .= " AND br.status IN ('borrowed', 'return_requested') AND br.due_date < CURDATE()";
-} elseif ($statusFilter === 'due_today') {
-    $sql .= " AND br.status IN ('borrowed', 'return_requested') AND br.due_date = CURDATE()";
-}
-
-$sql .= " ORDER BY br.due_date ASC, br.id DESC";
-
 $stmt = $conn->prepare($sql);
-if ($types !== '') {
-    $stmt->bind_param($types, ...$params);
-}
+$queryParams = $params;
+$queryTypes = $types . 'ii';
+$queryParams[] = $perPage;
+$queryParams[] = $offset;
+$stmt->bind_param($queryTypes, ...$queryParams);
 $stmt->execute();
 $borrows = $stmt->get_result();
+$pageQuery = $_GET;
 
 $recentRequests = $conn->query("
     SELECT
-      br.id,
       u.username,
       b.title,
       br.due_date,
@@ -449,9 +475,7 @@ $pendingBatchRows = $conn->query("
     SELECT
       br.request_batch,
       br.requested_at,
-      b.id AS book_id,
       b.qty_available,
-      u.id AS user_id,
       u.fullname,
       u.username,
       u.role,
@@ -474,7 +498,7 @@ if ($pendingBatchRows instanceof mysqli_result) {
 
         if (!isset($pendingBatches[$batchKey])) {
             $pendingBatches[$batchKey] = [
-                'request_batch' => $batchKey,
+                'request_batch' => $batchKey,/*  */
                 'created_at' => (string) ($row['requested_at'] ?? ''),
                 'fullname' => (string) ($row['fullname'] ?? ''),
                 'username' => (string) ($row['username'] ?? ''),
@@ -482,7 +506,7 @@ if ($pendingBatchRows instanceof mysqli_result) {
                 'actionable_items' => 0,
                 'waiting_stock_items' => 0,
                 'items' => [],
-            ];
+            ];/*  */
         }
 
         $waitingForStock = (int) ($row['qty_available'] ?? 0) <= 0;
@@ -771,6 +795,24 @@ $selectedPendingReturnBatch = $selectedReturnBatch !== '' ? ($pendingReturnBatch
             <a class="button secondary" href="manage_borrows.php">Reset</a>
           </div>
       </form>
+
+      <div class="inline-actions flow-top-sm">
+        <span class="muted">
+          Showing <?php echo $totalRows === 0 ? 0 : ($offset + 1); ?>-<?php echo min($offset + $perPage, $totalRows); ?>
+          of <?php echo $totalRows; ?> active records
+        </span>
+        <?php if ($totalPages > 1): ?>
+          <?php
+          $previousQuery = $pageQuery;
+          $previousQuery['page'] = max(1, $page - 1);
+          $nextQuery = $pageQuery;
+          $nextQuery['page'] = min($totalPages, $page + 1);
+          ?>
+          <a class="button secondary<?php echo $page <= 1 ? ' is-disabled' : ''; ?>" href="<?php echo $page <= 1 ? '#' : ('manage_borrows.php?' . h(http_build_query($previousQuery))); ?>"<?php echo $page <= 1 ? ' aria-disabled="true"' : ''; ?>>Previous</a>
+          <span class="badge">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+          <a class="button secondary<?php echo $page >= $totalPages ? ' is-disabled' : ''; ?>" href="<?php echo $page >= $totalPages ? '#' : ('manage_borrows.php?' . h(http_build_query($nextQuery))); ?>"<?php echo $page >= $totalPages ? ' aria-disabled="true"' : ''; ?>>Next</a>
+        <?php endif; ?>
+      </div>
 
       <div class="table-wrap table-wrap-top">
         <table>

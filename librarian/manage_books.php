@@ -5,10 +5,47 @@ require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('librarian');
 
+function manage_books_filter_query(string $search, string $catalogFilter): string
+{
+    $query = http_build_query(array_filter([
+        'search' => $search,
+        'catalog' => $catalogFilter,
+    ], static fn($value) => $value !== ''));
+
+    return $query !== '' ? '?' . $query : '';
+}
+
+function manage_books_print_title(string $printScope, string $selectedCatalogName): string
+{
+    if ($printScope === 'catalog' && $selectedCatalogName !== 'All') {
+        return $selectedCatalogName . ' Books';
+    }
+
+    if ($printScope === 'available') {
+        return 'Available Books';
+    }
+
+    if ($printScope === 'low_stock') {
+        return 'Low Stock Books';
+    }
+
+    if ($printScope === 'out_of_stock') {
+        return 'Out of Stock Books';
+    }
+
+    if ($selectedCatalogName !== 'All') {
+        return $selectedCatalogName . ' Books';
+    }
+
+    return 'All Books';
+}
+
 $message = '';
 $messageType = 'success';
 $search = trim($_GET['search'] ?? '');
 $catalogFilter = trim((string) ($_GET['catalog'] ?? $_GET['category'] ?? ''));
+$printMode = isset($_GET['print']) && $_GET['print'] === '1';
+$printScope = trim((string) ($_GET['print_scope'] ?? 'current'));
 $formData = [
     'title' => '',
     'author' => '',
@@ -175,6 +212,16 @@ $catalogs = [];
 while ($catalogRows && ($catalogRow = $catalogRows->fetch_assoc())) {
     $catalogs[] = $catalogRow;
 }
+$selectedCatalogName = 'All';
+if ($catalogFilter !== '') {
+    $selectedCatalogName = 'Selected';
+    foreach ($catalogs as $catalog) {
+        if ((string) $catalog['id'] === $catalogFilter) {
+            $selectedCatalogName = (string) $catalog['name'];
+            break;
+        }
+    }
+}
 
 $booksSql = "SELECT * FROM books WHERE 1=1";
 $booksParams = [];
@@ -193,6 +240,16 @@ if ($catalogFilter !== '') {
     $booksSql .= " AND catalog_id = ?";
     $booksParams[] = (int) $catalogFilter;
     $booksTypes .= 'i';
+}
+
+if ($printMode) {
+    if ($printScope === 'available') {
+        $booksSql .= " AND qty_available > 2";
+    } elseif ($printScope === 'low_stock') {
+        $booksSql .= " AND qty_available BETWEEN 1 AND 2";
+    } elseif ($printScope === 'out_of_stock') {
+        $booksSql .= " AND qty_available <= 0";
+    }
 }
 
 $booksSql .= " ORDER BY id DESC";
@@ -214,6 +271,9 @@ $bookStats = $conn->query("
 $borrowedCopies = max(0, (int) ($bookStats['total_copies'] ?? 0) - (int) ($bookStats['available_copies'] ?? 0));
 $lowStockCount = (int) ($conn->query("SELECT COUNT(*) AS low_stock_titles FROM books WHERE qty_available BETWEEN 1 AND 2")->fetch_assoc()['low_stock_titles'] ?? 0);
 $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles FROM books WHERE qty_available <= 0")->fetch_assoc()['out_of_stock_titles'] ?? 0);
+$shouldOpenAddBookModal = isset($_POST['add']) && $messageType === 'error';
+$filterQueryString = manage_books_filter_query($search, $catalogFilter);
+$printTitle = manage_books_print_title($printScope, $selectedCatalogName);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -222,11 +282,20 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo h(page_title('librarian', 'Books')); ?></title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<script src="/librarymanage/assets/theme.js"></script>
+<?php $manageBooksVersion = (string) filemtime(__DIR__ . '/../assets/librarian_manage_books.js'); ?>
+<?php $manageBooksPrintVersion = (string) filemtime(__DIR__ . '/../assets/librarian_manage_books_print.js'); ?>
+<?php $manageBooksToolsVersion = (string) filemtime(__DIR__ . '/../assets/librarian_manage_books_tools.js'); ?>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
+<?php if ($printMode): ?>
+<div class="site-shell">
+  <?php require __DIR__ . '/partials/manage_books_print.php'; ?>
+</div>
+<?php else: ?>
 <div class="site-shell librarian-shell member-shell js-member-sidebar" data-sidebar-key="librarian-books" data-sidebar-default="expanded">
   <?php
   $sidebarPage = 'books';
@@ -289,105 +358,18 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
           <div>
             <p class="muted eyebrow-compact">Add Book</p>
             <h3 class="heading-card">Create a new library entry</h3>
-            <p class="muted">After filling in the book details, assign the book to an existing catalog instead of typing the catalog manually.</p>
+            <p class="muted">Open the add-book form in a modal so the stock records table stays visible on the page.</p>
           </div>
         </div>
-
-        <form method="post" enctype="multipart/form-data" class="stack flow-top-lg">
-          <div class="stack">
-            <div>
-              <p class="muted eyebrow-compact">Book Details</p>
-              <h4 class="heading-top-md">Catalog metadata for this title</h4>
-            </div>
-            <div class="empty-state">Need a new catalog first? Create it in <a href="/librarymanage/librarian/manage_catalogs.php">Catalog Management</a>, then come back here to assign the book.</div>
-          </div>
-          <div class="grid form">
-            <div>
-              <label for="title">Book Title</label>
-              <input id="title" name="title" value="<?php echo h($formData['title']); ?>" placeholder="Introduction to Programming" required>
-            </div>
-            <div>
-              <label for="author">Author</label>
-              <input id="author" name="author" value="<?php echo h($formData['author']); ?>" placeholder="John Doe" required>
-            </div>
-            <div>
-              <label for="catalog_id">Catalog</label>
-              <div class="ui-select-shell">
-                <select id="catalog_id" name="catalog_id" class="ui-select" required>
-                  <option value="">Select catalog</option>
-                  <?php foreach ($catalogs as $catalog): ?>
-                    <option value="<?php echo (int) $catalog['id']; ?>" <?php echo $formData['catalog_id'] === (string) $catalog['id'] ? 'selected' : ''; ?>>
-                      <?php echo h($catalog['name']); ?>
-                    </option>
-                  <?php endforeach; ?>
-                </select>
-                <span class="ui-select-caret" aria-hidden="true"></span>
-              </div>
-            </div>
-            <div>
-              <label for="isbn">ISBN</label>
-              <input id="isbn" name="isbn" value="<?php echo h($formData['isbn']); ?>" placeholder="978-1234567890">
-            </div>
-            <div>
-              <label for="qty">Starting Quantity</label>
-              <input id="qty" type="number" name="qty" value="<?php echo (int) $formData['qty']; ?>" min="1" required>
-            </div>
-            <div class="form-span-2">
-              <label for="description">Description</label>
-              <textarea id="description" name="description" rows="4" placeholder="Short catalog note or summary"><?php echo h($formData['description']); ?></textarea>
-            </div>
-            <div>
-              <label for="cover">Book Cover</label>
-              <input id="cover" type="file" name="cover" accept=".jpg,.jpeg,.png,.webp">
-              <div class="book-media book-media-top">
-                <img id="add-cover-preview" class="book-cover" src="" alt="Selected cover preview" hidden>
-              </div>
-            </div>
-          </div>
-
-          <div class="stack">
-            <div>
-              <p class="muted eyebrow-compact">Inventory</p>
-              <h4 class="heading-top-md">Physical copies for this catalog record</h4>
-            </div>
-            <div class="empty-state">Starting quantity becomes both total copies and available copies after the book is assigned to the selected catalog.</div>
-          </div>
-
+        <div class="stack flow-top-lg">
+          <div class="empty-state">Need a new catalog first? Create it in <a href="/librarymanage/librarian/manage_catalogs.php">Catalog Management</a>, then come back here to assign the book.</div>
           <div class="inline-actions">
-            <button type="submit" name="add" value="1">Add Book</button>
-            <span class="muted">Book details, assigned catalog, and starting stock are saved together on one book record.</span>
+            <button type="button" data-open-book-add-modal>Add Book</button>
+            <span class="muted">Book details, assigned catalog, and starting stock are saved together in one quick modal flow.</span>
           </div>
-        </form>
+        </div>
       </div>
 
-      <div class="panel">
-          <div class="card-head">
-            <div class="dashboard-icon icon-guide" aria-hidden="true"></div>
-            <div>
-              <p class="muted eyebrow-compact">Workflow Notes</p>
-              <h3 class="heading-card">Daily catalog reminders</h3>
-            <p class="muted">Create the catalog once, assign books to it consistently, verify stock before editing totals, and update covers only when the title record is final.</p>
-          </div>
-        </div>
-        <div class="stack">
-          <div class="empty-state">
-            <strong class="label-block-gap">Catalog accuracy</strong>
-            Keep catalog names clean, for example "Computer Science", "Education", or "Criminology", then assign every new book to one of those records.
-          </div>
-          <div class="empty-state">
-            <strong class="label-block-gap">Catalog management</strong>
-            Rename, review, or delete unused catalogs from <a href="/librarymanage/librarian/manage_catalogs.php">Catalog Management</a> instead of changing catalog structure here.
-          </div>
-          <div class="empty-state">
-            <strong class="label-block-gap">Stock review</strong>
-            Titles with very low available copies should be checked before the end of the day to avoid borrow confusion.
-          </div>
-          <div class="empty-state">
-            <strong class="label-block-gap">Edit workflow</strong>
-            Use the separate edit page when changing totals or replacing covers so the list view stays focused on quick actions.
-          </div>
-        </div>
-      </div>
     </div>
 
     <div class="panel">
@@ -419,13 +401,35 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
               <span class="ui-select-caret" aria-hidden="true"></span>
             </div>
           </div>
+          <div class="manage-books-printcontrol">
+            <label for="printBooksAction" class="manage-users-print-label">Print options</label>
+            <div class="manage-books-printbar">
+              <div class="manage-users-print-shell">
+                <select id="printBooksAction" class="manage-users-print-select">
+                  <option value="">Select print option</option>
+                  <option value="current">Print Current View</option>
+                  <option value="all">Print All Books</option>
+                  <option value="available">Print Available Books</option>
+                  <option value="low_stock">Print Low Stock</option>
+                  <option value="out_of_stock">Print Out of Stock</option>
+                  <?php foreach ($catalogs as $catalog): ?>
+                    <option value="catalog:<?php echo (int) $catalog['id']; ?>">Print <?php echo h($catalog['name']); ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <span class="manage-users-print-caret" aria-hidden="true"></span>
+              </div>
+              <div class="manage-books-print-action">
+                <button type="button" class="button secondary" id="runBooksPrintAction">Print</button>
+              </div>
+            </div>
+          </div>
           <div class="inline-actions">
             <button type="submit">Apply</button>
             <a class="button secondary" href="manage_books.php">Reset</a>
           </div>
         </form>
       </div>
-      <div class="inline-actions chips-row">
+      <div class="manage-books-summary-chips">
         <span class="chip">Available copies: <?php echo (int) ($bookStats['available_copies'] ?? 0); ?></span>
         <span class="chip">Borrowed out: <?php echo $borrowedCopies; ?></span>
         <span class="chip">Low stock titles: <?php echo $lowStockCount; ?></span>
@@ -495,8 +499,92 @@ $outOfStockCount = (int) ($conn->query("SELECT COUNT(*) AS out_of_stock_titles F
   </div>
   </div>
 </div>
+<div class="desk-modal" data-book-add-modal <?php echo $shouldOpenAddBookModal ? '' : 'hidden'; ?>>
+  <div class="desk-modal-backdrop" data-close-book-add-modal></div>
+  <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="book-add-modal-title">
+    <div class="desk-modal-head">
+      <div>
+        <p class="muted eyebrow-compact">Add Book</p>
+        <h3 id="book-add-modal-title" class="heading-card">Create a new library entry</h3>
+        <p class="muted">After filling in the book details, assign the book to an existing catalog instead of typing the catalog manually.</p>
+      </div>
+      <button type="button" class="button secondary" data-close-book-add-modal>Close</button>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="stack flow-top-lg">
+      <div class="stack">
+        <div>
+          <p class="muted eyebrow-compact">Book Details</p>
+          <h4 class="heading-top-md">Catalog metadata for this title</h4>
+        </div>
+        <div class="empty-state">Need a new catalog first? Create it in <a href="/librarymanage/librarian/manage_catalogs.php">Catalog Management</a>, then come back here to assign the book.</div>
+      </div>
+      <div class="grid form">
+        <div>
+          <label for="title">Book Title</label>
+          <input id="title" name="title" value="<?php echo h($formData['title']); ?>" placeholder="Introduction to Programming" required>
+        </div>
+        <div>
+          <label for="author">Author</label>
+          <input id="author" name="author" value="<?php echo h($formData['author']); ?>" placeholder="John Doe" required>
+        </div>
+        <div>
+          <label for="catalog_id">Catalog</label>
+          <div class="ui-select-shell">
+            <select id="catalog_id" name="catalog_id" class="ui-select" required>
+              <option value="">Select catalog</option>
+              <?php foreach ($catalogs as $catalog): ?>
+                <option value="<?php echo (int) $catalog['id']; ?>" <?php echo $formData['catalog_id'] === (string) $catalog['id'] ? 'selected' : ''; ?>>
+                  <?php echo h($catalog['name']); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <span class="ui-select-caret" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div>
+          <label for="isbn">ISBN</label>
+          <input id="isbn" name="isbn" value="<?php echo h($formData['isbn']); ?>" placeholder="978-1234567890">
+        </div>
+        <div>
+          <label for="qty">Starting Quantity</label>
+          <input id="qty" type="number" name="qty" value="<?php echo (int) $formData['qty']; ?>" min="1" required>
+        </div>
+        <div class="form-span-2">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="4" placeholder="Short catalog note or summary"><?php echo h($formData['description']); ?></textarea>
+        </div>
+        <div>
+          <label for="cover">Book Cover</label>
+          <input id="cover" type="file" name="cover" accept=".jpg,.jpeg,.png,.webp">
+          <div class="book-media book-media-top">
+            <img id="add-cover-preview" class="book-cover" src="" alt="Selected cover preview" hidden>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div>
+          <p class="muted eyebrow-compact">Inventory</p>
+          <h4 class="heading-top-md">Physical copies for this catalog record</h4>
+        </div>
+        <div class="empty-state">Starting quantity becomes both total copies and available copies after the book is assigned to the selected catalog.</div>
+      </div>
+
+      <div class="inline-actions">
+        <button type="submit" name="add" value="1">Add Book</button>
+        <span class="muted">Book details, assigned catalog, and starting stock are saved together on one book record.</span>
+      </div>
+    </form>
+  </div>
+</div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
-<script src="/librarymanage/assets/librarian_manage_books.js"></script>
+<script src="/librarymanage/assets/librarian_manage_books.js?v=<?php echo urlencode($manageBooksVersion); ?>"></script>
+<script src="/librarymanage/assets/librarian_manage_books_tools.js?v=<?php echo urlencode($manageBooksToolsVersion); ?>"></script>
+<?php endif; ?>
+<?php if ($printMode): ?>
+<script src="/librarymanage/assets/librarian_manage_books_print.js?v=<?php echo urlencode($manageBooksPrintVersion); ?>"></script>
+<?php endif; ?>
 </body>
 </html>

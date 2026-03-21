@@ -26,9 +26,10 @@ $types = str_repeat('i', count($borrowIds) + 1);
 $params = array_merge([$user['id']], $borrowIds);
 
 $stmt = $conn->prepare("
-    SELECT id, status, request_batch
-    FROM borrows
-    WHERE user_id = ? AND id IN ($placeholders)
+    SELECT br.id, br.status, br.request_batch, br.book_id, b.title
+    FROM borrows br
+    JOIN books b ON b.id = br.book_id
+    WHERE br.user_id = ? AND br.id IN ($placeholders)
 ");
 $stmt->bind_param($types, ...$params);
 $stmt->execute();
@@ -106,6 +107,43 @@ audit_log($conn, 'api.borrow.return_request', [
     'return_requested_at' => $returnRequestedAt,
     'return_batch' => $returnBatch,
 ], $user['id'], $user['role']);
+
+$titlesByBookId = [];
+foreach ($borrowIds as $borrowId) {
+    $row = $rowsById[$borrowId] ?? null;
+    if (!is_array($row)) {
+        continue;
+    }
+
+    $bookId = (int) ($row['book_id'] ?? 0);
+    if ($bookId <= 0) {
+        continue;
+    }
+
+    if (!isset($titlesByBookId[$bookId])) {
+        $titlesByBookId[$bookId] = [
+            'title' => trim((string) ($row['title'] ?? ('Book #' . $bookId))),
+            'copies' => 0,
+        ];
+    }
+    $titlesByBookId[$bookId]['copies']++;
+}
+
+$bookLabels = [];
+foreach ($titlesByBookId as $item) {
+    $bookLabels[] = (string) $item['title'] . ((int) ($item['copies'] ?? 0) > 1 ? ' (' . (int) $item['copies'] . ' copies)' : '');
+}
+$copyCount = count($updatedBorrows);
+$copyLabel = $copyCount === 1 ? '1 copy' : $copyCount . ' copies';
+$titleCount = count($titlesByBookId);
+$titleLabel = $titleCount === 1 ? '1 title' : $titleCount . ' titles';
+create_notification(
+    $conn,
+    'librarian',
+    'New Return Request',
+    role_label((string) $user['role']) . ' ' . $user['username'] . ' requested return for ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '.',
+    'warning'
+);
 
 api_json([
     'ok' => true,

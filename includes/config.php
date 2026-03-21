@@ -15,8 +15,82 @@ $dbusername = "root";
 $dbpassword = "";
 $dbname = "librarymanage";
 
+function library_open_connection(): mysqli
+{
+    global $servername, $dbusername, $dbpassword, $dbname;
+
+    $db = new mysqli($servername, $dbusername, $dbpassword);
+    $db->query("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
+    $db->select_db($dbname);
+    $db->set_charset("utf8mb4");
+
+    return $db;
+}
+
+function library_is_connection_lost(Throwable $exception): bool
+{
+    $message = strtolower($exception->getMessage());
+    return str_contains($message, 'server has gone away')
+        || str_contains($message, 'lost connection')
+        || str_contains($message, 'error while sending');
+}
+
+function library_ping_or_reconnect(mysqli &$conn): void
+{
+    try {
+        if ($conn->ping()) {
+            return;
+        }
+    } catch (Throwable $exception) {
+        // Reconnect below.
+    }
+
+    $conn = library_open_connection();
+    ensure_library_schema($conn);
+}
+
+function library_safe_query(mysqli &$conn, string $sql)
+{
+    library_ping_or_reconnect($conn);
+
+    try {
+        return $conn->query($sql);
+    } catch (mysqli_sql_exception $exception) {
+        if (!library_is_connection_lost($exception)) {
+            throw $exception;
+        }
+
+        $conn = library_open_connection();
+        ensure_library_schema($conn);
+        return $conn->query($sql);
+    }
+}
+
+function library_safe_prepare(mysqli &$conn, string $sql): mysqli_stmt
+{
+    library_ping_or_reconnect($conn);
+
+    try {
+        $stmt = $conn->prepare($sql);
+    } catch (mysqli_sql_exception $exception) {
+        if (!library_is_connection_lost($exception)) {
+            throw $exception;
+        }
+
+        $conn = library_open_connection();
+        ensure_library_schema($conn);
+        $stmt = $conn->prepare($sql);
+    }
+
+    if (!$stmt instanceof mysqli_stmt) {
+        throw new RuntimeException('Unable to prepare database statement.');
+    }
+
+    return $stmt;
+}
+
 try {
-    $conn = new mysqli($servername, $dbusername, $dbpassword);
+    $conn = library_open_connection();
 } catch (mysqli_sql_exception $exception) {
     http_response_code(500);
     die('Database connection failed. Start MySQL in XAMPP, then refresh this page.');
@@ -26,10 +100,6 @@ if ($conn->connect_error) {
     http_response_code(500);
     die('Database connection failed. Start MySQL in XAMPP, then refresh this page.');
 }
-
-$conn->query("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
-$conn->select_db($dbname);
-$conn->set_charset("utf8mb4");
 
 function table_exists(mysqli $conn, string $table): bool
 {
@@ -147,10 +217,20 @@ function ensure_library_schema(mysqli $conn): void
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             penalty_id INT DEFAULT NULL,
+            payment_batch VARCHAR(40) DEFAULT NULL,
             amount DECIMAL(10,2) NOT NULL DEFAULT 0,
             proof_path VARCHAR(255) DEFAULT NULL,
             status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS payment_penalty_links (
+            payment_id INT NOT NULL,
+            penalty_id INT NOT NULL,
+            PRIMARY KEY (payment_id, penalty_id),
+            INDEX idx_payment_penalty_links_penalty (penalty_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
 
@@ -199,13 +279,29 @@ function ensure_library_schema(mysqli $conn): void
         CREATE TABLE IF NOT EXISTS notifications (
             id INT AUTO_INCREMENT PRIMARY KEY,
             role VARCHAR(30) NOT NULL,
+            user_id INT DEFAULT NULL,
             title VARCHAR(160) NOT NULL,
             body TEXT NOT NULL,
             severity ENUM('info','warning','critical') NOT NULL DEFAULT 'info',
             is_read TINYINT(1) NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_notifications_role (role),
+            INDEX idx_notifications_user_id (user_id),
             INDEX idx_notifications_is_read (is_read)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS announcements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            audience ENUM('student','faculty','both') NOT NULL,
+            title VARCHAR(160) NOT NULL,
+            body TEXT NOT NULL,
+            severity ENUM('info','warning','critical') NOT NULL DEFAULT 'info',
+            created_by INT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_announcements_audience (audience),
+            INDEX idx_announcements_created_by (created_by)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
 
@@ -261,6 +357,19 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'users', 'login_otp_sent_at')) {
         $conn->query("ALTER TABLE users ADD COLUMN login_otp_sent_at DATETIME DEFAULT NULL AFTER login_otp_expires_at");
+    }
+
+    if (!column_exists($conn, 'users', 'profile_photo_path')) {
+        $conn->query("ALTER TABLE users ADD COLUMN profile_photo_path VARCHAR(255) DEFAULT NULL AFTER login_otp_sent_at");
+    }
+
+    if (!column_exists($conn, 'users', 'course')) {
+        $conn->query("ALTER TABLE users ADD COLUMN course VARCHAR(120) DEFAULT NULL AFTER profile_photo_path");
+    }
+
+    if (!column_exists($conn, 'notifications', 'user_id')) {
+        $conn->query("ALTER TABLE notifications ADD COLUMN user_id INT DEFAULT NULL AFTER role");
+        $conn->query("ALTER TABLE notifications ADD INDEX idx_notifications_user_id (user_id)");
     }
 
     if (!column_exists($conn, 'books', 'category')) {
@@ -338,6 +447,10 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("ALTER TABLE borrows ADD COLUMN approved_at DATETIME DEFAULT NULL AFTER borrow_date");
     }
 
+    if (!column_exists($conn, 'borrows', 'approval_notice_sent_at')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN approval_notice_sent_at DATETIME DEFAULT NULL AFTER approved_at");
+    }
+
     if (!column_exists($conn, 'borrows', 'due_at')) {
         $conn->query("ALTER TABLE borrows ADD COLUMN due_at DATETIME DEFAULT NULL AFTER due_date");
     }
@@ -376,6 +489,34 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!index_exists($conn, 'borrows', 'idx_borrows_return_batch')) {
         $conn->query("CREATE INDEX idx_borrows_return_batch ON borrows (return_batch)");
+    }
+
+    if (!index_exists($conn, 'borrows', 'idx_borrows_status_due_date')) {
+        $conn->query("CREATE INDEX idx_borrows_status_due_date ON borrows (status, due_date)");
+    }
+
+    if (!index_exists($conn, 'borrows', 'idx_borrows_user_status')) {
+        $conn->query("CREATE INDEX idx_borrows_user_status ON borrows (user_id, status)");
+    }
+
+    if (!index_exists($conn, 'borrows', 'idx_borrows_book_status')) {
+        $conn->query("CREATE INDEX idx_borrows_book_status ON borrows (book_id, status)");
+    }
+
+    if (!index_exists($conn, 'borrows', 'idx_borrows_requested_at')) {
+        $conn->query("CREATE INDEX idx_borrows_requested_at ON borrows (requested_at)");
+    }
+
+    if (!index_exists($conn, 'books', 'idx_books_category_title')) {
+        $conn->query("CREATE INDEX idx_books_category_title ON books (category, title)");
+    }
+
+    if (!index_exists($conn, 'notifications', 'idx_notifications_role_read_created')) {
+        $conn->query("CREATE INDEX idx_notifications_role_read_created ON notifications (role, is_read, created_at)");
+    }
+
+    if (!index_exists($conn, 'notifications', 'idx_notifications_user_read_created')) {
+        $conn->query("CREATE INDEX idx_notifications_user_read_created ON notifications (user_id, is_read, created_at)");
     }
 
     if (column_exists($conn, 'borrows', 'request_batch')) {
@@ -445,6 +586,22 @@ function ensure_library_schema(mysqli $conn): void
         ");
     }
 
+    $conn->query("
+        UPDATE borrows
+        SET
+            borrow_date = NULL,
+            approved_at = NULL,
+            due_date = NULL,
+            due_at = NULL,
+            due_reminder_sent_at = NULL,
+            overdue_notice_sent_at = NULL,
+            return_requested_at = NULL,
+            return_date = NULL,
+            returned_at = NULL,
+            approval_notice_sent_at = NULL
+        WHERE status = 'pending'
+    ");
+
     if (column_exists($conn, 'books', 'copies')) {
         $conn->query("UPDATE books SET qty_total = copies WHERE (qty_total IS NULL OR qty_total = 1) AND copies IS NOT NULL");
         $conn->query("UPDATE books SET qty_available = copies WHERE (qty_available IS NULL OR qty_available = 1) AND copies IS NOT NULL");
@@ -481,25 +638,20 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("ALTER TABLE api_tokens ADD COLUMN scopes VARCHAR(100) NOT NULL DEFAULT 'read,write' AFTER label");
     }
 
-    if (!column_exists($conn, 'ebooks', 'description')) {
-        $conn->query("ALTER TABLE ebooks ADD COLUMN description TEXT DEFAULT NULL AFTER title");
+    if (!column_exists($conn, 'payments', 'payment_batch')) {
+        $conn->query("ALTER TABLE payments ADD COLUMN payment_batch VARCHAR(40) DEFAULT NULL AFTER penalty_id");
     }
 
-    if (!column_exists($conn, 'ebooks', 'author')) {
-        $conn->query("ALTER TABLE ebooks ADD COLUMN author VARCHAR(255) DEFAULT '' AFTER title");
+    if (!index_exists($conn, 'payments', 'idx_payments_payment_batch')) {
+        $conn->query("CREATE INDEX idx_payments_payment_batch ON payments (payment_batch)");
     }
 
-    if (!column_exists($conn, 'ebooks', 'cover_path')) {
-        $conn->query("ALTER TABLE ebooks ADD COLUMN cover_path VARCHAR(255) DEFAULT NULL AFTER description");
+    if (!index_exists($conn, 'payment_penalty_links', 'idx_payment_penalty_links_penalty')) {
+        $conn->query("CREATE INDEX idx_payment_penalty_links_penalty ON payment_penalty_links (penalty_id)");
     }
 
-    if (!column_exists($conn, 'ebooks', 'uploaded_by')) {
-        $conn->query("ALTER TABLE ebooks ADD COLUMN uploaded_by INT DEFAULT NULL AFTER file_path");
-    }
-
-    if (!column_exists($conn, 'ebooks', 'is_active')) {
-        $conn->query("ALTER TABLE ebooks ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER uploaded_by");
-    }
+    // Skip ebook schema touch-ups here because the current ebooks table is corrupted
+    // and probing it during bootstrap can crash MariaDB before the app loads.
 
     if (column_exists($conn, 'complaints', 'subject') && column_exists($conn, 'complaints', 'mobile_number')) {
         $conn->query("

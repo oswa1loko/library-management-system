@@ -4,11 +4,9 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
 <aside class="panel member-sidebar">
   <div class="member-sidebar-head">
     <div class="member-sidebar-toggle" aria-hidden="true">
-      <span class="dashboard-icon icon-view" aria-hidden="true"></span>
       <span class="member-sidebar-label">Admin Menu</span>
     </div>
   </div>
-  <p class="member-sidebar-section member-sidebar-label">Workspace</p>
   <nav class="member-sidebar-nav">
     <a class="member-sidebar-link <?php echo $sidebarPage === 'dashboard' ? 'is-active' : ''; ?>" href="/librarymanage/admin/dashboard.php" data-tooltip="Dashboard">
       <span class="dashboard-icon icon-view" aria-hidden="true"></span>
@@ -37,6 +35,10 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
     <a class="member-sidebar-link <?php echo $sidebarPage === 'notifications' ? 'is-active' : ''; ?>" href="/librarymanage/admin/notifications.php" data-tooltip="Notifications">
       <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
       <span class="member-sidebar-label">Notifications</span>
+    </a>
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'announcements' ? 'is-active' : ''; ?>" href="/librarymanage/admin/announcements.php" data-tooltip="Announcements">
+      <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Announcements</span>
     </a>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'audit' ? 'is-active' : ''; ?>" href="/librarymanage/admin/audit_logs.php" data-tooltip="Audit Logs">
       <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>

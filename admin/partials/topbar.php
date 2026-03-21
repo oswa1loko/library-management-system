@@ -1,6 +1,7 @@
 <?php
 $pageTitle = isset($pageTitle) ? (string) $pageTitle : 'Admin';
 $pageSubtitle = isset($pageSubtitle) ? (string) $pageSubtitle : '';
+$sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : '';
 ?>
 <div class="topbar">
   <div>

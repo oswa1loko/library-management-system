@@ -38,6 +38,24 @@ function system_roles(): array
     return ['student', 'faculty', 'librarian', 'admin'];
 }
 
+function student_course_options(): array
+{
+    return [
+        'BSIT' => 'BSIT',
+        'BSCS' => 'BSCS',
+        'BSIS' => 'BSIS',
+        'BSBA' => 'BSBA',
+        'BSA' => 'BSA',
+        'BSHM' => 'BSHM',
+        'BSTM' => 'BSTM',
+        'BSED' => 'BSED',
+        'BEED' => 'BEED',
+        'BSCRIM' => 'BSCRIM',
+        'BSN' => 'BSN',
+        'BSOA' => 'BSOA',
+    ];
+}
+
 function role_label(string $role): string
 {
     $map = [
@@ -87,6 +105,102 @@ function ensure_upload_directory(string $path): bool
 function format_currency($amount): string
 {
     return 'PHP ' . number_format((float) $amount, 2);
+}
+
+function get_member_dashboard_summary(mysqli $conn, int $userId): array
+{
+    $stmt = $conn->prepare("
+        SELECT
+          (SELECT COALESCE(SUM(CASE WHEN status IN ('borrowed', 'return_requested') THEN 1 ELSE 0 END), 0)
+             FROM borrows
+            WHERE user_id = ?) AS active_borrows,
+          (SELECT COALESCE(SUM(CASE WHEN status IN ('borrowed', 'return_requested') AND due_date < CURDATE() THEN 1 ELSE 0 END), 0)
+             FROM borrows
+            WHERE user_id = ?) AS overdue_borrows,
+          (SELECT COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0)
+             FROM payments
+            WHERE user_id = ?) AS pending_payments,
+          (SELECT COALESCE(SUM(CASE WHEN status = 'unpaid' THEN 1 ELSE 0 END), 0)
+             FROM penalties
+            WHERE user_id = ?) AS unpaid_penalties,
+          (SELECT COALESCE(SUM(CASE WHEN status = 'unpaid' THEN amount ELSE 0 END), 0)
+             FROM penalties
+            WHERE user_id = ?) AS unpaid_total
+    ");
+    $stmt->bind_param('iiiii', $userId, $userId, $userId, $userId, $userId);
+    $stmt->execute();
+    $summary = $stmt->get_result()->fetch_assoc() ?: [];
+    $stmt->close();
+
+    return $summary;
+}
+
+function member_due_notification_delay_minutes(): int
+{
+    return 5;
+}
+
+function get_member_due_soon_books(mysqli $conn, int $userId, int $limit = 5): array
+{
+    $limit = max(1, $limit);
+    $delayMinutes = member_due_notification_delay_minutes();
+    $stmt = $conn->prepare("
+        SELECT br.id, b.title, br.due_date, br.status
+        FROM borrows br
+        JOIN books b ON b.id = br.book_id
+        WHERE br.user_id = ?
+          AND br.status IN ('borrowed', 'return_requested')
+          AND br.due_date >= CURDATE()
+          AND br.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+          AND TIMESTAMPDIFF(
+                MINUTE,
+                COALESCE(br.approved_at, CONCAT(br.borrow_date, ' 00:00:00')),
+                NOW()
+              ) >= ?
+        ORDER BY br.due_date ASC
+        LIMIT ?
+    ");
+    $stmt->bind_param('iii', $userId, $delayMinutes, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($result && ($row = $result->fetch_assoc())) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+
+    return $rows;
+}
+
+function get_member_recent_return_confirmations(mysqli $conn, int $userId, int $limit = 5, int $days = 7): array
+{
+    $limit = max(1, $limit);
+    $days = max(1, $days);
+
+    $stmt = $conn->prepare("
+        SELECT b.title, br.returned_at, br.return_date
+        FROM borrows br
+        JOIN books b ON b.id = br.book_id
+        WHERE br.user_id = ?
+          AND br.status = 'returned'
+          AND (
+            (br.returned_at IS NOT NULL AND br.returned_at >= DATE_SUB(NOW(), INTERVAL ? DAY))
+            OR
+            (br.returned_at IS NULL AND br.return_date IS NOT NULL AND br.return_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY))
+          )
+        ORDER BY COALESCE(br.returned_at, CONCAT(br.return_date, ' 00:00:00')) DESC, br.id DESC
+        LIMIT ?
+    ");
+    $stmt->bind_param('iiii', $userId, $days, $days, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($result && ($row = $result->fetch_assoc())) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+
+    return $rows;
 }
 
 function format_display_date(?string $dateValue, string $fallback = '-'): string
@@ -309,6 +423,30 @@ function issue_login_otp(mysqli $conn, int $userId): array
 
 function send_login_otp_email(string $email, string $fullName, string $role, string $otpCode): bool
 {
+    $payload = build_login_otp_email_payload($email, $fullName, $role, $otpCode);
+    if (!$payload) {
+        return false;
+    }
+
+    return send_library_email(
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
+function build_login_otp_email_payload(string $email, string $fullName, string $role, string $otpCode): ?array
+{
+    $email = trim($email);
+    $fullName = trim($fullName);
+    $otpCode = trim($otpCode);
+
+    if (!is_valid_email_address($email) || $otpCode === '') {
+        set_library_mail_last_error('Missing or invalid login OTP recipient.');
+        return null;
+    }
+
     $roleLabel = role_label($role);
     $subject = 'Your Library Login Verification Code';
     $message = "Hello {$fullName},\n\n"
@@ -333,7 +471,29 @@ function send_login_otp_email(string $email, string $fullName, string $role, str
         . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
         . '</div>';
 
-    return send_library_email($email, $subject, $message, $htmlMessage);
+    return [
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function enqueue_login_otp_email_job(mysqli $conn, string $email, string $fullName, string $role, string $otpCode): bool
+{
+    $payload = build_login_otp_email_payload($email, $fullName, $role, $otpCode);
+    if (!$payload) {
+        return false;
+    }
+
+    return enqueue_email_job(
+        $conn,
+        'login_otp',
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
 }
 
 function build_borrow_approval_email_payload(mysqli $conn, int $borrowId): ?array
@@ -384,32 +544,169 @@ function build_borrow_approval_email_payload(mysqli $conn, int $borrowId): ?arra
     $dueDate = format_display_date((string) ($row['due_date'] ?? ''));
 
     $subject = 'Borrow Request Approved - ' . ($title !== '' ? $title : 'Library Book');
-    $message = "Hello {$fullName},\n\n"
-        . "Your borrowing request has been approved by the librarian.\n\n"
+    $message = "Good day, {$fullName}.\n\n"
+        . "This is to inform you that your borrowing request has been approved by the Regis Marie College Library.\n\n"
         . "Book: {$title}\n"
         . "Author: {$author}\n"
-        . "Borrow Date: {$borrowDate}\n"
-        . "Due Date: {$dueDate}\n"
-        . "Role: {$roleLabel}\n\n"
-        . "Please keep the book in good condition and return it on or before the due date.\n\n"
+        . "Borrow date: {$borrowDate}\n"
+        . "Due date: {$dueDate}\n"
+        . "Account type: {$roleLabel}\n\n"
+        . "Please claim and return the book on or before the due date. Kindly keep it in good condition while it is under your care.\n\n"
+        . "Thank you.\n\n"
         . library_email_signature();
 
     $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
-        . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
-        . '<p>Your borrowing request has been <strong>approved</strong> by the librarian.</p>'
+        . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+        . '<p>This is to inform you that your borrowing request has been <strong>approved</strong> by the <strong>Regis Marie College Library</strong>.</p>'
         . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
         . '<p style="margin:0 0 8px;"><strong>Book:</strong> ' . h($title) . '</p>'
         . '<p style="margin:0 0 8px;"><strong>Author:</strong> ' . h($author) . '</p>'
-        . '<p style="margin:0 0 8px;"><strong>Borrow Date:</strong> ' . h($borrowDate) . '</p>'
-        . '<p style="margin:0;"><strong>Due Date:</strong> ' . h($dueDate) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Borrow date:</strong> ' . h($borrowDate) . '</p>'
+        . '<p style="margin:0;"><strong>Due date:</strong> ' . h($dueDate) . '</p>'
         . '</div>'
-        . '<p><strong>Role:</strong> ' . h($roleLabel) . '</p>'
-        . '<p>Please keep the book in good condition and return it on or before the due date.</p>'
+        . '<p><strong>Account type:</strong> ' . h($roleLabel) . '</p>'
+        . '<p>Please claim and return the book on or before the due date. Kindly keep it in good condition while it is under your care.</p>'
+        . '<p>Thank you.</p>'
         . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
         . '</div>';
 
     return [
         'borrow_id' => $borrowId,
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function build_grouped_borrow_approval_email_payload(mysqli $conn, int $borrowId): ?array
+{
+    $borrowId = max(0, $borrowId);
+    if ($borrowId <= 0) {
+        set_library_mail_last_error('Missing borrow record.');
+        return null;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT
+            br.id,
+            br.request_batch,
+            br.user_id,
+            br.book_id,
+            u.fullname,
+            u.email,
+            u.role,
+            b.title,
+            b.author
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        JOIN books b ON b.id = br.book_id
+        WHERE br.id = ? AND br.status = 'borrowed'
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $borrowId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row) {
+        set_library_mail_last_error('Borrow record is not available for approval email.');
+        return null;
+    }
+
+    $requestBatch = trim((string) ($row['request_batch'] ?? ''));
+    $userId = (int) ($row['user_id'] ?? 0);
+    $bookId = (int) ($row['book_id'] ?? 0);
+    if ($requestBatch === '' || $userId <= 0 || $bookId <= 0) {
+        set_library_mail_last_error('Borrow record is missing batch details.');
+        return null;
+    }
+
+    $pendingStmt = $conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM borrows
+        WHERE request_batch = ?
+          AND user_id = ?
+          AND book_id = ?
+          AND status = 'pending'
+    ");
+    $pendingStmt->bind_param('sii', $requestBatch, $userId, $bookId);
+    $pendingStmt->execute();
+    $pendingTotal = (int) (($pendingStmt->get_result()->fetch_assoc()['total'] ?? 0));
+    $pendingStmt->close();
+
+    if ($pendingTotal > 0) {
+        set_library_mail_last_error('Approval email deferred until all pending copies of this title are processed.');
+        return null;
+    }
+
+    $groupStmt = $conn->prepare("
+        SELECT id, borrow_date, due_date
+        FROM borrows
+        WHERE request_batch = ?
+          AND user_id = ?
+          AND book_id = ?
+          AND status = 'borrowed'
+          AND approval_notice_sent_at IS NULL
+        ORDER BY id ASC
+    ");
+    $groupStmt->bind_param('sii', $requestBatch, $userId, $bookId);
+    $groupStmt->execute();
+    $groupRows = $groupStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $groupStmt->close();
+
+    if ($groupRows === []) {
+        set_library_mail_last_error('Borrow approval email already queued for this title.');
+        return null;
+    }
+
+    $email = trim((string) ($row['email'] ?? ''));
+    if ($email === '' || !is_valid_email_address($email)) {
+        set_library_mail_last_error('Borrower email address is missing or invalid.');
+        return null;
+    }
+
+    $borrowIds = array_map(static fn(array $groupRow): int => (int) ($groupRow['id'] ?? 0), $groupRows);
+    $copyCount = count($borrowIds);
+    $fullName = trim((string) ($row['fullname'] ?? 'Library Member'));
+    $roleLabel = role_label((string) ($row['role'] ?? ''));
+    $title = trim((string) ($row['title'] ?? ''));
+    $author = trim((string) ($row['author'] ?? ''));
+    $borrowDate = format_display_date((string) ($groupRows[0]['borrow_date'] ?? ''));
+    $dueDate = format_display_date((string) ($groupRows[0]['due_date'] ?? ''));
+    $copyLabel = $copyCount === 1 ? '1 copy' : $copyCount . ' copies';
+
+    $subject = 'Borrow Request Approved - ' . ($title !== '' ? $title : 'Library Book');
+    $message = "Good day, {$fullName}.\n\n"
+        . "This is to inform you that your borrowing request has been approved by the Regis Marie College Library.\n\n"
+        . "Book: {$title}\n"
+        . "Author: {$author}\n"
+        . "Approved copies: {$copyLabel}\n"
+        . "Borrow date: {$borrowDate}\n"
+        . "Due date: {$dueDate}\n"
+        . "Account type: {$roleLabel}\n\n"
+        . "Please claim and return the book(s) on or before the due date. Kindly keep them in good condition while they are under your care.\n\n"
+        . "Thank you.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+        . '<p>This is to inform you that your borrowing request has been <strong>approved</strong> by the <strong>Regis Marie College Library</strong>.</p>'
+        . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
+        . '<p style="margin:0 0 8px;"><strong>Book:</strong> ' . h($title) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Author:</strong> ' . h($author) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Approved copies:</strong> ' . h($copyLabel) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Borrow date:</strong> ' . h($borrowDate) . '</p>'
+        . '<p style="margin:0;"><strong>Due date:</strong> ' . h($dueDate) . '</p>'
+        . '</div>'
+        . '<p><strong>Account type:</strong> ' . h($roleLabel) . '</p>'
+        . '<p>Please claim and return the book(s) on or before the due date. Kindly keep them in good condition while they are under your care.</p>'
+        . '<p>Thank you.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return [
+        'borrow_ids' => $borrowIds,
         'to' => $email,
         'subject' => $subject,
         'text' => $message,
@@ -462,12 +759,13 @@ function enqueue_email_job(
 
 function enqueue_borrow_approval_email_job(mysqli $conn, int $borrowId): bool
 {
-    $payload = build_borrow_approval_email_payload($conn, $borrowId);
+    $payload = build_grouped_borrow_approval_email_payload($conn, $borrowId);
     if (!$payload) {
-        return false;
+        $lastError = get_library_mail_last_error();
+        return str_contains($lastError, 'deferred') || str_contains($lastError, 'already queued');
     }
 
-    return enqueue_email_job(
+    $queued = enqueue_email_job(
         $conn,
         'borrow_approval',
         (string) $payload['to'],
@@ -475,6 +773,19 @@ function enqueue_borrow_approval_email_job(mysqli $conn, int $borrowId): bool
         (string) $payload['text'],
         (string) $payload['html']
     );
+
+    if (!$queued) {
+        return false;
+    }
+
+    $borrowIds = array_values(array_filter(array_map('intval', (array) ($payload['borrow_ids'] ?? []))));
+    if ($borrowIds !== []) {
+        $approvedNoticeSentAt = date('Y-m-d H:i:s');
+        $idList = implode(',', $borrowIds);
+        $conn->query("UPDATE borrows SET approval_notice_sent_at = '" . $conn->real_escape_string($approvedNoticeSentAt) . "' WHERE id IN ({$idList})");
+    }
+
+    return true;
 }
 
 function create_library_smtp_mailer(): ?\PHPMailer\PHPMailer\PHPMailer
@@ -977,6 +1288,96 @@ function update_email_reminder_debug_snapshot(string $bucket, array $result): vo
     $_SESSION['email_reminder_debug'] = $snapshot;
 }
 
+function due_reminder_sync_runtime_file(): string
+{
+    return dirname(__DIR__) . '/storage/runtime/due_reminder_sync.json';
+}
+
+function ensure_due_reminder_runtime_directory(): void
+{
+    $directory = dirname(due_reminder_sync_runtime_file());
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0777, true);
+    }
+}
+
+function run_due_reminder_sync_if_needed(mysqli $conn, int $seconds = 3600): void
+{
+    if (PHP_SAPI === 'cli') {
+        return;
+    }
+
+    $seconds = max(300, $seconds);
+    ensure_due_reminder_runtime_directory();
+    $runtimeFile = due_reminder_sync_runtime_file();
+    $handle = @fopen($runtimeFile, 'c+');
+    if (!$handle) {
+        return;
+    }
+
+    try {
+        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+            return;
+        }
+
+        $existing = stream_get_contents($handle);
+        $state = json_decode($existing ?: '{}', true);
+        if (!is_array($state)) {
+            $state = [];
+        }
+
+        $now = time();
+        $lastRun = (int) ($state['last_run_at'] ?? 0);
+        if ($lastRun > 0 && ($now - $lastRun) < $seconds) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+            return;
+        }
+
+        $state['last_run_at'] = $now;
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode($state, JSON_UNESCAPED_SLASHES));
+        fflush($handle);
+
+        try {
+            $dueSoon = send_due_soon_reminders($conn);
+            $overdue = send_overdue_notices($conn);
+
+            $state['last_success_at'] = $now;
+            $state['last_result'] = [
+                'due_soon' => [
+                    'checked' => (int) ($dueSoon['checked'] ?? 0),
+                    'sent' => (int) ($dueSoon['sent'] ?? 0),
+                    'failed' => (int) ($dueSoon['failed'] ?? 0),
+                    'skipped' => (int) ($dueSoon['skipped'] ?? 0),
+                ],
+                'overdue' => [
+                    'checked' => (int) ($overdue['checked'] ?? 0),
+                    'sent' => (int) ($overdue['sent'] ?? 0),
+                    'failed' => (int) ($overdue['failed'] ?? 0),
+                    'skipped' => (int) ($overdue['skipped'] ?? 0),
+                ],
+            ];
+            unset($state['last_error']);
+        } catch (Throwable $e) {
+            $state['last_error'] = $e->getMessage();
+        }
+
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode($state, JSON_UNESCAPED_SLASHES));
+        fflush($handle);
+
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    } catch (Throwable $e) {
+        @flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
 function audit_log(mysqli $conn, string $eventName, array $context = [], ?int $actorUserId = null, ?string $actorRole = null): void
 {
     $eventName = trim($eventName);
@@ -1006,7 +1407,7 @@ function audit_log(mysqli $conn, string $eventName, array $context = [], ?int $a
     $stmt->close();
 }
 
-function create_notification(mysqli $conn, string $role, string $title, string $body, string $severity = 'info'): void
+function create_notification(mysqli $conn, string $role, string $title, string $body, string $severity = 'info', ?int $userId = null): void
 {
     $role = trim($role);
     $title = trim($title);
@@ -1021,10 +1422,10 @@ function create_notification(mysqli $conn, string $role, string $title, string $
     }
 
     $stmt = $conn->prepare("
-        INSERT INTO notifications (role, title, body, severity, is_read)
-        VALUES (?, ?, ?, ?, 0)
+        INSERT INTO notifications (role, user_id, title, body, severity, is_read)
+        VALUES (?, ?, ?, ?, ?, 0)
     ");
-    $stmt->bind_param('ssss', $role, $title, $body, $severity);
+    $stmt->bind_param('sisss', $role, $userId, $title, $body, $severity);
     $stmt->execute();
     $stmt->close();
 }
@@ -1140,7 +1541,8 @@ function send_due_soon_reminders(mysqli $conn): array
             u.fullname,
             u.email,
             u.role,
-            b.title
+            b.title,
+            b.author
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         JOIN books b ON b.id = br.book_id
@@ -1181,6 +1583,7 @@ function send_due_soon_reminders(mysqli $conn): array
         $groupKey = strtolower($email);
         if (!isset($groupedRows[$groupKey])) {
             $groupedRows[$groupKey] = [
+                'user_id' => (int) ($row['user_id'] ?? 0),
                 'fullname' => trim((string) ($row['fullname'] ?? 'Member')),
                 'email' => $email,
                 'role' => (string) ($row['role'] ?? 'member'),
@@ -1191,6 +1594,7 @@ function send_due_soon_reminders(mysqli $conn): array
         $groupedRows[$groupKey]['items'][] = [
             'borrow_id' => $borrowId,
             'title' => trim((string) ($row['title'] ?? 'your borrowed book')),
+            'author' => trim((string) ($row['author'] ?? '')),
             'due_date' => $dueDate,
         ];
     }
@@ -1208,28 +1612,51 @@ function send_due_soon_reminders(mysqli $conn): array
             ? 'Reminder: "' . $items[0]['title'] . '" is due tomorrow'
             : 'Reminder: ' . count($items) . ' borrowed book(s) are due tomorrow';
 
-        $message = "Hello {$fullName},\n\n"
-            . "This is a friendly reminder that the following borrowed book(s) are due tomorrow:\n\n";
-        $htmlList = '';
+        $groupedItems = [];
         foreach ($items as $item) {
-            $formattedDueDate = format_display_date((string) $item['due_date'], (string) $item['due_date']);
-            $message .= '- "' . $item['title'] . '" - Due ' . $formattedDueDate . ' (Borrow ID #' . (int) $item['borrow_id'] . ')' . "\n";
-            $htmlList .= '<li><strong>' . h((string) $item['title']) . '</strong> - Due ' . h($formattedDueDate) . ' <span style="color:#5c7188;">(Borrow ID #' . (int) $item['borrow_id'] . ')</span></li>';
+            $summaryKey = strtolower(trim((string) ($item['title'] ?? ''))) . '|' . strtolower(trim((string) ($item['author'] ?? ''))) . '|' . trim((string) ($item['due_date'] ?? ''));
+            if (!isset($groupedItems[$summaryKey])) {
+                $groupedItems[$summaryKey] = [
+                    'title' => trim((string) ($item['title'] ?? 'your borrowed book')),
+                    'author' => trim((string) ($item['author'] ?? '')),
+                    'due_date' => trim((string) ($item['due_date'] ?? '')),
+                    'copies' => 0,
+                ];
+            }
+            $groupedItems[$summaryKey]['copies']++;
         }
-        $message .= "\nPlease return them on or before the due date to avoid overdue penalties.\n\n"
-            . 'Role: ' . $roleLabel . "\n\n"
-            . "If you have already returned any of these books, you may ignore this email.\n\n"
+
+        $message = "Good day, {$fullName}.\n\n"
+            . "This is a reminder from the Regis Marie College Library that the following borrowed book(s) are due tomorrow:\n\n";
+        $htmlList = '';
+        foreach ($groupedItems as $groupedItem) {
+            $formattedDueDate = format_display_date((string) $groupedItem['due_date'], (string) $groupedItem['due_date']);
+            $copyCount = (int) ($groupedItem['copies'] ?? 0);
+            $copyLabel = $copyCount === 1 ? '1 copy' : $copyCount . ' copies';
+            $authorLabel = trim((string) ($groupedItem['author'] ?? ''));
+            $message .= '- "' . $groupedItem['title'] . '" by ' . ($authorLabel !== '' ? $authorLabel : 'Unknown author') . ' (' . $copyLabel . ') - due on ' . $formattedDueDate . "\n";
+            $htmlList .= '<li><strong>' . h((string) $groupedItem['title']) . '</strong>'
+                . ' by ' . h($authorLabel !== '' ? $authorLabel : 'Unknown author')
+                . ' (' . h($copyLabel) . ')'
+                . ' - due on ' . h($formattedDueDate)
+                . '</li>';
+        }
+        $message .= "\nPlease return the book(s) on or before the due date to avoid overdue penalties.\n\n"
+            . 'Account type: ' . $roleLabel . "\n\n"
+            . "If you have already returned any of these items, kindly disregard this message.\n\n"
+            . "Thank you.\n\n"
             . library_email_signature();
 
         $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
-            . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
-            . '<p>This is a friendly reminder that the following borrowed book(s) are due <strong>tomorrow</strong>:</p>'
+            . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+            . '<p>This is a reminder from the <strong>Regis Marie College Library</strong> that the following borrowed book(s) are due <strong>tomorrow</strong>:</p>'
             . '<div style="margin:18px 0;padding:14px 16px;border:1px solid #d7e6f5;border-radius:14px;background:#f7fbff;">'
             . '<ul style="margin:0;padding-left:18px;">' . $htmlList . '</ul>'
             . '</div>'
-            . '<p><strong>Role:</strong> ' . h($roleLabel) . '</p>'
-            . '<p>Please return them on or before the due date to avoid overdue penalties.</p>'
-            . '<p style="color:#5c7188;">If you have already returned any of these books, you may ignore this email.</p>'
+            . '<p><strong>Account type:</strong> ' . h($roleLabel) . '</p>'
+            . '<p>Please return the book(s) on or before the due date to avoid overdue penalties.</p>'
+            . '<p style="color:#5c7188;">If you have already returned any of these items, kindly disregard this message.</p>'
+            . '<p>Thank you.</p>'
             . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
             . '</div>';
 
@@ -1273,6 +1700,40 @@ function send_due_soon_reminders(mysqli $conn): array
     return $result;
 }
 
+function get_member_catalog_highlights(mysqli $conn, int $limit = 4): array
+{
+    $limit = max(1, min(8, $limit));
+    $sql = "
+        SELECT
+            category,
+            COUNT(*) AS title_count,
+            COALESCE(SUM(qty_available), 0) AS available_copies,
+            COALESCE(SUM(CASE WHEN qty_available > 0 THEN 1 ELSE 0 END), 0) AS ready_titles
+        FROM books
+        WHERE category IS NOT NULL AND TRIM(category) <> ''
+        GROUP BY category
+        ORDER BY ready_titles DESC, available_copies DESC, title_count DESC, category ASC
+        LIMIT {$limit}
+    ";
+
+    $result = $conn->query($sql);
+    if (!$result) {
+        return [];
+    }
+
+    $items = [];
+    while ($row = $result->fetch_assoc()) {
+        $items[] = [
+            'category' => (string) ($row['category'] ?? ''),
+            'title_count' => (int) ($row['title_count'] ?? 0),
+            'available_copies' => (int) ($row['available_copies'] ?? 0),
+            'ready_titles' => (int) ($row['ready_titles'] ?? 0),
+        ];
+    }
+
+    return $items;
+}
+
 function send_overdue_notices(mysqli $conn): array
 {
     $result = [
@@ -1293,7 +1754,8 @@ function send_overdue_notices(mysqli $conn): array
             u.fullname,
             u.email,
             u.role,
-            b.title
+            b.title,
+            b.author
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         JOIN books b ON b.id = br.book_id
@@ -1310,6 +1772,12 @@ function send_overdue_notices(mysqli $conn): array
         UPDATE borrows
         SET overdue_notice_sent_at = ?
         WHERE id = ?
+    ");
+    $penaltyStmt = $conn->prepare("
+        SELECT COALESCE(SUM(amount), 0) AS total_unpaid
+        FROM penalties
+        WHERE user_id = ?
+          AND status = 'unpaid'
     ");
 
     $groupedRows = [];
@@ -1343,11 +1811,13 @@ function send_overdue_notices(mysqli $conn): array
         $groupedRows[$groupKey]['items'][] = [
             'borrow_id' => $borrowId,
             'title' => trim((string) ($row['title'] ?? 'your borrowed book')),
+            'author' => trim((string) ($row['author'] ?? '')),
             'due_date' => (string) ($row['due_date'] ?? ''),
         ];
     }
 
     foreach ($groupedRows as $group) {
+        $userId = (int) ($group['user_id'] ?? 0);
         $fullName = $group['fullname'];
         $email = $group['email'];
         $roleLabel = role_label((string) ($group['role'] ?? 'member'));
@@ -1356,33 +1826,68 @@ function send_overdue_notices(mysqli $conn): array
             continue;
         }
 
+        $totalPenalty = 0.0;
+        if ($penaltyStmt && $userId > 0) {
+            $penaltyStmt->bind_param('i', $userId);
+            $penaltyStmt->execute();
+            $penaltyRow = $penaltyStmt->get_result()->fetch_assoc();
+            $totalPenalty = (float) ($penaltyRow['total_unpaid'] ?? 0);
+        }
+        $totalPenaltyLabel = format_currency($totalPenalty);
+
         $subject = count($items) === 1
             ? 'Overdue Notice: "' . $items[0]['title'] . '"'
             : 'Overdue Notice: ' . count($items) . ' borrowed book(s)';
 
-        $message = "Hello {$fullName},\n\n"
-            . "This is an overdue notice for the following borrowed book(s):\n\n";
-        $htmlList = '';
+        $groupedItems = [];
         foreach ($items as $item) {
-            $formattedDueDate = format_display_date((string) $item['due_date'], (string) $item['due_date']);
-            $daysOverdue = max(1, (int) floor((strtotime(date('Y-m-d')) - strtotime((string) $item['due_date'])) / 86400));
-            $message .= '- "' . $item['title'] . '" - Due ' . $formattedDueDate . ', now ' . $daysOverdue . ' day' . ($daysOverdue === 1 ? '' : 's') . ' overdue (Borrow ID #' . (int) $item['borrow_id'] . ')' . "\n";
-            $htmlList .= '<li><strong>' . h((string) $item['title']) . '</strong> - Due ' . h($formattedDueDate) . ', ' . (int) $daysOverdue . ' day' . ($daysOverdue === 1 ? '' : 's') . ' overdue <span style="color:#5c7188;">(Borrow ID #' . (int) $item['borrow_id'] . ')</span></li>';
+            $summaryKey = strtolower(trim((string) ($item['title'] ?? ''))) . '|' . strtolower(trim((string) ($item['author'] ?? ''))) . '|' . trim((string) ($item['due_date'] ?? ''));
+            if (!isset($groupedItems[$summaryKey])) {
+                $groupedItems[$summaryKey] = [
+                    'title' => trim((string) ($item['title'] ?? 'your borrowed book')),
+                    'author' => trim((string) ($item['author'] ?? '')),
+                    'due_date' => trim((string) ($item['due_date'] ?? '')),
+                    'copies' => 0,
+                ];
+            }
+            $groupedItems[$summaryKey]['copies']++;
         }
-        $message .= "\nPlease return them as soon as possible to avoid additional penalties.\n\n"
-            . 'Role: ' . $roleLabel . "\n\n"
-            . "If you have already returned any of these books, you may ignore this email.\n\n"
+
+        $message = "Good day, {$fullName}.\n\n"
+            . "This is an overdue notice from the Regis Marie College Library for the following borrowed book(s):\n\n";
+        $htmlList = '';
+        foreach ($groupedItems as $groupedItem) {
+            $formattedDueDate = format_display_date((string) $groupedItem['due_date'], (string) $groupedItem['due_date']);
+            $daysOverdue = max(1, (int) floor((strtotime(date('Y-m-d')) - strtotime((string) $groupedItem['due_date'])) / 86400));
+            $copyCount = (int) ($groupedItem['copies'] ?? 0);
+            $copyLabel = $copyCount === 1 ? '1 copy' : $copyCount . ' copies';
+            $authorLabel = trim((string) ($groupedItem['author'] ?? ''));
+            $message .= '- "' . $groupedItem['title'] . '" by ' . ($authorLabel !== '' ? $authorLabel : 'Unknown author') . ' (' . $copyLabel . ') - due on ' . $formattedDueDate . ' and now overdue by ' . $daysOverdue . ' day' . ($daysOverdue === 1 ? '' : 's') . "\n";
+            $htmlList .= '<li><strong>' . h((string) $groupedItem['title']) . '</strong>'
+                . ' by ' . h($authorLabel !== '' ? $authorLabel : 'Unknown author')
+                . ' (' . h($copyLabel) . ')'
+                . ' - due on ' . h($formattedDueDate)
+                . ' and now overdue by ' . (int) $daysOverdue . ' day' . ($daysOverdue === 1 ? '' : 's')
+                . '</li>';
+        }
+        $message .= "\nPlease return the book(s) as soon as possible to avoid additional penalties.\n\n"
+            . 'Total unpaid penalties: ' . $totalPenaltyLabel . "\n"
+            . 'Account type: ' . $roleLabel . "\n\n"
+            . "If you have already returned any of these items, kindly disregard this message.\n\n"
+            . "Thank you.\n\n"
             . library_email_signature();
 
         $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
-            . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
-            . '<p>This is an <strong style="color:#b42318;">overdue notice</strong> for the following borrowed book(s):</p>'
+            . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+            . '<p>This is an <strong style="color:#b42318;">overdue notice</strong> from the <strong>Regis Marie College Library</strong> for the following borrowed book(s):</p>'
             . '<div style="margin:18px 0;padding:14px 16px;border:1px solid #f3c6c2;border-radius:14px;background:#fff7f6;">'
             . '<ul style="margin:0;padding-left:18px;">' . $htmlList . '</ul>'
             . '</div>'
-            . '<p><strong>Role:</strong> ' . h($roleLabel) . '</p>'
-            . '<p>Please return them as soon as possible to avoid additional penalties.</p>'
-            . '<p style="color:#5c7188;">If you have already returned any of these books, you may ignore this email.</p>'
+            . '<p><strong>Total unpaid penalties:</strong> ' . h($totalPenaltyLabel) . '</p>'
+            . '<p><strong>Account type:</strong> ' . h($roleLabel) . '</p>'
+            . '<p>Please return the book(s) as soon as possible to avoid additional penalties.</p>'
+            . '<p style="color:#5c7188;">If you have already returned any of these items, kindly disregard this message.</p>'
+            . '<p>Thank you.</p>'
             . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
             . '</div>';
 
@@ -1410,6 +1915,9 @@ function send_overdue_notices(mysqli $conn): array
     }
 
     $updateStmt->close();
+    if ($penaltyStmt) {
+        $penaltyStmt->close();
+    }
 
     if ($result['sent'] > 0) {
         create_notification(
@@ -1424,6 +1932,10 @@ function send_overdue_notices(mysqli $conn): array
     update_email_reminder_debug_snapshot('overdue', $result);
 
     return $result;
+}
+
+if (isset($conn) && $conn instanceof mysqli) {
+    run_due_reminder_sync_if_needed($conn);
 }
 
 ?>
