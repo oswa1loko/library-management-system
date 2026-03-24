@@ -11,7 +11,6 @@ $search = trim((string) ($_GET['search'] ?? ''));
 $selectedCatalogId = max(0, (int) ($_GET['catalog'] ?? $_POST['catalog_id'] ?? 0));
 $formData = [
     'name' => '',
-    'description' => '',
 ];
 
 function upload_catalog_cover(array $file, string $existingPath = ''): array
@@ -43,11 +42,9 @@ function upload_catalog_cover(array $file, string $existingPath = ''): array
 
 if (isset($_POST['create_catalog'])) {
     $catalogName = trim((string) ($_POST['catalog_name'] ?? ''));
-    $catalogDescription = trim((string) ($_POST['catalog_description'] ?? ''));
     $coverUpload = upload_catalog_cover($_FILES['catalog_cover'] ?? []);
     $formData = [
         'name' => $catalogName,
-        'description' => $catalogDescription,
     ];
 
     if ($catalogName === '') {
@@ -57,13 +54,13 @@ if (isset($_POST['create_catalog'])) {
         $message = (string) $coverUpload['error'];
         $messageType = 'error';
     } else {
-        $catalogDescriptionValue = $catalogDescription !== '' ? $catalogDescription : null;
         $catalogCoverPath = (string) ($coverUpload['path'] ?? '');
         $catalogCoverValue = $catalogCoverPath !== '' ? $catalogCoverPath : null;
         $stmt = $conn->prepare("
             INSERT INTO catalogs (name, description, cover_path)
             VALUES (?, ?, ?)
         ");
+        $catalogDescriptionValue = null;
         $stmt->bind_param('sss', $catalogName, $catalogDescriptionValue, $catalogCoverValue);
         $ok = $stmt->execute();
         $stmt->close();
@@ -81,7 +78,6 @@ if (isset($_POST['create_catalog'])) {
             $message = 'Catalog created successfully.';
             $formData = [
                 'name' => '',
-                'description' => '',
             ];
         }
     }
@@ -90,9 +86,10 @@ if (isset($_POST['create_catalog'])) {
 if (isset($_POST['rename_catalog'])) {
     $catalogId = max(0, (int) ($_POST['catalog_id'] ?? 0));
     $catalogName = trim((string) ($_POST['catalog_name'] ?? ''));
-    $catalogDescription = trim((string) ($_POST['catalog_description'] ?? ''));
     $existingCoverPath = trim((string) ($_POST['existing_cover_path'] ?? ''));
+    $existingDescription = trim((string) ($_POST['existing_catalog_description'] ?? ''));
     $coverUpload = upload_catalog_cover($_FILES['catalog_cover'] ?? [], $existingCoverPath);
+    $existingCatalogName = trim((string) ($_POST['existing_catalog_name'] ?? ''));
 
     if ($catalogId <= 0 || $catalogName === '') {
         $message = 'Catalog name is required.';
@@ -101,7 +98,26 @@ if (isset($_POST['rename_catalog'])) {
         $message = (string) $coverUpload['error'];
         $messageType = 'error';
     } else {
-        $catalogDescriptionValue = $catalogDescription !== '' ? $catalogDescription : null;
+        $duplicateStmt = $conn->prepare("
+            SELECT id
+            FROM catalogs
+            WHERE name = ?
+              AND id <> ?
+            LIMIT 1
+        ");
+        $duplicateStmt->bind_param('si', $catalogName, $catalogId);
+        $duplicateStmt->execute();
+        $duplicateCatalog = $duplicateStmt->get_result()->fetch_assoc();
+        $duplicateStmt->close();
+
+        if ($duplicateCatalog) {
+            if (!empty($coverUpload['path']) && $coverUpload['path'] !== $existingCoverPath) {
+                remove_relative_file((string) $coverUpload['path']);
+            }
+            $message = 'Unable to rename this catalog. The name may already be in use.';
+            $messageType = 'error';
+        } else {
+        $catalogDescriptionValue = $existingDescription !== '' ? $existingDescription : null;
         $catalogCoverPath = (string) ($coverUpload['path'] ?? '');
         $catalogCoverValue = $catalogCoverPath !== '' ? $catalogCoverPath : null;
         $stmt = $conn->prepare("
@@ -135,8 +151,10 @@ if (isset($_POST['rename_catalog'])) {
             audit_log($conn, 'librarian.catalog.rename', [
                 'catalog_id' => $catalogId,
                 'name' => $catalogName,
+                'previous_name' => $existingCatalogName,
             ]);
             $message = 'Catalog updated successfully.';
+        }
         }
     }
 }
@@ -369,10 +387,6 @@ if ($selectedCatalogId > 0) {
               <label for="catalog_cover">Catalog Image</label>
               <input id="catalog_cover" type="file" name="catalog_cover" accept=".jpg,.jpeg,.png,.webp">
             </div>
-            <div class="form-span-2">
-              <label for="catalog_description">Catalog Description</label>
-              <textarea id="catalog_description" name="catalog_description" rows="4" placeholder="Short note about this catalog section"><?php echo h($formData['description']); ?></textarea>
-            </div>
           </div>
 
           <div class="inline-actions">
@@ -414,7 +428,7 @@ if ($selectedCatalogId > 0) {
         <form method="get" class="toolbar grow">
           <div class="grow">
             <label for="search">Search</label>
-            <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search catalog name or description">
+            <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search catalog name">
           </div>
           <div class="inline-actions">
             <button type="submit">Apply</button>
@@ -441,7 +455,6 @@ if ($selectedCatalogId > 0) {
               <div class="stack">
                 <div>
                   <strong class="label-block"><?php echo h($catalog['name']); ?></strong>
-                  <span class="muted"><?php echo h((string) ($catalog['description'] !== '' ? $catalog['description'] : 'No description yet.')); ?></span>
                 </div>
                 <div class="inline-actions chips-row">
                   <span class="chip"><?php echo (int) $catalog['assigned_books']; ?> assigned</span>
@@ -492,12 +505,11 @@ if ($selectedCatalogId > 0) {
             <span class="chip"><?php echo (int) $selectedCatalog['available_copies']; ?> available copies</span>
             <span class="chip">Created <?php echo h(format_display_date((string) $selectedCatalog['created_at'], '-')); ?></span>
           </div>
-          <div class="empty-state flow-top-md">
-            <?php echo h((string) (($selectedCatalog['description'] ?? '') !== '' ? $selectedCatalog['description'] : 'No description yet.')); ?>
-          </div>
           <form method="post" enctype="multipart/form-data" class="stack flow-top-md">
             <input type="hidden" name="catalog_id" value="<?php echo (int) $selectedCatalog['id']; ?>">
             <input type="hidden" name="existing_cover_path" value="<?php echo h((string) ($selectedCatalog['cover_path'] ?? '')); ?>">
+            <input type="hidden" name="existing_catalog_name" value="<?php echo h((string) $selectedCatalog['name']); ?>">
+            <input type="hidden" name="existing_catalog_description" value="<?php echo h((string) ($selectedCatalog['description'] ?? '')); ?>">
             <div class="grid form">
               <div>
                 <label for="catalog_name_selected">Catalog Name</label>
@@ -506,10 +518,6 @@ if ($selectedCatalogId > 0) {
               <div>
                 <label for="catalog_cover_selected">Catalog Image</label>
                 <input id="catalog_cover_selected" type="file" name="catalog_cover" accept=".jpg,.jpeg,.png,.webp">
-              </div>
-              <div class="form-span-2">
-                <label for="catalog_description_selected">Description</label>
-                <textarea id="catalog_description_selected" name="catalog_description" rows="3"><?php echo h((string) $selectedCatalog['description']); ?></textarea>
               </div>
             </div>
             <div class="inline-actions">

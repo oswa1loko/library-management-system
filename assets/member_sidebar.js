@@ -1,8 +1,24 @@
 (function () {
   var CLOSE_DURATION_MS = 220;
+  var MOBILE_TRACKING_LABEL = 'Tracking';
 
   function isMobileViewport() {
     return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  }
+
+  function syncMobileLabels(shell) {
+    shell.querySelectorAll('.member-sidebar-link[data-tooltip="Records Tracking"]').forEach(function (link) {
+      var label = link.querySelector('.member-sidebar-label');
+      if (!label) {
+        return;
+      }
+
+      if (!label.dataset.desktopLabel) {
+        label.dataset.desktopLabel = label.textContent.trim();
+      }
+
+      label.textContent = isMobileViewport() ? MOBILE_TRACKING_LABEL : label.dataset.desktopLabel;
+    });
   }
 
   function setMobileOpen(shell, open) {
@@ -88,6 +104,7 @@
       var mobileOpen = false;
 
       ensureMobileControls(shell);
+      syncMobileLabels(shell);
       shell.querySelectorAll('.js-sidebar-toggle').forEach(function (button) {
         button.setAttribute('aria-expanded', 'true');
         button.setAttribute('aria-label', 'Main menu');
@@ -145,6 +162,7 @@
       if (window.matchMedia) {
         var mediaQuery = window.matchMedia('(max-width: 768px)');
         var handleViewportChange = function (event) {
+          syncMobileLabels(shell);
           if (!event.matches) {
             mobileOpen = false;
             setMobileOpen(shell, false);

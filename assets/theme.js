@@ -425,6 +425,7 @@
       }
     });
     shortcut.dataset.notificationBound = 'true';
+    shortcut.setAttribute('data-notification-role', (getMemberNotificationConfig() || {}).role || 'member');
     loadStudentNotifications(panel);
   }
 

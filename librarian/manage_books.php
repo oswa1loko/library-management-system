@@ -122,8 +122,8 @@ if (isset($_POST['add'])) {
     } elseif (!$selectedCatalog) {
         $message = 'Select a catalog first.';
         $messageType = 'error';
-    } elseif ($isbn !== '' && !preg_match('/^[0-9Xx-]+$/', $isbn)) {
-        $message = 'ISBN may only contain numbers, hyphens, and X.';
+    } elseif ($isbn !== '' && !preg_match('/^\d{13}$/', $isbn)) {
+        $message = 'ISBN must contain exactly 13 digits.';
         $messageType = 'error';
     } elseif ($qty <= 0) {
         $message = 'Quantity must be at least 1.';
@@ -382,7 +382,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
             <p class="muted">Search by title or author, narrow by assigned catalog, and jump to edit when copy counts need correction.</p>
           </div>
         </div>
-        <form method="get" class="manage-books-tablefilters">
+        <form method="get" class="manage-books-tablefilters js-auto-submit-filters">
           <div class="grow">
             <label for="search">Search</label>
             <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search title or author">
@@ -406,7 +406,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
             <div class="manage-books-printbar">
               <div class="manage-users-print-shell">
                 <select id="printBooksAction" class="manage-users-print-select">
-                  <option value="">Select print option</option>
+                  <option value="">Choose report to print</option>
                   <option value="current">Print Current View</option>
                   <option value="all">Print All Books</option>
                   <option value="available">Print Available Books</option>
@@ -419,12 +419,11 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
                 <span class="manage-users-print-caret" aria-hidden="true"></span>
               </div>
               <div class="manage-books-print-action">
-                <button type="button" class="button secondary" id="runBooksPrintAction">Print</button>
+                <button type="button" class="button secondary" id="runBooksPrintAction">Print Now</button>
               </div>
             </div>
           </div>
           <div class="inline-actions">
-            <button type="submit">Apply</button>
             <a class="button secondary" href="manage_books.php">Reset</a>
           </div>
         </form>
@@ -543,8 +542,9 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
           </div>
         </div>
         <div>
-          <label for="isbn">ISBN</label>
-          <input id="isbn" name="isbn" value="<?php echo h($formData['isbn']); ?>" placeholder="978-1234567890">
+          <label for="isbn">ISBN-13</label>
+          <input id="isbn" name="isbn" value="<?php echo h($formData['isbn']); ?>" placeholder="9781234567890" inputmode="numeric" pattern="\d{13}" maxlength="13" aria-describedby="isbn_help">
+          <div id="isbn_help" class="muted">Enter exactly 13 digits. Example: 9781234567890</div>
         </div>
         <div>
           <label for="qty">Starting Quantity</label>

@@ -162,10 +162,10 @@ if (isset($_POST['update'])) {
               </div>
             </div>
             <div>
-              <label for="course">Course</label>
+              <label for="course">Program</label>
               <div class="ui-select-shell">
                 <select id="course" name="course" class="ui-select">
-                  <option value="">Select course</option>
+                  <option value="">Select program</option>
                   <?php foreach ($courseOptions as $courseValue => $courseLabel): ?>
                     <option value="<?php echo h($courseValue); ?>" <?php echo ((string) ($editUser['course'] ?? '')) === $courseValue ? 'selected' : ''; ?>><?php echo h($courseLabel); ?></option>
                   <?php endforeach; ?>

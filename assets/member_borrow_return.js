@@ -24,6 +24,41 @@ function initBorrowSelection() {
   const modalCover = document.querySelector('[data-book-modal-cover]');
   const modalCoverPlaceholder = document.querySelector('[data-book-modal-cover-placeholder]');
   const modalQty = document.querySelector('[data-book-modal-qty]');
+  let navigationTimer = null;
+
+  const buildFilterUrl = () => {
+    const url = new URL(window.location.href);
+    const query = searchInput.value.trim();
+    const selectedCategory = categorySelect ? categorySelect.value.trim() : '';
+
+    if (query !== '') {
+      url.searchParams.set('search', query);
+    } else {
+      url.searchParams.delete('search');
+    }
+
+    if (selectedCategory !== '') {
+      url.searchParams.set('category', selectedCategory);
+    } else {
+      url.searchParams.delete('category');
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  };
+
+  const navigateWithFilters = () => {
+    const nextUrl = buildFilterUrl();
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    if (nextUrl !== currentUrl) {
+      window.location.assign(nextUrl);
+    }
+  };
+
+  const queueFilterNavigation = () => {
+    window.clearTimeout(navigationTimer);
+    navigationTimer = window.setTimeout(navigateWithFilters, 450);
+  };
 
   const applyFilter = () => {
     const query = searchInput.value.trim().toLowerCase();
@@ -116,10 +151,16 @@ function initBorrowSelection() {
     document.body.classList.add('modal-open');
   };
 
-  searchInput.addEventListener('input', applyFilter);
+  searchInput.addEventListener('input', () => {
+    applyFilter();
+    queueFilterNavigation();
+  });
 
   if (categorySelect) {
-    categorySelect.addEventListener('change', applyFilter);
+    categorySelect.addEventListener('change', () => {
+      applyFilter();
+      navigateWithFilters();
+    });
   }
 
   modalTriggers.forEach((trigger) => {

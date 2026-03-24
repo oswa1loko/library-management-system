@@ -3,16 +3,36 @@
   var printAction = document.getElementById('printAction');
   var printShell = document.querySelector('.manage-users-print-shell');
   var runPrintAction = document.getElementById('runPrintAction');
+  var filterForm = document.querySelector('.js-auto-submit-filters');
   var searchInput = document.getElementById('search');
+  var roleFilter = document.getElementById('role_filter');
   var checks = Array.prototype.slice.call(document.querySelectorAll('.user-print-check'));
   var deleteForms = Array.prototype.slice.call(document.querySelectorAll('.js-confirm-delete-user'));
-  var currentSearch = searchInput ? searchInput.value.trim() : '';
+  var createForm = document.querySelector('.manage-users-create-form');
+  var autoSubmitTimer = null;
 
-  if (!selectAll || !printAction || !printShell || !runPrintAction) {
-    return;
+  function submitFilters() {
+    if (!filterForm) {
+      return;
+    }
+
+    filterForm.requestSubmit ? filterForm.requestSubmit() : filterForm.submit();
+  }
+
+  function queueFilterSubmit() {
+    if (!filterForm) {
+      return;
+    }
+
+    window.clearTimeout(autoSubmitTimer);
+    autoSubmitTimer = window.setTimeout(submitFilters, 320);
   }
 
   function syncPrintSelectState() {
+    if (!printShell || !printAction) {
+      return;
+    }
+
     printShell.classList.toggle('is-selected', !!printAction.value);
   }
 
@@ -27,6 +47,7 @@
   function buildPrintParams(action) {
     var params = new URLSearchParams();
     params.set('print', '1');
+    var currentSearch = searchInput ? searchInput.value.trim() : '';
 
     if (currentSearch) {
       params.set('search', currentSearch);
@@ -51,38 +72,54 @@
     return params;
   }
 
-  selectAll.addEventListener('change', function () {
-    checks.forEach(function (check) {
-      check.checked = selectAll.checked;
+  if (selectAll) {
+    selectAll.addEventListener('change', function () {
+      checks.forEach(function (check) {
+        check.checked = selectAll.checked;
+      });
     });
-  });
+  }
 
   checks.forEach(function (check) {
     check.addEventListener('change', function () {
-      selectAll.checked = checks.every(function (item) {
-        return item.checked;
-      });
+      if (selectAll) {
+        selectAll.checked = checks.every(function (item) {
+          return item.checked;
+        });
+      }
     });
   });
 
-  printAction.addEventListener('change', syncPrintSelectState);
-  syncPrintSelectState();
+  if (printAction) {
+    printAction.addEventListener('change', syncPrintSelectState);
+    syncPrintSelectState();
+  }
 
-  runPrintAction.addEventListener('click', function () {
-    var action = printAction.value;
+  if (runPrintAction && printAction) {
+    runPrintAction.addEventListener('click', function () {
+      var action = printAction.value;
 
-    if (!action) {
-      window.alert('Select a print option first.');
-      return;
-    }
+      if (!action) {
+        window.alert('Select a print option first.');
+        return;
+      }
 
-    var params = buildPrintParams(action);
-    if (!params) {
-      return;
-    }
+      var params = buildPrintParams(action);
+      if (!params) {
+        return;
+      }
 
-    window.location.href = 'manage_accounts.php?' + params.toString();
-  });
+      window.location.href = 'manage_accounts.php?' + params.toString();
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', queueFilterSubmit);
+  }
+
+  if (roleFilter) {
+    roleFilter.addEventListener('change', submitFilters);
+  }
 
   deleteForms.forEach(function (form) {
     form.addEventListener('submit', function (event) {
@@ -91,4 +128,38 @@
       }
     });
   });
+
+  if (createForm) {
+    var roleSelect = createForm.querySelector('select[name="role"]');
+    var courseSelect = createForm.querySelector('select[name="course"]');
+    var courseField = courseSelect ? courseSelect.closest('.manage-users-create-field') : null;
+    var courseHelp = createForm.querySelector('.manage-users-create-help');
+
+    if (roleSelect && courseSelect) {
+      var syncProgramFieldState = function () {
+        var requiresProgram = roleSelect.value === 'student';
+
+        courseSelect.disabled = !requiresProgram;
+        courseSelect.required = requiresProgram;
+
+        if (!requiresProgram) {
+          courseSelect.value = '';
+        }
+
+        if (courseField) {
+          courseField.classList.toggle('is-disabled', !requiresProgram);
+          courseField.hidden = !requiresProgram;
+        }
+
+        if (courseHelp) {
+          courseHelp.textContent = requiresProgram
+            ? 'Required for student accounts.'
+            : 'Only needed when the selected role is Student.';
+        }
+      };
+
+      roleSelect.addEventListener('change', syncProgramFieldState);
+      syncProgramFieldState();
+    }
+  }
 })();

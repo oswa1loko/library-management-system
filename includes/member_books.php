@@ -85,17 +85,11 @@ $bookCategories = [];
 while ($categoryRows && ($categoryRow = $categoryRows->fetch_assoc())) {
     $bookCategories[] = (string) $categoryRow['category'];
 }
+$initialSearchFilter = trim((string) ($_GET['search'] ?? ''));
 $initialCategoryFilter = trim((string) ($_GET['category'] ?? ''));
 $initialCategoryFilter = strtolower($initialCategoryFilter);
 if ($initialCategoryFilter !== '' && !in_array($initialCategoryFilter, array_map('strtolower', $bookCategories), true)) {
     $initialCategoryFilter = '';
-}
-$activeCategoryLabel = '';
-foreach ($bookCategories as $bookCategory) {
-    if (strtolower($bookCategory) === $initialCategoryFilter) {
-        $activeCategoryLabel = $bookCategory;
-        break;
-    }
 }
 
 $booksSql = "
@@ -219,6 +213,7 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
         <span class="member-sidebar-label">Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
+        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
         <span class="member-sidebar-label">Logout</span>
       </a>
     </div>
@@ -237,17 +232,6 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
         <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
       <?php endif; ?>
 
-      <?php if ($activeCategoryLabel !== ''): ?>
-        <div class="panel member-books-context">
-          <div class="member-books-context-copy">
-            <span class="chip">Catalog Filter</span>
-            <strong><?php echo h($activeCategoryLabel); ?></strong>
-            <span class="muted">Showing only the books assigned to this catalog section.</span>
-          </div>
-          <a class="button secondary" href="/librarymanage/<?php echo h($role); ?>/catalog.php">Back to Catalog</a>
-        </div>
-      <?php endif; ?>
-
       <div class="grid cards member-workspace-grid member-workspace-grid-borrow">
         <div class="panel member-workspace-main">
           <div class="card-head">
@@ -262,7 +246,7 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
             <div>
               <label for="book_ids">Books</label>
               <div class="member-book-filters">
-                <input id="member-book-search" type="search" class="member-book-search" placeholder="Search title or author" autocomplete="off" data-book-search>
+                <input id="member-book-search" type="search" class="member-book-search" placeholder="Search title or author" autocomplete="off" value="<?php echo h($initialSearchFilter); ?>" data-book-search>
                 <div class="ui-select-shell member-book-category-shell">
                   <select class="ui-select" data-book-category>
                     <option value="">All categories</option>

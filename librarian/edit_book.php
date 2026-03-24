@@ -42,8 +42,24 @@ if (isset($_POST['update'])) {
     $catalogId = max(0, (int) ($_POST['catalog_id'] ?? 0));
     $isbn = trim($_POST['isbn'] ?? '');
     $description = trim($_POST['description'] ?? '');
-    $total = max(0, (int) ($_POST['qty_total'] ?? 1));
-    $requestedAvailable = (int) ($_POST['qty_available'] ?? 1);
+    $currentBookStmt = $conn->prepare("
+        SELECT qty_total, qty_available
+        FROM books
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $currentBookStmt->bind_param('i', $bookId);
+    $currentBookStmt->execute();
+    $currentBook = $currentBookStmt->get_result()->fetch_assoc();
+    $currentBookStmt->close();
+
+    $currentTotal = (int) ($currentBook['qty_total'] ?? 0);
+    $currentAvailable = (int) ($currentBook['qty_available'] ?? 0);
+    $additionalCopies = max(0, (int) ($_POST['qty_add'] ?? 0));
+    $removedCopies = max(0, (int) ($_POST['qty_remove'] ?? 0));
+    $netAvailableBeforeValidation = $currentAvailable + $additionalCopies;
+    $available = $netAvailableBeforeValidation - $removedCopies;
+    $total = $currentTotal + $additionalCopies - $removedCopies;
     $existingCoverPath = trim($_POST['existing_cover_path'] ?? '');
     $coverUpload = upload_book_cover($_FILES['cover'] ?? [], $existingCoverPath);
     $borrowedCopiesStmt = $conn->prepare("
@@ -57,8 +73,6 @@ if (isset($_POST['update'])) {
     $borrowedCopiesRow = $borrowedCopiesStmt->get_result()->fetch_assoc();
     $borrowedCopiesStmt->close();
     $borrowedCopies = (int) ($borrowedCopiesRow['borrowed_copies'] ?? 0);
-    $minimumAvailable = max(0, $total - $borrowedCopies);
-    $available = max($minimumAvailable, min($requestedAvailable, $total));
     $selectedCatalog = null;
     if ($catalogId > 0) {
         $catalogLookup = $conn->prepare("
@@ -79,12 +93,12 @@ if (isset($_POST['update'])) {
         $message = 'Author is required.';
     } elseif (!$selectedCatalog) {
         $message = 'Select a catalog first.';
-    } elseif ($isbn !== '' && !preg_match('/^[0-9Xx-]+$/', $isbn)) {
-        $message = 'ISBN may only contain numbers, hyphens, and X.';
+    } elseif ($isbn !== '' && !preg_match('/^\d{13}$/', $isbn)) {
+        $message = 'ISBN must contain exactly 13 digits.';
+    } elseif ($removedCopies > $netAvailableBeforeValidation) {
+        $message = 'Remove copies cannot be greater than the available shelf stock (' . $netAvailableBeforeValidation . ').';
     } elseif ($total < $borrowedCopies) {
         $message = 'Total quantity cannot be lower than the number of copies currently borrowed (' . $borrowedCopies . ').';
-    } elseif ($requestedAvailable < $minimumAvailable) {
-        $message = 'Available quantity cannot hide borrowed copies. Minimum allowed right now is ' . $minimumAvailable . '.';
     } elseif ($coverUpload['error'] !== '') {
         $message = $coverUpload['error'];
     } else {
@@ -121,7 +135,24 @@ if (!$book) {
     http_response_code(404);
 }
 
-$borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_available']) : 0;
+$activeBorrowedStmt = $conn->prepare("
+    SELECT COUNT(*) AS borrowed_copies
+    FROM borrows
+    WHERE book_id = ?
+      AND status IN ('borrowed', 'return_requested')
+");
+$activeBorrowedStmt->bind_param('i', $bookId);
+$activeBorrowedStmt->execute();
+$activeBorrowedRow = $activeBorrowedStmt->get_result()->fetch_assoc();
+$activeBorrowedStmt->close();
+
+$borrowedCopies = (int) ($activeBorrowedRow['borrowed_copies'] ?? 0);
+$currentTotal = (int) ($book['qty_total'] ?? 0);
+$currentAvailable = (int) ($book['qty_available'] ?? 0);
+$pendingAddedCopies = max(0, (int) ($_POST['qty_add'] ?? 0));
+$pendingRemovedCopies = max(0, (int) ($_POST['qty_remove'] ?? 0));
+$displayTotal = max(0, $currentTotal + $pendingAddedCopies - $pendingRemovedCopies);
+$displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRemovedCopies);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -242,16 +273,29 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
                 </div>
               </div>
               <div>
-                <label for="isbn">ISBN</label>
-                <input id="isbn" name="isbn" value="<?php echo h($_POST['isbn'] ?? ($book['isbn'] ?? '')); ?>">
+                <label for="isbn">ISBN-13</label>
+                <input id="isbn" name="isbn" value="<?php echo h($_POST['isbn'] ?? ($book['isbn'] ?? '')); ?>" placeholder="9781234567890" inputmode="numeric" pattern="\d{13}" maxlength="13" aria-describedby="isbn_help">
+                <div id="isbn_help" class="muted">Enter exactly 13 digits. Example: 9781234567890</div>
               </div>
               <div>
                 <label for="qty_total">Total quantity</label>
-                <input id="qty_total" type="number" name="qty_total" value="<?php echo (int) ($_POST['qty_total'] ?? $book['qty_total']); ?>" min="0" required>
+                <input id="qty_total" type="number" name="qty_total" value="<?php echo $displayTotal; ?>" min="0" readonly aria-readonly="true" aria-describedby="qty_total_help">
+                <div id="qty_total_help" class="muted">Auto-updates from the current total plus the copies you add.</div>
+              </div>
+              <div>
+                <label for="qty_add">Add copies</label>
+                <input id="qty_add" type="number" name="qty_add" value="<?php echo $pendingAddedCopies; ?>" min="0" aria-describedby="qty_add_help">
+                <div id="qty_add_help" class="muted">Adding copies increases both total and available stock while keeping the <?php echo $borrowedCopies; ?> borrowed cop<?php echo $borrowedCopies === 1 ? 'y' : 'ies'; ?> counted.</div>
+              </div>
+              <div>
+                <label for="qty_remove">Remove copies</label>
+                <input id="qty_remove" type="number" name="qty_remove" value="<?php echo $pendingRemovedCopies; ?>" min="0" aria-describedby="qty_remove_help">
+                <div id="qty_remove_help" class="muted">Remove only from shelf stock. You can remove up to <?php echo $currentAvailable + $pendingAddedCopies; ?> available cop<?php echo ($currentAvailable + $pendingAddedCopies) === 1 ? 'y' : 'ies'; ?> without touching borrowed books.</div>
               </div>
               <div>
                 <label for="qty_available">Available quantity</label>
-                <input id="qty_available" type="number" name="qty_available" value="<?php echo (int) ($_POST['qty_available'] ?? $book['qty_available']); ?>" min="0" required>
+                <input id="qty_available" type="number" name="qty_available" value="<?php echo $displayAvailable; ?>" min="0" readonly aria-readonly="true" aria-describedby="qty_available_help">
+                <div id="qty_available_help" class="muted">Auto-updates based on current available copies plus added stock. Borrowed copies stay reserved.</div>
               </div>
               <div class="form-span-2">
                 <label for="description">Description</label>
@@ -271,7 +315,7 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
                 <p class="muted eyebrow-compact">Inventory</p>
                 <h4 class="heading-top-md">Physical copies tied to this record</h4>
               </div>
-              <div class="empty-state">Keep the catalog details on this title record and adjust quantities without hiding copies that are still borrowed out.</div>
+              <div class="empty-state">Use Add copies for restocking and Remove copies for safe stock reduction. Total and available quantities update automatically while borrowed copies remain reserved.</div>
             </div>
 
             <div class="inline-actions librarian-edit-book-actions">
@@ -280,7 +324,7 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
             </div>
             <div class="inline-actions librarian-edit-book-chips">
               <span class="chip">Borrowed out: <?php echo $borrowedCopies; ?></span>
-              <span class="chip">Available now: <?php echo (int) $book['qty_available']; ?></span>
+              <span class="chip">Available now: <?php echo $displayAvailable; ?></span>
               <span class="chip">Catalog: <?php echo h($book['category']); ?></span>
               <?php if (!empty($book['isbn'])): ?>
                 <span class="chip">ISBN: <?php echo h($book['isbn']); ?></span>
@@ -300,8 +344,8 @@ $borrowedCopies = $book ? max(0, (int) $book['qty_total'] - (int) $book['qty_ava
           </div>
           <div class="stack">
             <div class="empty-state">Book ID: <strong>#<?php echo (int) $book['id']; ?></strong></div>
-            <div class="empty-state">Total copies: <strong><?php echo (int) $book['qty_total']; ?></strong></div>
-            <div class="empty-state">Available copies: <strong><?php echo (int) $book['qty_available']; ?></strong></div>
+            <div class="empty-state">Total copies: <strong><?php echo $displayTotal; ?></strong></div>
+            <div class="empty-state">Available copies: <strong><?php echo $displayAvailable; ?></strong></div>
             <div class="empty-state">Borrowed out: <strong><?php echo $borrowedCopies; ?></strong></div>
             <div class="empty-state">Catalog: <strong><?php echo h((string) (($book['category'] ?? '') !== '' ? $book['category'] : '-')); ?></strong></div>
             <div class="empty-state">ISBN: <strong><?php echo h((string) (($book['isbn'] ?? '') !== '' ? $book['isbn'] : '-')); ?></strong></div>

@@ -274,7 +274,8 @@ $filterQueryString = manage_accounts_filter_query($search, $roleFilter);
 <?php endif; ?>
 <?php if (!$printMode): ?>
   <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
-  <script src="/librarymanage/assets/admin_manage_accounts.js"></script>
+  <?php $manageAccountsScriptVersion = (string) filemtime(__DIR__ . '/../assets/admin_manage_accounts.js'); ?>
+  <script src="/librarymanage/assets/admin_manage_accounts.js?v=<?php echo urlencode($manageAccountsScriptVersion); ?>"></script>
 <?php endif; ?>
 </body>
 </html>

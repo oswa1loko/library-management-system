@@ -81,6 +81,7 @@ $catalogHighlights = get_member_catalog_highlights($conn, 4);
         <span class="member-sidebar-label">Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
+        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
         <span class="member-sidebar-label">Logout</span>
       </a>
     </div>

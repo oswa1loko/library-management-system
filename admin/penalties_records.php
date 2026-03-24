@@ -214,7 +214,7 @@ $penalties = $stmt->get_result();
         <form method="post" data-confirm="Run penalty sync now?">
           <button type="submit" name="run_penalty_sync" value="1">Run Penalty Sync Now</button>
         </form>
-        <form method="get" class="toolbar grow admin-record-filters">
+        <form method="get" class="toolbar grow admin-record-filters penalties-record-filters">
           <div>
             <label for="status_filter">Status</label>
             <div class="ui-select-shell">

@@ -1,6 +1,6 @@
 <div class="panel">
   <div class="toolbar manage-users-toolbar">
-    <form method="get" class="toolbar grow manage-users-filters">
+    <form method="get" class="toolbar grow manage-users-filters js-auto-submit-filters">
       <div class="grow">
         <label for="search">Search</label>
         <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search name, email, or username">
@@ -18,7 +18,6 @@
         </div>
       </div>
       <div class="inline-actions">
-        <button type="submit">Apply</button>
         <a class="button secondary" href="manage_accounts.php">Reset</a>
       </div>
     </form>
@@ -33,7 +32,7 @@
       <label for="printAction" class="manage-users-print-label">Print options</label>
       <div class="manage-users-print-shell">
         <select id="printAction" class="manage-users-print-select">
-          <option value="">Select print option</option>
+          <option value="">Choose report to print</option>
           <option value="all">Print All Users</option>
           <option value="student">Print Student</option>
           <option value="faculty">Print Faculty</option>
@@ -44,7 +43,7 @@
         <span class="manage-users-print-caret" aria-hidden="true"></span>
       </div>
     </div>
-    <button type="button" class="button secondary" id="runPrintAction">Print</button>
+    <button type="button" class="button secondary" id="runPrintAction">Print Now</button>
   </div>
   <div class="table-wrap table-wrap-top">
     <table>

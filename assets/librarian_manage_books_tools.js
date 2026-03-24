@@ -2,11 +2,30 @@
   var printAction = document.getElementById('printBooksAction');
   var printShell = document.querySelector('.manage-users-print-shell');
   var runPrintAction = document.getElementById('runBooksPrintAction');
+  var filterForm = document.querySelector('.js-auto-submit-filters');
   var searchInput = document.getElementById('search');
   var catalogFilter = document.getElementById('catalog_filter');
+  var autoSubmitTimer = null;
 
   if (!printAction || !printShell || !runPrintAction) {
     return;
+  }
+
+  function submitFilters() {
+    if (!filterForm) {
+      return;
+    }
+
+    filterForm.requestSubmit ? filterForm.requestSubmit() : filterForm.submit();
+  }
+
+  function queueFilterSubmit() {
+    if (!filterForm) {
+      return;
+    }
+
+    window.clearTimeout(autoSubmitTimer);
+    autoSubmitTimer = window.setTimeout(submitFilters, 320);
   }
 
   function syncPrintSelectState() {
@@ -52,4 +71,12 @@
     var params = buildPrintParams(action);
     window.location.href = 'manage_books.php?' + params.toString();
   });
+
+  if (searchInput) {
+    searchInput.addEventListener('input', queueFilterSubmit);
+  }
+
+  if (catalogFilter) {
+    catalogFilter.addEventListener('change', submitFilters);
+  }
 })();

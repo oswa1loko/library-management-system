@@ -218,6 +218,7 @@ if ($role === 'student' && isset($_POST['remove_profile_photo'])) {
         <span class="member-sidebar-label">Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
+        <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
         <span class="member-sidebar-label">Logout</span>
       </a>
     </div>

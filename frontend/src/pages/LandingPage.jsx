@@ -149,6 +149,7 @@ const builderProfiles = [
 
 const focusBase =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#081119]";
+const themeStorageKey = "librarymanage-landing-theme";
 
 function RevealSection({ id, className = "", delay = 0, children }) {
   const ref = useRef(null);
@@ -189,7 +190,18 @@ function RevealSection({ id, className = "", delay = 0, children }) {
 }
 
 export default function LandingPage() {
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") {
+      return "dark";
+    }
+
+    try {
+      const storedTheme = window.localStorage.getItem(themeStorageKey);
+      return storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
+    } catch {
+      return "dark";
+    }
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("Home");
   const [currentImage, setCurrentImage] = useState(0);
@@ -199,6 +211,12 @@ export default function LandingPage() {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.style.colorScheme = theme;
+
+    try {
+      window.localStorage.setItem(themeStorageKey, theme);
+    } catch {
+      // Ignore storage failures and keep the current session theme only.
+    }
   }, [theme]);
 
   useEffect(() => {
@@ -270,29 +288,37 @@ export default function LandingPage() {
       </div>
 
       <header className="fixed top-0 right-0 left-0 z-[120] border-b border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(11,26,45,0.97),rgba(7,18,32,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-[14px] dark:border-white/10 md:sticky md:z-50 md:bg-[#081422]/88 md:shadow-none md:backdrop-blur-xl">
-        <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-0 py-3 md:py-[18px]">
-          <a href="/librarymanage/" className={`flex min-w-0 flex-nowrap items-center gap-2.5 md:gap-3 ${focusBase}`}>
+        <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-0 py-3 md:py-4">
+          <a href="/librarymanage/" className={`group flex min-w-0 flex-nowrap items-center gap-3 md:gap-4 ${focusBase}`}>
             <img
               src="/librarymanage/assets/images/RMLOGO.jfif"
               alt="Regis Marie College logo"
-              className="h-[30px] w-[30px] rounded-full border border-[rgba(143,211,255,0.22)] object-cover md:h-11 md:w-11 md:border-cyan-400/40 md:shadow-lg md:shadow-cyan-500/15"
+              className="h-10 w-10 rounded-full border border-[rgba(143,211,255,0.24)] object-cover shadow-[0_10px_24px_rgba(8,24,44,0.26)] transition-transform duration-300 group-hover:scale-[1.03] md:h-[54px] md:w-[54px] md:border-cyan-400/40 md:shadow-[0_14px_28px_rgba(34,83,126,0.24)]"
             />
-            <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-118px)]">
-              <p className="truncate text-[11px] leading-[1.1] font-medium tracking-[0] text-[rgba(214,226,238,0.72)] md:text-sm md:font-semibold md:tracking-[0.2em] md:text-cyan-300">RMC</p>
-              <p className="truncate text-[14px] leading-[1.1] font-bold text-[#f4f8ff] md:text-sm md:font-medium md:text-slate-200">Regis Marie College Library</p>
+            <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-124px)]">
+              <p className="truncate text-[0.7rem] leading-none font-semibold uppercase tracking-[0.28em] text-cyan-300/88 md:text-[0.76rem]">
+                RMC
+              </p>
+              <p className="truncate text-[0.98rem] leading-[1.1] font-semibold tracking-[-0.01em] text-[#f4f8ff] md:text-[1.1rem]">
+                Regis Marie College Library
+              </p>
+              <p className="truncate text-[0.69rem] leading-none text-slate-400 md:text-[0.78rem]">
+                Learning resources and campus access
+              </p>
             </div>
           </a>
 
-          <div className="hidden items-center gap-8 md:flex">
+          <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] md:flex">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
                 onClick={(event) => handleNavClick(event, link.href)}
-                className={`text-sm transition-colors ${focusBase} ${
+                aria-current={activeSection === link.label ? "page" : undefined}
+                className={`inline-flex min-h-[42px] items-center rounded-full px-4 text-sm font-medium transition-all duration-200 ${focusBase} ${
                   activeSection === link.label
-                    ? "text-cyan-600 dark:text-cyan-300"
-                    : "text-slate-600 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-300"
+                    ? "bg-cyan-400/16 text-cyan-100 shadow-[0_10px_22px_rgba(34,127,167,0.18)] ring-1 ring-cyan-300/18 dark:bg-cyan-300/12 dark:text-cyan-200"
+                    : "text-slate-300/92 hover:bg-white/[0.04] hover:text-white dark:text-slate-300 dark:hover:text-white"
                 }`}
               >
                 {link.label}
@@ -300,13 +326,13 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div className="hidden items-center gap-2 md:flex">
+          <div className="hidden items-center gap-3 md:flex">
             <a
               href="/librarymanage/loginpage.php"
-              className={`inline-flex items-center gap-2 rounded-full bg-cyan-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-cyan-400 ${focusBase}`}
+              className={`inline-flex min-h-[48px] items-center gap-2 rounded-full border border-cyan-200/50 bg-[linear-gradient(135deg,#9be7ff,#32b8f1)] px-6 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#04111d] shadow-[0_16px_34px_rgba(37,173,235,0.34)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_22px_40px_rgba(37,173,235,0.42)] ${focusBase}`}
             >
               <LogIn className="h-4 w-4" />
-              Open Portal
+              Login
             </a>
             <button
               onClick={toggleTheme}
@@ -348,15 +374,23 @@ export default function LandingPage() {
                   key={link.label}
                   href={link.href}
                   onClick={(event) => handleNavClick(event, link.href)}
+                  aria-current={activeSection === link.label ? "page" : undefined}
                   className={`rounded-2xl px-3 py-2 text-sm ${focusBase} ${
                     activeSection === link.label
-                      ? "bg-cyan-400/15 text-cyan-700 dark:text-cyan-300"
+                      ? "bg-cyan-400/15 font-semibold text-cyan-700 ring-1 ring-cyan-500/20 dark:text-cyan-300"
                       : "text-slate-700 dark:text-slate-100"
                   }`}
                 >
                   {link.label}
                 </a>
               ))}
+              <a
+                href="/librarymanage/loginpage.php"
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#32b8f1,#0ea5e9)] px-4 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_14px_28px_rgba(37,173,235,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-cyan-400 ${focusBase}`}
+              >
+                <LogIn className="h-4 w-4" />
+                Login
+              </a>
             </div>
           </div>
         )}
@@ -380,10 +414,10 @@ export default function LandingPage() {
             <div className="mt-[18px] flex flex-col gap-2 sm:mt-7 sm:gap-3 md:mt-[26px] sm:flex-row">
               <a
                 href="/librarymanage/loginpage.php"
-                className={`inline-flex w-full items-center justify-center gap-2 rounded-full bg-cyan-500 px-6 py-3 text-sm font-medium text-white shadow-xl shadow-cyan-500/25 transition-transform duration-200 hover:-translate-y-1 hover:bg-cyan-400 sm:w-auto ${focusBase}`}
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-full border border-cyan-200/45 bg-[linear-gradient(135deg,#9be7ff,#32b8f1)] px-7 py-3.5 text-sm font-bold uppercase tracking-[0.08em] text-[#04111d] shadow-[0_18px_38px_rgba(37,173,235,0.34)] transition-all duration-200 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_24px_46px_rgba(37,173,235,0.42)] sm:w-auto ${focusBase}`}
               >
                 <LogIn className="h-4 w-4" />
-                Enter Library Portal
+                Access Library Portal
               </a>
               <a
                 href="#about"
@@ -537,10 +571,10 @@ export default function LandingPage() {
                 <a
                   key={link.label}
                   href={link.href}
-                  className={`group flex items-center justify-between rounded-[1.3rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.1),rgba(8,18,30,0.68))] px-4 py-4 text-sm transition-all duration-200 hover:border-cyan-300/40 hover:bg-white/10 ${focusBase}`}
+                  className={`group flex items-center justify-between rounded-[1.3rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.1),rgba(8,18,30,0.68))] px-4 py-4 text-sm text-white transition-all duration-200 hover:border-cyan-300/40 hover:bg-white/10 dark:text-white dark:hover:bg-white/10 [html[data-theme='light']_&]:border-sky-200/70 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(240,249,255,0.96),rgba(224,242,254,0.92))] [html[data-theme='light']_&]:text-slate-800 [html[data-theme='light']_&]:shadow-[0_14px_28px_-22px_rgba(14,116,144,0.28)] [html[data-theme='light']_&]:hover:border-sky-300 [html[data-theme='light']_&]:hover:bg-[linear-gradient(180deg,rgba(224,242,254,0.98),rgba(186,230,253,0.96))] ${focusBase}`}
                 >
                   <span>{link.label}</span>
-                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                  <ArrowRight className="h-4 w-4 text-cyan-200 transition-transform duration-200 group-hover:translate-x-1 dark:text-cyan-200 [html[data-theme='light']_&]:text-sky-600" />
                 </a>
               ))}
             </div>
@@ -557,8 +591,8 @@ export default function LandingPage() {
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,19,28,0.06),rgba(9,19,28,0.78))]" />
               <div className="absolute bottom-0 left-0 right-0 rounded-[1.2rem] border border-[#75a8db]/10 bg-[linear-gradient(180deg,rgba(8,18,30,0.1),rgba(8,18,30,0.76))] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-[8px] sm:m-6 sm:rounded-[1.4rem] sm:p-6">
-                <p className="text-xs uppercase tracking-[0.24em] text-cyan-300 [text-shadow:0_8px_24px_rgba(0,0,0,0.42)]">Offered course</p>
-                <p className="mt-2 max-w-sm text-lg font-semibold [text-shadow:0_8px_24px_rgba(0,0,0,0.42)]">Programs, student growth, and school identity can be introduced in one stronger visual section.</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-cyan-300 [text-shadow:0_8px_24px_rgba(0,0,0,0.42)] [html[data-theme='light']_&]:text-sky-700 [html[data-theme='light']_&]:[text-shadow:none]">Offered course</p>
+                <p className="mt-2 max-w-sm text-lg font-semibold [text-shadow:0_8px_24px_rgba(0,0,0,0.42)] [html[data-theme='light']_&]:text-slate-900 [html[data-theme='light']_&]:[text-shadow:none]">Programs, student growth, and school identity can be introduced in one stronger visual section.</p>
               </div>
             </div>
             <div className="mt-7 grid gap-2.5 px-2 pb-2 sm:mt-8 sm:px-3 sm:pb-3 lg:grid-cols-3">
@@ -590,10 +624,10 @@ export default function LandingPage() {
               ].map((course) => (
                 <div
                   key={course.code}
-                  className="rounded-[1.1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.18),rgba(8,18,30,0.72))] p-3.5 backdrop-blur-[8px]"
+                  className="rounded-[1.1rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.18),rgba(8,18,30,0.72))] p-3.5 backdrop-blur-[8px] [html[data-theme='light']_&]:border-sky-100 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(232,244,255,0.94))] [html[data-theme='light']_&]:shadow-[0_16px_28px_-24px_rgba(14,116,144,0.24)]"
                 >
-                  <p className="text-[0.82rem] font-bold tracking-[0.04em] text-slate-50">{course.code}</p>
-                  <p className="mt-2 text-[0.82rem] leading-6 text-slate-200/90">{course.description}</p>
+                  <p className="text-[0.82rem] font-bold tracking-[0.04em] text-slate-50 [html[data-theme='light']_&]:text-sky-900">{course.code}</p>
+                  <p className="mt-2 text-[0.82rem] leading-6 text-slate-200/90 [html[data-theme='light']_&]:text-slate-600">{course.description}</p>
                 </div>
               ))}
             </div>
