@@ -11,6 +11,8 @@ includes/local_mail_config.php
 dist/
 build/
 .cache/
+!frontend/dist/
+!frontend/dist/**
 
 # Logs
 *.log
