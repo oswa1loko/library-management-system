@@ -1,14 +1,12 @@
 RewriteEngine On
 
-# Redirect old visible /librarymanage URLs to the root domain paths.
-RewriteCond %{THE_REQUEST} \s/+librarymanage/([^\s?]*) [NC]
-RewriteRule ^librarymanage/(.*)$ /$1 [R=301,L]
+# Public root rewrite rules for a project deployed in /public_html/librarymanage
+# Rename this file to .htaccess and place it in /public_html
 
-# Serve the landing page from the app subfolder when visiting the root domain.
-RewriteRule ^$ /librarymanage/index.php [L]
+# Redirect direct root requests to the deployed app subfolder.
+RewriteRule ^$ /librarymanage/ [R=302,L]
+RewriteRule ^index\.php$ /librarymanage/ [R=302,L]
 
-# Internally map root-based requests to the existing /librarymanage app files.
-RewriteCond %{REQUEST_URI} !^/librarymanage/
-RewriteCond %{DOCUMENT_ROOT}/librarymanage/$1 -f [OR]
-RewriteCond %{DOCUMENT_ROOT}/librarymanage/$1 -d
-RewriteRule ^(.*)$ /librarymanage/$1 [L]
+# Keep old direct /librarymanage URLs canonical.
+RewriteCond %{THE_REQUEST} \s/+librarymanage/index\.php[\s?] [NC]
+RewriteRule ^librarymanage/index\.php$ /librarymanage/ [R=301,L]
