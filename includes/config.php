@@ -190,6 +190,8 @@ function library_rewrite_public_output(string $buffer): string
     $host = strtolower(trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '')));
     $host = preg_replace('/:\d+$/', '', $host) ?? $host;
     $isLocal = in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+    $configuredBasePath = trim((string) ($GLOBALS['library_runtime_config']['app_base_path'] ?? ''));
+    $configuredBasePath = $configuredBasePath === '' ? '' : '/' . trim($configuredBasePath, '/');
 
     if ($isLocal) {
         $buffer = strtr($buffer, [
@@ -216,13 +218,17 @@ function library_rewrite_public_output(string $buffer): string
         return $buffer;
     }
 
-    $buffer = str_replace('/librarymanage/', '/', $buffer);
+    if ($configuredBasePath === '') {
+        $buffer = str_replace('/librarymanage/', '/', $buffer);
+    } elseif ($configuredBasePath !== '/librarymanage') {
+        $buffer = str_replace('/librarymanage/', $configuredBasePath . '/', $buffer);
+    }
 
     if (stripos($buffer, '<head') !== false && stripos($buffer, 'rel="icon"') === false && stripos($buffer, "rel='icon'") === false) {
         $faviconMarkup = "\n"
-            . '    <link rel="icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
-            . '    <link rel="shortcut icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
-            . '    <link rel="apple-touch-icon" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n";
+            . '    <link rel="icon" type="image/png" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png" />' . "\n"
+            . '    <link rel="shortcut icon" type="image/png" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png" />' . "\n"
+            . '    <link rel="apple-touch-icon" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png" />' . "\n";
         $buffer = preg_replace('/<\/head>/i', $faviconMarkup . '</head>', $buffer, 1) ?? $buffer;
     }
 
