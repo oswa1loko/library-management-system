@@ -958,7 +958,7 @@ tbody td > .label-block + .muted{
 }
 
 .auth-back-link span[aria-hidden="true"]::before{
-  content:"<";
+  content:"\2190";
   opacity:.72;
 }
 

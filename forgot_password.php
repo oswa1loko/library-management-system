@@ -64,7 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Forgot Password | Library</title>
-<link rel="stylesheet" href="<?php echo h(app_url('assets/app.css')); ?>">
+<?php $assetVersion = (string) filemtime(__DIR__ . '/assets/app.css'); ?>
+<link rel="stylesheet" href="<?php echo h(app_url('assets/app.css')); ?>?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body class="auth-page">
 <div class="auth-shell">

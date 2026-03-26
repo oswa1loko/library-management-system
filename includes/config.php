@@ -2,22 +2,53 @@
 date_default_timezone_set('Asia/Manila');
 
 $GLOBALS['library_runtime_config'] = [];
-$localMailConfigPath = __DIR__ . '/local_mail_config.php';
-if (is_file($localMailConfigPath)) {
-    $localMailConfig = require $localMailConfigPath;
-    if (is_array($localMailConfig)) {
-        $GLOBALS['library_runtime_config'] = $localMailConfig;
+$localRuntimeConfigPaths = [
+    __DIR__ . '/local_runtime_config.php',
+    __DIR__ . '/local_mail_config.php',
+];
+foreach ($localRuntimeConfigPaths as $localRuntimeConfigPath) {
+    if (is_file($localRuntimeConfigPath)) {
+        $localRuntimeConfig = require $localRuntimeConfigPath;
+        if (is_array($localRuntimeConfig)) {
+            $GLOBALS['library_runtime_config'] = array_merge($GLOBALS['library_runtime_config'], $localRuntimeConfig);
+        }
     }
 }
 
-$servername = "localhost";
-$dbusername = "root";
-$dbpassword = "";
-$dbname = "librarymanage";
+function library_config_value(string $key, string $fallback = ''): string
+{
+    $envValue = getenv($key);
+    if (is_string($envValue) && $envValue !== '') {
+        return $envValue;
+    }
+
+    $config = $GLOBALS['library_runtime_config'] ?? [];
+    if (isset($config[$key])) {
+        $value = trim((string) $config[$key]);
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    return $fallback;
+}
+
+function library_is_local_database_host(string $host): bool
+{
+    $host = strtolower(trim($host));
+    $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+}
+
+$servername = library_config_value('DB_HOST', 'localhost');
+$dbusername = library_config_value('DB_USER', 'root');
+$dbpassword = library_config_value('DB_PASS', '');
+$dbname = library_config_value('DB_NAME', 'librarymanage');
+$dbport = (int) library_config_value('DB_PORT', '3306');
 
 function library_open_connection(): mysqli
 {
-    global $servername, $dbusername, $dbpassword, $dbname;
+    global $servername, $dbusername, $dbpassword, $dbname, $dbport;
 
     mysqli_report(MYSQLI_REPORT_OFF);
 
@@ -26,17 +57,32 @@ function library_open_connection(): mysqli
         throw new RuntimeException('Unable to initialize database connection.');
     }
 
-    $db->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
-    $connected = @$db->real_connect($servername, $dbusername, $dbpassword);
+    $db->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+    $shouldBootstrapDatabase = library_is_local_database_host($servername) && $dbusername === 'root';
+    $targetDatabase = $shouldBootstrapDatabase ? null : $dbname;
+
+    $connected = @$db->real_connect($servername, $dbusername, $dbpassword, $targetDatabase, $dbport);
     if (!$connected) {
         throw new RuntimeException('Database connection failed: ' . mysqli_connect_error());
     }
 
-    $db->query("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
-    $db->select_db($dbname);
+    if ($shouldBootstrapDatabase) {
+        $db->query("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
+        $db->select_db($dbname);
+    }
+
     $db->set_charset("utf8mb4");
 
     return $db;
+}
+
+function library_database_error_message(): string
+{
+    if (library_is_local_database_host((string) ($GLOBALS['servername'] ?? ''))) {
+        return 'Database connection failed. Check that MySQL is running and that your local database settings are correct, then refresh this page.';
+    }
+
+    return 'Database connection failed. Check the deployed database credentials and database server status for this site.';
 }
 
 function library_is_connection_lost(Throwable $exception): bool
@@ -111,12 +157,12 @@ try {
     $conn = library_open_connection();
 } catch (Throwable $exception) {
     http_response_code(500);
-    die('Database connection failed. Make sure MySQL is running and responsive in XAMPP, then refresh this page.');
+    die(library_database_error_message());
 }
 
 if ($conn->connect_error) {
     http_response_code(500);
-    die('Database connection failed. Make sure MySQL is running and responsive in XAMPP, then refresh this page.');
+    die(library_database_error_message());
 }
 
 function library_should_rewrite_public_output(): bool

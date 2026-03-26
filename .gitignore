@@ -6,6 +6,7 @@ vendor/
 .env
 .env.*
 includes/local_mail_config.php
+includes/local_runtime_config.php
 
 # Build/cache
 dist/
