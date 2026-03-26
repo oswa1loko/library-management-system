@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             clear_login_otp($conn, (int) ($pendingOtp['user_id'] ?? 0));
         }
         unset($_SESSION['pending_login_otp']);
-        header('Location: /librarymanage/loginpage.php');
+        header('Location: ' . app_url('loginpage.php'));
         exit;
     } elseif (isset($_POST['verify_otp']) || isset($_POST['resend_otp'])) {
         $pendingOtp = is_array($_SESSION['pending_login_otp'] ?? null) ? $_SESSION['pending_login_otp'] : null;
@@ -73,9 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $queued = enqueue_login_otp_email_job($conn, $pendingEmail, $pendingFullName, $pendingRole, $issued['code']);
 
                     if ($queued) {
+                        process_pending_email_jobs($conn, 2);
                         $_SESSION['pending_login_otp']['otp_attempts'] = 0;
                         loginpage_set_flash('info', 'New code is being sent to ' . $pendingEmail . '.');
-                        header('Location: /librarymanage/loginpage.php');
+                        header('Location: ' . app_url('loginpage.php'));
                         exit;
                     } else {
                         $error = 'Unable to resend the verification code right now.';
@@ -119,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Please complete all fields.';
         } else {
             $stmt = $conn->prepare("
-                SELECT id, fullname, username, email, password, role
+                SELECT id, fullname, username, email, password, role, account_status, password_setup_required
                 FROM users
                 WHERE (username = ? OR email = ?)
                 LIMIT 1
@@ -129,58 +130,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->store_result();
 
             if ($stmt->num_rows === 1) {
-                $stmt->bind_result($id, $dbFullName, $dbUsername, $dbEmail, $dbPassword, $dbRole);
+                $stmt->bind_result($id, $dbFullName, $dbUsername, $dbEmail, $dbPassword, $dbRole, $dbAccountStatus, $dbPasswordSetupRequired);
                 $stmt->fetch();
 
-                $ok = password_verify($password, $dbPassword);
+                if ((string) $dbAccountStatus === 'inactive') {
+                    $error = 'This account has been deactivated. Please contact the administrator or librarian for assistance.';
+                } elseif ((int) $dbPasswordSetupRequired === 1) {
+                    $error = 'This account still needs password setup. Use the invitation email link or ask the administrator to resend it.';
+                } else {
+                    $ok = password_verify($password, $dbPassword);
 
-                if (!$ok && md5($password) === $dbPassword) {
-                    $ok = true;
-                    $newHash = password_hash($password, PASSWORD_DEFAULT);
-                    $upgrade = $conn->prepare("UPDATE users SET password = ? WHERE id = ? LIMIT 1");
-                    $upgrade->bind_param('si', $newHash, $id);
-                    $upgrade->execute();
-                    $upgrade->close();
-                }
+                    if (!$ok && md5($password) === $dbPassword) {
+                        $ok = true;
+                        $newHash = password_hash($password, PASSWORD_DEFAULT);
+                        $upgrade = $conn->prepare("UPDATE users SET password = ? WHERE id = ? LIMIT 1");
+                        $upgrade->bind_param('si', $newHash, $id);
+                        $upgrade->execute();
+                        $upgrade->close();
+                    }
 
-                if ($ok) {
-                    if (role_requires_login_otp($dbRole)) {
-                        if (!is_valid_email_address($dbEmail)) {
-                            clear_login_otp($conn, (int) $id);
-                            $error = 'This account does not have a valid email address for verification. Please contact the librarian.';
-                        } else {
-                            $issued = issue_login_otp($conn, (int) $id);
-                            $queued = enqueue_login_otp_email_job($conn, $dbEmail, $dbFullName, $dbRole, $issued['code']);
-
-                            if ($queued) {
-                                $_SESSION['pending_login_otp'] = [
-                                    'user_id' => (int) $id,
-                                    'fullname' => $dbFullName,
-                                    'username' => $dbUsername,
-                                    'email' => $dbEmail,
-                                    'role' => $dbRole,
-                                    'otp_attempts' => 0,
-                                ];
-                                loginpage_set_flash('info', 'Verification code is being sent to ' . $dbEmail . '.');
-                                $stmt->close();
-                                header('Location: /librarymanage/loginpage.php');
-                                exit;
-                            } else {
+                    if ($ok) {
+                        if (role_requires_login_otp($dbRole)) {
+                            if (!is_valid_email_address($dbEmail)) {
                                 clear_login_otp($conn, (int) $id);
-                                $error = 'Unable to send the verification code right now.';
+                                $error = 'This account does not have a valid email address for verification. Please contact the librarian.';
+                            } else {
+                                $issued = issue_login_otp($conn, (int) $id);
+                                $queued = enqueue_login_otp_email_job($conn, $dbEmail, $dbFullName, $dbRole, $issued['code']);
+
+                                if ($queued) {
+                                    process_pending_email_jobs($conn, 2);
+                                    $_SESSION['pending_login_otp'] = [
+                                        'user_id' => (int) $id,
+                                        'fullname' => $dbFullName,
+                                        'username' => $dbUsername,
+                                        'email' => $dbEmail,
+                                        'role' => $dbRole,
+                                        'otp_attempts' => 0,
+                                    ];
+                                    loginpage_set_flash('info', 'Verification code is being sent to ' . $dbEmail . '.');
+                                    $stmt->close();
+                                    header('Location: ' . app_url('loginpage.php'));
+                                    exit;
+                                } else {
+                                    clear_login_otp($conn, (int) $id);
+                                    $error = 'Unable to send the verification code right now.';
+                                }
                             }
+                        } else {
+                            session_regenerate_id(true);
+                            $_SESSION['user_id'] = (int) $id;
+                            $_SESSION['username'] = $dbUsername;
+                            $_SESSION['email'] = $dbEmail;
+                            $_SESSION['role'] = $dbRole;
+                            $stmt->close();
+                            redirect_to_dashboard($dbRole);
                         }
                     } else {
-                        session_regenerate_id(true);
-                        $_SESSION['user_id'] = (int) $id;
-                        $_SESSION['username'] = $dbUsername;
-                        $_SESSION['email'] = $dbEmail;
-                        $_SESSION['role'] = $dbRole;
-                        $stmt->close();
-                        redirect_to_dashboard($dbRole);
+                        $error = 'Invalid credentials.';
                     }
-                } else {
-                    $error = 'Invalid credentials.';
                 }
             } else {
                 $error = 'Invalid credentials.';
@@ -218,7 +226,7 @@ if ($isOtpStep) {
           <?php if ($isOtpStep): ?>
             Enter the 6-digit code sent to <?php echo h((string) ($pendingOtp['email'] ?? 'your email')); ?> to complete your login.
           <?php else: ?>
-            Use your email or username and password. Student and faculty accounts will receive a one-time verification code after password login.
+            Use your email or username and password. Newly provisioned accounts must first set their password from the invitation email. Student and faculty accounts will then receive a one-time verification code after password login.
           <?php endif; ?>
         </p>
 
@@ -293,9 +301,13 @@ if ($isOtpStep) {
               <input id="password" type="password" name="password" placeholder="Enter password" required>
             </div>
 
+            <div class="auth-inline-note">
+              <a href="<?php echo h(app_url('forgot_password.php')); ?>">Forgot Password?</a>
+            </div>
+
             <div class="inline-actions">
               <button type="submit">Login</button>
-              <a class="button secondary" href="/librarymanage/index.php">Back Home</a>
+              <a class="button secondary" href="<?php echo h(app_url('index.php')); ?>">Back Home</a>
             </div>
           </form>
         <?php endif; ?>
@@ -460,7 +472,7 @@ if ($isOtpStep) {
   }, 1000);
 })();
 </script>
-<script src="/librarymanage/assets/login_email_queue_worker.js"></script>
+<script src="<?php echo h(app_url('assets/login_email_queue_worker.js')); ?>"></script>
 <?php endif; ?>
 </body>
 </html>

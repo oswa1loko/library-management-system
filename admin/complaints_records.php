@@ -9,6 +9,80 @@ $statusFilter = trim($_GET['status'] ?? '');
 $statusOptions = complaint_statuses();
 $isValidStatusFilter = $statusFilter !== '' && in_array($statusFilter, $statusOptions, true);
 
+if (isset($_POST['save_response'])) {
+    $id = (int) ($_POST['id'] ?? 0);
+    $adminResponse = trim((string) ($_POST['admin_response'] ?? ''));
+
+    if ($id > 0 && $adminResponse !== '') {
+        $fetchStmt = $conn->prepare("
+            SELECT fullname, email, status
+            FROM complaints
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $fetchStmt->bind_param('i', $id);
+        $fetchStmt->execute();
+        $complaintRow = $fetchStmt->get_result()->fetch_assoc() ?: null;
+        $fetchStmt->close();
+
+        if ($complaintRow) {
+            $nextStatus = (string) ($complaintRow['status'] ?? 'new');
+            if ($nextStatus === 'new') {
+                $nextStatus = 'reviewed';
+            }
+
+            $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
+            $updateStmt = $conn->prepare("
+                UPDATE complaints
+                SET admin_response = ?, responded_at = NOW(), responded_by = ?, status = ?
+                WHERE id = ?
+            ");
+            $updateStmt->bind_param('sisi', $adminResponse, $actorUserId, $nextStatus, $id);
+            $updateStmt->execute();
+            $saved = $updateStmt->affected_rows >= 0;
+            $updateStmt->close();
+
+            if ($saved) {
+                $complainantEmail = trim((string) ($complaintRow['email'] ?? ''));
+                if ($complainantEmail !== '') {
+                    $fullName = trim((string) ($complaintRow['fullname'] ?? 'Library User'));
+                    $subject = 'Complaint Update | Regis Marie College Library';
+                    $textBody = "Good day, {$fullName}.\n\n"
+                        . "This email is to provide an update regarding your submitted complaint/report.\n\n"
+                        . "Complaint reference: #{$id}\n"
+                        . "Current status: " . ucfirst($nextStatus) . "\n\n"
+                        . "Admin response:\n{$adminResponse}\n\n"
+                        . "If you need further clarification, you may contact the library through the official school channels.\n\n"
+                        . "Thank you.\n\n"
+                        . library_email_signature();
+                    $htmlBody = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+                        . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+                        . '<p>This email is to provide an update regarding your submitted complaint/report.</p>'
+                        . '<p><strong>Complaint reference:</strong> #' . (int) $id . '<br><strong>Current status:</strong> ' . h(ucfirst($nextStatus)) . '</p>'
+                        . '<p><strong>Admin response:</strong></p>'
+                        . '<div style="margin:16px 0;padding:14px 16px;border:1px solid #d7e8fb;border-radius:14px;background:#f8fbff;">'
+                        . nl2br(h($adminResponse))
+                        . '</div>'
+                        . '<p>If you need further clarification, you may contact the library through the official school channels.</p>'
+                        . '<p>Thank you.</p>'
+                        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+                        . '</div>';
+                    send_library_email($complainantEmail, $subject, $textBody, $htmlBody);
+                }
+
+                audit_log($conn, 'admin.complaint.respond', [
+                    'complaint_id' => $id,
+                    'status' => $nextStatus,
+                    'emailed' => !empty($complaintRow['email']),
+                ]);
+            }
+        }
+    }
+
+    header('Location: complaints_records.php');
+    exit;
+}
+
 if (isset($_POST['mark_reviewed']) || isset($_POST['mark_resolved'])) {
     $id = (int) ($_POST['id'] ?? 0);
     if (isset($_POST['mark_reviewed'])) {
@@ -158,7 +232,13 @@ $complaints = $stmt->get_result();
           <?php endif; ?>
           <?php while ($entry = $recentComplaints->fetch_assoc()): ?>
             <div class="activity-item">
-              <strong><span class="status-dot <?php echo h($entry['status']); ?>"></span><?php echo h($entry['fullname']); ?></strong>
+              <strong>
+                <span class="badge complaint-status-badge complaint-status-<?php echo h((string) ($entry['status'] ?? 'new')); ?>">
+                  <span class="status-dot <?php echo h($entry['status']); ?>"></span>
+                  <?php echo h(ucfirst((string) ($entry['status'] ?? 'new'))); ?>
+                </span>
+                <?php echo h($entry['fullname']); ?>
+              </strong>
               <div class="meta"><?php echo h(ucfirst($entry['role'])); ?> &bull; Complaint #<?php echo (int) $entry['id']; ?></div>
               <div class="meta meta-top"><?php echo h(date('F j, Y g:i A', strtotime($entry['created_at']))); ?></div>
             </div>
@@ -218,7 +298,6 @@ $complaints = $stmt->get_result();
             </div>
           </div>
           <div class="inline-actions">
-            <button type="submit">Apply</button>
             <a class="button secondary" href="complaints_records.php">Reset</a>
           </div>
         </form>
@@ -239,7 +318,7 @@ $complaints = $stmt->get_result();
               <th>Mobile Number</th>
               <th>Message</th>
               <th>Status</th>
-              <th>Date</th>
+              <th>Admin Response</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -254,6 +333,7 @@ $complaints = $stmt->get_result();
               $legacySubject = isset($complaint['subject']) ? (string) $complaint['subject'] : '';
               $displayMobile = $mobileNumber !== '' ? $mobileNumber : ($legacySubject !== '' ? $legacySubject : '-');
               $status = (string) ($complaint['status'] ?? '');
+              $isEditingResponse = isset($_GET['edit_response']) && (int) $_GET['edit_response'] === (int) $complaint['id'];
               ?>
               <tr>
                 <td><?php echo (int) $complaint['id']; ?></td>
@@ -264,10 +344,32 @@ $complaints = $stmt->get_result();
                 <td><span class="badge"><?php echo h($complaint['role']); ?></span></td>
                 <td><?php echo h($displayMobile); ?></td>
                 <td><?php echo nl2br(h($complaint['message'])); ?></td>
-                <td><span class="badge"><span class="status-dot <?php echo h($status); ?>"></span><?php echo h($status); ?></span></td>
-                <td><?php echo h(format_display_date((string) $complaint['created_at'])); ?></td>
                 <td>
-                  <div class="inline-actions">
+                  <span class="badge complaint-status-badge complaint-status-<?php echo h($status); ?>">
+                    <span class="status-dot <?php echo h($status); ?>"></span>
+                    <?php echo h(ucfirst($status)); ?>
+                  </span>
+                </td>
+                <td>
+                  <?php if (trim((string) ($complaint['admin_response'] ?? '')) !== ''): ?>
+                    <div class="complaint-response-card">
+                      <strong>Admin reply</strong>
+                      <p><?php echo nl2br(h((string) $complaint['admin_response'])); ?></p>
+                      <span class="muted">Complaint submitted: <?php echo h(format_display_datetime((string) $complaint['created_at'])); ?></span>
+                      <?php if (!empty($complaint['responded_at'])): ?>
+                        <span class="muted">Response saved: <?php echo h(format_display_datetime((string) $complaint['responded_at'])); ?></span>
+                      <?php endif; ?>
+                    </div>
+                  <?php else: ?>
+                    <div class="complaint-response-card complaint-response-card-empty">
+                      <strong>No response yet</strong>
+                      <p>Add a short and professional response to acknowledge or resolve the complaint.</p>
+                      <span class="muted">Complaint submitted: <?php echo h(format_display_datetime((string) $complaint['created_at'])); ?></span>
+                    </div>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <div class="inline-actions complaint-action-stack">
                     <?php if ($status === 'new'): ?>
                       <form method="post" class="inline-form">
                         <input type="hidden" name="id" value="<?php echo (int) $complaint['id']; ?>">
@@ -286,6 +388,20 @@ $complaints = $stmt->get_result();
                         <button type="submit" class="danger" name="delete_resolved" value="1">Delete</button>
                       </form>
                     <?php endif; ?>
+                    <?php if (!$isEditingResponse): ?>
+                      <a class="button secondary" href="complaints_records.php?<?php echo http_build_query(array_filter(['status' => $statusFilter, 'edit_response' => (int) $complaint['id']])); ?>">
+                        <?php echo trim((string) ($complaint['admin_response'] ?? '')) !== '' ? 'Edit Response' : 'Add Response'; ?>
+                      </a>
+                    <?php else: ?>
+                      <form method="post" class="inline-form complaint-response-form">
+                        <input type="hidden" name="id" value="<?php echo (int) $complaint['id']; ?>">
+                        <textarea name="admin_response" class="complaint-response-box" rows="3" placeholder="Add a professional admin response..."><?php echo h((string) ($complaint['admin_response'] ?? '')); ?></textarea>
+                        <div class="inline-actions complaint-response-form-actions">
+                          <button type="submit" class="secondary" name="save_response" value="1">Save Response</button>
+                          <a class="button secondary" href="complaints_records.php<?php echo $statusFilter !== '' ? '?' . http_build_query(['status' => $statusFilter]) : ''; ?>">Cancel</a>
+                        </div>
+                      </form>
+                    <?php endif; ?>
                   </div>
                 </td>
               </tr>
@@ -299,5 +415,24 @@ $complaints = $stmt->get_result();
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
+<script>
+(() => {
+  const filterForm = document.querySelector('.admin-record-filters-compact');
+  const statusFilter = document.getElementById('status');
+
+  if (!filterForm || !statusFilter) {
+    return;
+  }
+
+  statusFilter.addEventListener('change', () => {
+    if (filterForm.requestSubmit) {
+      filterForm.requestSubmit();
+      return;
+    }
+    filterForm.submit();
+  });
+})();
+</script>
 </body>
 </html>
+

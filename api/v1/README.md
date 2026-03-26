@@ -3,20 +3,20 @@
 Base URL:
 
 ```text
-http://localhost/librarymanage/api/v1
+http://localhost/api/v1
 ```
 
 ## 1) Check session user
 
 ```bash
-curl -X GET "http://localhost/librarymanage/api/v1/auth/me.php" ^
+curl -X GET "http://localhost/api/v1/auth/me.php" ^
   -b "PHPSESSID=YOUR_SESSION_ID"
 ```
 
 ## 2) Create API token (session required)
 
 ```bash
-curl -X POST "http://localhost/librarymanage/api/v1/auth/token_create.php" ^
+curl -X POST "http://localhost/api/v1/auth/token_create.php" ^
   -b "PHPSESSID=YOUR_SESSION_ID" ^
   -d "label=Postman" ^
   -d "expires_in_days=30" ^
@@ -28,7 +28,7 @@ Save the returned `token` value. It is shown once.
 Rotate a token:
 
 ```bash
-curl -X POST "http://localhost/librarymanage/api/v1/auth/token_rotate.php" ^
+curl -X POST "http://localhost/api/v1/auth/token_rotate.php" ^
   -b "PHPSESSID=YOUR_SESSION_ID" ^
   -d "token_id=3"
 ```
@@ -38,7 +38,7 @@ curl -X POST "http://localhost/librarymanage/api/v1/auth/token_rotate.php" ^
 Borrow book:
 
 ```bash
-curl -X POST "http://localhost/librarymanage/api/v1/borrows/create.php" ^
+curl -X POST "http://localhost/api/v1/borrows/create.php" ^
   -H "Authorization: Bearer YOUR_TOKEN" ^
   -d "book_id=1" ^
   -d "days=7"
@@ -47,7 +47,7 @@ curl -X POST "http://localhost/librarymanage/api/v1/borrows/create.php" ^
 Request return:
 
 ```bash
-curl -X POST "http://localhost/librarymanage/api/v1/borrows/return_request.php" ^
+curl -X POST "http://localhost/api/v1/borrows/return_request.php" ^
   -H "Authorization: Bearer YOUR_TOKEN" ^
   -d "borrow_id=10"
 ```
@@ -55,7 +55,7 @@ curl -X POST "http://localhost/librarymanage/api/v1/borrows/return_request.php" 
 Submit payment with proof file:
 
 ```bash
-curl -X POST "http://localhost/librarymanage/api/v1/payments/create.php" ^
+curl -X POST "http://localhost/api/v1/payments/create.php" ^
   -H "Authorization: Bearer YOUR_TOKEN" ^
   -F "penalty_id=5" ^
   -F "amount=100.00" ^
@@ -67,14 +67,14 @@ curl -X POST "http://localhost/librarymanage/api/v1/payments/create.php" ^
 List:
 
 ```bash
-curl -X GET "http://localhost/librarymanage/api/v1/auth/tokens.php" ^
+curl -X GET "http://localhost/api/v1/auth/tokens.php" ^
   -b "PHPSESSID=YOUR_SESSION_ID"
 ```
 
 Revoke:
 
 ```bash
-curl -X POST "http://localhost/librarymanage/api/v1/auth/token_revoke.php" ^
+curl -X POST "http://localhost/api/v1/auth/token_revoke.php" ^
   -b "PHPSESSID=YOUR_SESSION_ID" ^
   -d "token_id=3"
 ```
@@ -82,6 +82,6 @@ curl -X POST "http://localhost/librarymanage/api/v1/auth/token_revoke.php" ^
 Revoke all:
 
 ```bash
-curl -X POST "http://localhost/librarymanage/api/v1/auth/token_revoke_all.php" ^
+curl -X POST "http://localhost/api/v1/auth/token_revoke_all.php" ^
   -b "PHPSESSID=YOUR_SESSION_ID"
 ```

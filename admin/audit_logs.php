@@ -106,7 +106,6 @@ $logs = $stmt->get_result();
             </div>
           </div>
           <div class="inline-actions">
-            <button type="submit">Apply</button>
             <a class="button secondary" href="audit_logs.php">Reset</a>
           </div>
         </form>
@@ -155,5 +154,24 @@ $logs = $stmt->get_result();
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+<script>
+(() => {
+  const filterForm = document.querySelector('.audit-log-filters');
+  const roleFilter = document.getElementById('role');
+
+  if (!filterForm || !roleFilter) {
+    return;
+  }
+
+  roleFilter.addEventListener('change', () => {
+    if (filterForm.requestSubmit) {
+      filterForm.requestSubmit();
+      return;
+    }
+    filterForm.submit();
+  });
+})();
+</script>
 </body>
 </html>
+

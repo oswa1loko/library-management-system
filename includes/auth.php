@@ -1,12 +1,13 @@
 <?php
 // includes/auth.php
+require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/session.php';
 
 app_start_session();
 
 function require_login(): void {
     if (empty($_SESSION['role']) || empty($_SESSION['username'])) {
-        header("Location: /librarymanage/loginpage.php");
+        header('Location: ' . app_url('loginpage.php'));
         exit;
     }
 }
@@ -14,7 +15,7 @@ function require_login(): void {
 function require_role(string $role): void {
     require_login();
     if (!function_exists('roles_match') || !roles_match((string) ($_SESSION['role'] ?? ''), $role)) {
-        header("Location: /librarymanage/loginpage.php");
+        header('Location: ' . app_url('loginpage.php'));
         exit;
     }
 }
@@ -30,7 +31,7 @@ function require_roles(array $roles): void {
         }
     }
     if (!$matched) {
-        header("Location: /librarymanage/loginpage.php");
+        header('Location: ' . app_url('loginpage.php'));
         exit;
     }
 }

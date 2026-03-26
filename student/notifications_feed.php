@@ -9,6 +9,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $dueSoonBooks = get_member_due_soon_books($conn, $userId, 5);
+$overdueBooks = get_member_overdue_books($conn, $userId, 5);
 $dismissedDueAlerts = array_map('intval', (array) ($_SESSION['student_read_due_alerts'][$userId] ?? []));
 $countUnreadDueAlerts = static function (array $books) use ($dismissedDueAlerts): int {
     return count(array_filter($books, static function (array $dueBook) use ($dismissedDueAlerts): bool {
@@ -60,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         echo json_encode([
             'ok' => $changed,
-            'unread_count' => $remainingUnread + $countUnreadDueAlerts($dueSoonBooks),
+            'unread_count' => $remainingUnread + $countUnreadDueAlerts($dueSoonBooks) + $countUnreadDueAlerts($overdueBooks),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -77,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $_SESSION['student_read_due_alerts'][$userId] = array_values(array_unique(array_map(
             static fn(array $dueBook): int => (int) ($dueBook['id'] ?? 0),
-            array_filter($dueSoonBooks, static fn(array $dueBook): bool => (int) ($dueBook['id'] ?? 0) > 0)
+            array_filter(array_merge($dueSoonBooks, $overdueBooks), static fn(array $dueBook): bool => (int) ($dueBook['id'] ?? 0) > 0)
         )));
 
         echo json_encode([
@@ -141,6 +142,30 @@ foreach ($dueSoonBooks as $dueBook) {
     ];
 }
 
+foreach ($overdueBooks as $dueBook) {
+    $borrowId = (int) ($dueBook['id'] ?? 0);
+    $isRead = $borrowId > 0 && in_array($borrowId, $dismissedDueAlerts, true);
+    $dueDateRaw = (string) ($dueBook['due_date'] ?? '');
+    $daysOverdue = 1;
+    if ($dueDateRaw !== '') {
+        $daysOverdue = max(1, (int) floor((strtotime(date('Y-m-d')) - strtotime($dueDateRaw)) / 86400));
+    }
+    $body = (string) ($dueBook['title'] ?? 'Book') . ' was due on ' . format_display_date($dueDateRaw, '-') . ' and is now overdue by ' . $daysOverdue . ' day' . ($daysOverdue === 1 ? '' : 's') . '.';
+    if (($dueBook['status'] ?? '') === 'return_requested') {
+        $body .= ' Return confirmation is still pending.';
+    }
+
+    $items[] = [
+        'id' => 0,
+        'title' => 'Overdue Alert',
+        'body' => $body,
+        'severity' => 'critical',
+        'is_read' => $isRead,
+        'created_at' => 'Overdue',
+        'kind' => 'overdue',
+    ];
+}
+
 $unreadCountStmt = $conn->prepare("
     SELECT COUNT(*) AS total
     FROM notifications
@@ -153,6 +178,6 @@ $unreadCountStmt->close();
 
 echo json_encode([
     'ok' => true,
-    'unread_count' => $unreadCount + $countUnreadDueAlerts($dueSoonBooks),
+    'unread_count' => $unreadCount + $countUnreadDueAlerts($dueSoonBooks) + $countUnreadDueAlerts($overdueBooks),
     'items' => $items,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

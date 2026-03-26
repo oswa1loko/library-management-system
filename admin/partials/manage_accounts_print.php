@@ -1,7 +1,7 @@
 <div class="panel print-users-sheet">
   <div class="print-users-head">
     <div class="print-brand">
-      <img src="/librarymanage/assets/images/RMLOGO.jfif" alt="Library logo" class="print-brand-logo">
+      <img src="/librarymanage/assets/images/regismarielogo.png" alt="Library logo" class="print-brand-logo">
       <div>
         <p class="muted eyebrow-compact">Library Management System</p>
         <h1><?php echo h($printTitle); ?></h1>
@@ -44,6 +44,10 @@
           <span class="muted">Created At</span>
           <strong><?php echo h(format_display_date((string) $singleUser['created_at'])); ?></strong>
         </div>
+        <div class="print-user-field">
+          <span class="muted">Status</span>
+          <strong><?php echo h(ucfirst((string) ($singleUser['account_status'] ?? 'active'))); ?></strong>
+        </div>
       </div>
     </div>
   <?php else: ?>
@@ -56,12 +60,13 @@
             <th>Email</th>
             <th>Username</th>
             <th>Role</th>
+            <th>Status</th>
             <th>Created</th>
           </tr>
         </thead>
         <tbody>
           <?php if (!$printUsers || $printUsers->num_rows === 0): ?>
-            <tr><td colspan="6" class="muted">No users matched the selected print filter.</td></tr>
+            <tr><td colspan="7" class="muted">No users matched the selected print filter.</td></tr>
           <?php endif; ?>
           <?php while ($printUsers && $user = $printUsers->fetch_assoc()): ?>
             <tr>
@@ -70,6 +75,7 @@
               <td><?php echo h($user['email']); ?></td>
               <td><?php echo h($user['username']); ?></td>
               <td><?php echo h(role_label((string) $user['role'])); ?></td>
+              <td><?php echo h(ucfirst((string) ($user['account_status'] ?? 'active'))); ?></td>
               <td><?php echo h(format_display_date((string) $user['created_at'])); ?></td>
             </tr>
           <?php endwhile; ?>
@@ -78,4 +84,6 @@
     </div>
   <?php endif; ?>
 </div>
-<script src="/librarymanage/assets/admin_manage_accounts_print.js"></script>
+<?php $manageAccountsPrintVersion = (string) filemtime(__DIR__ . '/../../assets/admin_manage_accounts_print.js'); ?>
+<script src="/librarymanage/assets/admin_manage_accounts_print.js?v=<?php echo urlencode($manageAccountsPrintVersion); ?>"></script>
+

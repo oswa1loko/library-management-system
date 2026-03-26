@@ -300,8 +300,14 @@
   function updateStudentNotificationBadges(unreadCount) {
     var count = Number(unreadCount || 0);
     document.querySelectorAll('.student-header-notification-badge').forEach(function (badge) {
+      if (count <= 0) {
+        badge.textContent = '';
+        badge.hidden = true;
+        return;
+      }
+
       badge.textContent = count > 99 ? '99+' : String(count);
-      badge.hidden = count <= 0;
+      badge.hidden = false;
     });
 
     document.querySelectorAll('.student-notification-mark-all').forEach(function (button) {
@@ -544,7 +550,7 @@
 
         var topbarNav = document.querySelector('.topbar-nav');
         if (topbarNav) {
-          var homeLink = topbarNav.querySelector('a[href*="/index.php"], a[href$="index.php"], a[href="/librarymanage/index.php"]');
+          var homeLink = topbarNav.querySelector('a[href*="/librarymanage/index.php"], a[href$="index.php"], a[href="/librarymanage/index.php"]');
           var logoutLink = topbarNav.querySelector('a[href*="logout.php"]');
           if (homeLink && homeLink.parentNode === topbarNav) {
             homeLink.insertAdjacentElement('afterend', toggle);
@@ -573,3 +579,4 @@
     toggleTheme();
   });
 })();
+

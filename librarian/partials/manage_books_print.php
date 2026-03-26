@@ -1,7 +1,7 @@
 <div class="panel print-users-sheet">
   <div class="print-users-head">
     <div class="print-brand">
-      <img src="/librarymanage/assets/images/RMLOGO.jfif" alt="Library logo" class="print-brand-logo">
+      <img src="/librarymanage/assets/images/regismarielogo.png" alt="Library logo" class="print-brand-logo">
       <div>
         <p class="muted eyebrow-compact">Library Management System</p>
         <h1><?php echo h($printTitle); ?></h1>

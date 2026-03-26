@@ -619,3 +619,4 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>
+

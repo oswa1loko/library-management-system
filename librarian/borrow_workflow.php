@@ -63,14 +63,15 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
 function confirm_requested_return(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT user_id, book_id, due_date, status
-        FROM borrows
+        SELECT br.user_id, br.book_id, br.due_date, br.status, u.role
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
         WHERE id = ?
         LIMIT 1
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $dueDate, $borrowStatus);
+    $borrowStmt->bind_result($userId, $bookId, $dueDate, $borrowStatus, $userRole);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -107,6 +108,7 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
         'borrow_id' => $borrowId,
         'book_id' => $bookId,
         'user_id' => $userId,
+        'user_role' => (string) $userRole,
         'returned_at' => $returnedAt,
         'return_date' => $returnDate,
     ];
@@ -180,14 +182,17 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                 'Borrow #' . $borrowId . ' was confirmed as returned by a librarian.',
                 'info'
             );
-            create_notification(
-                $conn,
-                'student',
-                'Return Request Approved',
-                'Your return request for borrow #' . $borrowId . ' was confirmed by the librarian.',
-                'info',
-                (int) $result['user_id']
-            );
+            $memberRole = (string) ($result['user_role'] ?? '');
+            if (in_array($memberRole, ['student', 'faculty'], true)) {
+                create_notification(
+                    $conn,
+                    $memberRole,
+                    'Return Request Approved',
+                    'Your return request for borrow #' . $borrowId . ' was confirmed by the librarian.',
+                    'info',
+                    (int) $result['user_id']
+                );
+            }
 
             $msg = 'Borrow record marked as returned.';
         } catch (Throwable $e) {
@@ -438,6 +443,19 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                         ]);
                     }
 
+                    $memberRole = (string) ($confirmed[0]['user_role'] ?? '');
+                    $memberUserId = (int) ($confirmed[0]['user_id'] ?? 0);
+                    if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
+                        create_notification(
+                            $conn,
+                            $memberRole,
+                            'Return Request Approved',
+                            count($confirmed) . ' return' . (count($confirmed) === 1 ? '' : 's') . ' in your batch were confirmed by the librarian.',
+                            'info',
+                            $memberUserId
+                        );
+                    }
+
                     $msg = count($confirmed) . ' return' . (count($confirmed) === 1 ? '' : 's') . ' confirmed from this batch.';
                 } catch (Throwable $e) {
                     $conn->rollback();
@@ -503,7 +521,8 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                     $copyCount = count($confirmed);
                     $copyLabel = $copyCount === 1 ? '1 copy' : $copyCount . ' copies';
                     $bookTitle = trim((string) ($groupRows[0]['title'] ?? ''));
-                    $studentUserId = (int) ($confirmed[0]['user_id'] ?? 0);
+                    $memberUserId = (int) ($confirmed[0]['user_id'] ?? 0);
+                    $memberRole = (string) ($confirmed[0]['user_role'] ?? '');
 
                     create_notification(
                         $conn,
@@ -512,14 +531,14 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                         $copyLabel . ' of ' . ($bookTitle !== '' ? $bookTitle : 'a book') . ' were confirmed as returned by a librarian.',
                         'info'
                     );
-                    if ($studentUserId > 0) {
+                    if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
                         create_notification(
                             $conn,
-                            'student',
+                            $memberRole,
                             'Return Request Approved',
                             'Your return request for ' . $copyLabel . ' of ' . ($bookTitle !== '' ? $bookTitle : 'your book') . ' was confirmed by the librarian.',
                             'info',
-                            $studentUserId
+                            $memberUserId
                         );
                     }
 

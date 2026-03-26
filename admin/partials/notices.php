@@ -6,7 +6,10 @@ foreach ($noticeItems as $noticeItem):
     if ($message === '') {
         continue;
     }
+    $allowedTypes = ['success', 'error', 'warning', 'info'];
+    if (!in_array($type, $allowedTypes, true)) {
+        $type = 'success';
+    }
 ?>
-  <div class="notice <?php echo $type === 'error' ? 'error' : 'success'; ?>"><?php echo h($message); ?></div>
+  <div class="notice <?php echo h($type); ?>"><?php echo h($message); ?></div>
 <?php endforeach; ?>
-

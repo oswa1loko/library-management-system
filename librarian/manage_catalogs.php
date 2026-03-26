@@ -11,6 +11,7 @@ $search = trim((string) ($_GET['search'] ?? ''));
 $selectedCatalogId = max(0, (int) ($_GET['catalog'] ?? $_POST['catalog_id'] ?? 0));
 $formData = [
     'name' => '',
+    'description' => '',
 ];
 
 function upload_catalog_cover(array $file, string $existingPath = ''): array
@@ -42,9 +43,11 @@ function upload_catalog_cover(array $file, string $existingPath = ''): array
 
 if (isset($_POST['create_catalog'])) {
     $catalogName = trim((string) ($_POST['catalog_name'] ?? ''));
+    $catalogDescription = trim((string) ($_POST['catalog_description'] ?? ''));
     $coverUpload = upload_catalog_cover($_FILES['catalog_cover'] ?? []);
     $formData = [
         'name' => $catalogName,
+        'description' => $catalogDescription,
     ];
 
     if ($catalogName === '') {
@@ -60,7 +63,7 @@ if (isset($_POST['create_catalog'])) {
             INSERT INTO catalogs (name, description, cover_path)
             VALUES (?, ?, ?)
         ");
-        $catalogDescriptionValue = null;
+        $catalogDescriptionValue = $catalogDescription !== '' ? $catalogDescription : null;
         $stmt->bind_param('sss', $catalogName, $catalogDescriptionValue, $catalogCoverValue);
         $ok = $stmt->execute();
         $stmt->close();
@@ -78,6 +81,7 @@ if (isset($_POST['create_catalog'])) {
             $message = 'Catalog created successfully.';
             $formData = [
                 'name' => '',
+                'description' => '',
             ];
         }
     }
@@ -86,6 +90,7 @@ if (isset($_POST['create_catalog'])) {
 if (isset($_POST['rename_catalog'])) {
     $catalogId = max(0, (int) ($_POST['catalog_id'] ?? 0));
     $catalogName = trim((string) ($_POST['catalog_name'] ?? ''));
+    $catalogDescription = trim((string) ($_POST['catalog_description'] ?? ''));
     $existingCoverPath = trim((string) ($_POST['existing_cover_path'] ?? ''));
     $existingDescription = trim((string) ($_POST['existing_catalog_description'] ?? ''));
     $coverUpload = upload_catalog_cover($_FILES['catalog_cover'] ?? [], $existingCoverPath);
@@ -117,7 +122,7 @@ if (isset($_POST['rename_catalog'])) {
             $message = 'Unable to rename this catalog. The name may already be in use.';
             $messageType = 'error';
         } else {
-        $catalogDescriptionValue = $existingDescription !== '' ? $existingDescription : null;
+        $catalogDescriptionValue = $catalogDescription !== '' ? $catalogDescription : null;
         $catalogCoverPath = (string) ($coverUpload['path'] ?? '');
         $catalogCoverValue = $catalogCoverPath !== '' ? $catalogCoverPath : null;
         $stmt = $conn->prepare("
@@ -230,6 +235,16 @@ $unusedCatalogs = (int) ($conn->query("
     WHERE b.id IS NULL
 ")->fetch_assoc()['total_unused'] ?? 0);
 
+$catalogSearchSuggestions = [];
+$catalogSearchRows = $conn->query("
+    SELECT name
+    FROM catalogs
+    ORDER BY name ASC
+");
+while ($catalogSearchRows && ($catalogSearchRow = $catalogSearchRows->fetch_assoc())) {
+    $catalogSearchSuggestions[] = (string) ($catalogSearchRow['name'] ?? '');
+}
+
 $catalogSql = "
     SELECT
       c.id,
@@ -321,6 +336,7 @@ if ($selectedCatalogId > 0) {
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
+<?php $manageCatalogsVersion = (string) filemtime(__DIR__ . '/../assets/librarian_manage_catalogs.js'); ?>
 <script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
@@ -387,6 +403,10 @@ if ($selectedCatalogId > 0) {
               <label for="catalog_cover">Catalog Image</label>
               <input id="catalog_cover" type="file" name="catalog_cover" accept=".jpg,.jpeg,.png,.webp">
             </div>
+            <div class="span-2">
+              <label for="catalog_description">Description</label>
+              <textarea id="catalog_description" name="catalog_description" rows="3" placeholder="Short description for this catalog"><?php echo h((string) ($formData['description'] ?? '')); ?></textarea>
+            </div>
           </div>
 
           <div class="inline-actions">
@@ -425,13 +445,13 @@ if ($selectedCatalogId > 0) {
             </div>
           </div>
         </div>
-        <form method="get" class="toolbar grow">
-          <div class="grow">
+        <form method="get" class="toolbar grow" id="catalogSearchForm" autocomplete="off">
+          <div class="grow catalog-search-field">
             <label for="search">Search</label>
             <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search catalog name">
+            <div class="catalog-search-suggestions" id="catalogSearchSuggestions" hidden></div>
           </div>
           <div class="inline-actions">
-            <button type="submit">Apply</button>
             <a class="button secondary" href="manage_catalogs.php">Reset</a>
           </div>
         </form>
@@ -519,6 +539,10 @@ if ($selectedCatalogId > 0) {
                 <label for="catalog_cover_selected">Catalog Image</label>
                 <input id="catalog_cover_selected" type="file" name="catalog_cover" accept=".jpg,.jpeg,.png,.webp">
               </div>
+              <div class="span-2">
+                <label for="catalog_description_selected">Description</label>
+                <textarea id="catalog_description_selected" name="catalog_description" rows="3" placeholder="Short description for this catalog"><?php echo h((string) ($selectedCatalog['description'] ?? '')); ?></textarea>
+              </div>
             </div>
             <div class="inline-actions">
               <button type="submit" name="rename_catalog" value="1">Save Catalog</button>
@@ -582,5 +606,9 @@ if ($selectedCatalogId > 0) {
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 <script src="/librarymanage/assets/librarian_catalog_modal.js"></script>
+<script>
+window.catalogSearchOptions = <?php echo json_encode($catalogSearchSuggestions, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+</script>
+<script src="/librarymanage/assets/librarian_manage_catalogs.js?v=<?php echo urlencode($manageCatalogsVersion); ?>"></script>
 </body>
 </html>

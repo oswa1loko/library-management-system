@@ -8,6 +8,7 @@ require_role('student');
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $message = '';
 $dueSoonBooks = get_member_due_soon_books($conn, $userId, 5);
+$overdueBooks = get_member_overdue_books($conn, $userId, 5);
 
 if (isset($_POST['mark_read'])) {
     $id = (int) ($_POST['id'] ?? 0);
@@ -136,6 +137,24 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
           </form>
         </div>
         <div class="activity-feed">
+          <?php foreach ($overdueBooks as $dueBook): ?>
+            <?php
+              $dueDateRaw = (string) ($dueBook['due_date'] ?? '');
+              $daysOverdue = $dueDateRaw !== '' ? max(1, (int) floor((strtotime(date('Y-m-d')) - strtotime($dueDateRaw)) / 86400)) : 1;
+            ?>
+            <div class="activity-item">
+              <strong>
+                <span class="status-dot unpaid"></span>
+                Overdue Alert
+              </strong>
+              <div class="meta">
+                <?php echo h((string) ($dueBook['title'] ?? 'Book')); ?> was due on <?php echo h(format_display_date($dueDateRaw)); ?> and is now overdue by <?php echo (int) $daysOverdue; ?> day<?php echo $daysOverdue === 1 ? '' : 's'; ?>.
+                <?php if (($dueBook['status'] ?? '') === 'return_requested'): ?>
+                  Return confirmation is still pending.
+                <?php endif; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
           <?php foreach ($dueSoonBooks as $dueBook): ?>
             <div class="activity-item">
               <strong>
@@ -151,7 +170,7 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
             </div>
           <?php endforeach; ?>
           <?php if (!$notifications || $notifications->num_rows === 0): ?>
-            <?php if ($dueSoonBooks === []): ?>
+            <?php if ($dueSoonBooks === [] && $overdueBooks === []): ?>
               <div class="empty-state">No notifications yet.</div>
             <?php endif; ?>
           <?php endif; ?>

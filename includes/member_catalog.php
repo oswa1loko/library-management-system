@@ -137,9 +137,13 @@ while ($catalogRows && ($catalogRow = $catalogRows->fetch_assoc())) {
                   <p class="muted member-catalog-card-description">
                     <?php
                       $description = trim((string) ($catalog['description'] ?? ''));
-                      echo h($description !== '' ? $description : 'Browse this catalog section and open the filtered books list.');
+                      echo h($description !== '' ? $description : 'Browse matching books.');
                     ?>
                   </p>
+                  <div class="inline-actions chips-row">
+                    <span class="chip"><?php echo (int) ($catalog['title_count'] ?? 0); ?> titles</span>
+                    <span class="chip"><?php echo (int) ($catalog['available_copies'] ?? 0); ?> available</span>
+                  </div>
                 </div>
               </div>
             </a>

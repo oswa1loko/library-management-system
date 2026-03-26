@@ -17,7 +17,7 @@ if ($editId <= 0) {
     exit;
 }
 
-$loadUser = $conn->prepare("SELECT id, fullname, email, username, role, course, created_at FROM users WHERE id = ? LIMIT 1");
+$loadUser = $conn->prepare("SELECT id, fullname, email, username, role, account_status, course, created_at FROM users WHERE id = ? LIMIT 1");
 $loadUser->bind_param('i', $editId);
 $loadUser->execute();
 $editUser = $loadUser->get_result()->fetch_assoc();
@@ -128,6 +128,7 @@ if (isset($_POST['update'])) {
         <div class="inline-actions flow-top-md edit-user-summary">
           <span class="chip">User ID #<?php echo (int) $editUser['id']; ?></span>
           <span class="chip">Role: <?php echo h(role_label((string) $editUser['role'])); ?></span>
+          <span class="chip">Status: <?php echo h(ucfirst((string) ($editUser['account_status'] ?? 'active'))); ?></span>
           <span class="chip">Created: <?php echo h(format_display_date((string) $editUser['created_at'])); ?></span>
         </div>
 
@@ -216,3 +217,4 @@ if (isset($_POST['update'])) {
 </div>
 </body>
 </html>
+

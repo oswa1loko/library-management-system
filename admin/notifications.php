@@ -252,7 +252,7 @@ $notifications = $conn->query("
             </strong>
             <div class="meta"><?php echo h($row['body']); ?></div>
             <div class="inline-actions meta-top">
-              <span class="muted"><?php echo h(date('F j, Y g:i A', strtotime($row['created_at']))); ?></span>
+              <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
               <?php if ((int) $row['is_read'] === 0): ?>
                 <form method="post" class="inline-form">
                   <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>">
@@ -269,3 +269,4 @@ $notifications = $conn->query("
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>
+

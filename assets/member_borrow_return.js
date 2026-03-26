@@ -9,6 +9,8 @@ function initBorrowSelection() {
     return;
   }
 
+  const searchSuggestions = document.querySelector('[data-book-search-suggestions]');
+  const searchOptions = Array.isArray(window.memberBookSearchOptions) ? window.memberBookSearchOptions : [];
   const options = Array.from(document.querySelectorAll('[data-book-option]'));
   const emptyState = document.querySelector('[data-book-empty]');
   const categorySelect = document.querySelector('[data-book-category]');
@@ -20,11 +22,21 @@ function initBorrowSelection() {
   const modalTitle = document.querySelector('[data-book-modal-title]');
   const modalBookTitle = document.querySelector('[data-book-modal-book-title]');
   const modalBookMeta = document.querySelector('[data-book-modal-book-meta]');
+  const modalBookDescription = document.querySelector('[data-book-modal-description]');
   const modalAvailable = document.querySelector('[data-book-modal-available]');
   const modalCover = document.querySelector('[data-book-modal-cover]');
   const modalCoverPlaceholder = document.querySelector('[data-book-modal-cover-placeholder]');
   const modalQty = document.querySelector('[data-book-modal-qty]');
-  let navigationTimer = null;
+  let activeSuggestionIndex = -1;
+
+  const normalizeSearchValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const escapeHtml = (value) => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
   const buildFilterUrl = () => {
     const url = new URL(window.location.href);
@@ -55,9 +67,125 @@ function initBorrowSelection() {
     }
   };
 
-  const queueFilterNavigation = () => {
-    window.clearTimeout(navigationTimer);
-    navigationTimer = window.setTimeout(navigateWithFilters, 450);
+  const hideSearchSuggestions = () => {
+    if (!searchSuggestions) {
+      return;
+    }
+
+    searchSuggestions.hidden = true;
+    searchSuggestions.innerHTML = '';
+    activeSuggestionIndex = -1;
+  };
+
+  const getSuggestionButtons = () => searchSuggestions
+    ? Array.from(searchSuggestions.querySelectorAll('.member-book-search-suggestion'))
+    : [];
+
+  const findBestMatchingBookOption = (value) => {
+    const normalizedValue = normalizeSearchValue(value);
+    if (!normalizedValue) {
+      return null;
+    }
+
+    const rankedOptions = options
+      .map((option) => {
+        const title = normalizeSearchValue(option.getAttribute('data-book-title') || '');
+        const author = normalizeSearchValue(option.getAttribute('data-book-author') || '');
+        const searchText = normalizeSearchValue(option.getAttribute('data-book-search-text') || '');
+
+        let score = -1;
+        if (title === normalizedValue) {
+          score = 0;
+        } else if (title.indexOf(normalizedValue) === 0) {
+          score = 1;
+        } else if (author === normalizedValue) {
+          score = 2;
+        } else if (author.indexOf(normalizedValue) === 0) {
+          score = 3;
+        } else if (searchText.indexOf(normalizedValue) !== -1) {
+          score = 4;
+        }
+
+        if (score === -1) {
+          return null;
+        }
+
+        return { option, score, titleLength: title.length || searchText.length };
+      })
+      .filter(Boolean)
+      .sort((left, right) => {
+        if (left.score !== right.score) {
+          return left.score - right.score;
+        }
+
+        return left.titleLength - right.titleLength;
+      });
+
+    return rankedOptions.length ? rankedOptions[0].option : null;
+  };
+
+  const highlightSuggestion = (index) => {
+    const buttons = getSuggestionButtons();
+    activeSuggestionIndex = index;
+
+    buttons.forEach((button, buttonIndex) => {
+      const isActive = buttonIndex === activeSuggestionIndex;
+      button.classList.toggle('is-active', isActive);
+      if (isActive) {
+        button.scrollIntoView({ block: 'nearest' });
+      }
+    });
+  };
+
+  const getSearchMatches = (query) => {
+    const normalizedQuery = normalizeSearchValue(query);
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    return searchOptions
+      .map((option) => ({
+        label: option,
+        normalized: normalizeSearchValue(option),
+      }))
+      .filter((option) => option.normalized.indexOf(normalizedQuery) === 0)
+      .sort((left, right) => {
+        if (left.label.length !== right.label.length) {
+          return left.label.length - right.label.length;
+        }
+
+        return left.label.localeCompare(right.label);
+      })
+      .slice(0, 6);
+  };
+
+  const renderSearchSuggestions = () => {
+    if (!searchSuggestions) {
+      return;
+    }
+
+    const matches = getSearchMatches(searchInput.value);
+    if (!matches.length) {
+      hideSearchSuggestions();
+      return;
+    }
+
+    searchSuggestions.innerHTML = matches
+      .map((match) => `<button type="button" class="member-book-search-suggestion" data-book-search-value="${escapeHtml(match.label)}">${escapeHtml(match.label)}</button>`)
+      .join('');
+    searchSuggestions.hidden = false;
+    activeSuggestionIndex = -1;
+  };
+
+  const submitSearchSelection = (value) => {
+    searchInput.value = value;
+    const matchedOption = findBestMatchingBookOption(value);
+    if (matchedOption && categorySelect) {
+      categorySelect.value = matchedOption.getAttribute('data-book-category-value') || '';
+    }
+    applyFilter();
+    hideSearchSuggestions();
+    navigateWithFilters();
   };
 
   const applyFilter = () => {
@@ -120,6 +248,7 @@ function initBorrowSelection() {
     const title = trigger.getAttribute('data-book-title') || 'Book';
     const author = trigger.getAttribute('data-book-author') || '';
     const category = trigger.getAttribute('data-book-category-label') || '';
+    const description = trigger.getAttribute('data-book-description') || '';
     const coverPath = trigger.getAttribute('data-book-cover') || '';
     const availableCopies = Math.max(1, parseInt(trigger.getAttribute('data-book-available') || '1', 10));
     const maxQty = Math.max(1, parseInt(trigger.getAttribute('data-book-max-qty') || '1', 10));
@@ -128,6 +257,10 @@ function initBorrowSelection() {
     modalTitle.textContent = `Request ${title}`;
     modalBookTitle.textContent = title;
     modalBookMeta.textContent = [author, category].filter(Boolean).join(' - ');
+    if (modalBookDescription) {
+      modalBookDescription.textContent = description !== '' ? description : 'No description available yet.';
+      modalBookDescription.hidden = false;
+    }
     if (modalAvailable) {
       modalAvailable.textContent = `${availableCopies} available cop${availableCopies === 1 ? 'y' : 'ies'}`;
     }
@@ -135,7 +268,7 @@ function initBorrowSelection() {
 
     if (modalCover && modalCoverPlaceholder) {
       if (coverPath !== '') {
-        modalCover.src = `/librarymanage/${coverPath}`;
+        modalCover.src = coverPath;
         modalCover.alt = title;
         modalCover.hidden = false;
         modalCoverPlaceholder.hidden = true;
@@ -153,12 +286,86 @@ function initBorrowSelection() {
 
   searchInput.addEventListener('input', () => {
     applyFilter();
-    queueFilterNavigation();
+    renderSearchSuggestions();
+  });
+
+  searchInput.addEventListener('keydown', (event) => {
+    const suggestionButtons = getSuggestionButtons();
+
+    if (event.key === 'ArrowDown') {
+      if (!suggestionButtons.length) {
+        return;
+      }
+
+      event.preventDefault();
+      highlightSuggestion((activeSuggestionIndex + 1) % suggestionButtons.length);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      if (!suggestionButtons.length) {
+        return;
+      }
+
+      event.preventDefault();
+      highlightSuggestion(activeSuggestionIndex <= 0 ? suggestionButtons.length - 1 : activeSuggestionIndex - 1);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      hideSearchSuggestions();
+      return;
+    }
+
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    if (activeSuggestionIndex >= 0 && suggestionButtons[activeSuggestionIndex]) {
+      event.preventDefault();
+      submitSearchSelection(suggestionButtons[activeSuggestionIndex].getAttribute('data-book-search-value') || '');
+      return;
+    }
+
+    const exactMatch = searchOptions.find((option) => normalizeSearchValue(option) === normalizeSearchValue(searchInput.value));
+    if (exactMatch) {
+      event.preventDefault();
+      submitSearchSelection(exactMatch);
+      return;
+    }
+
+    const matchedOption = findBestMatchingBookOption(searchInput.value);
+    if (!matchedOption) {
+      return;
+    }
+
+    event.preventDefault();
+    submitSearchSelection(matchedOption.getAttribute('data-book-title') || searchInput.value);
+  });
+
+  if (searchSuggestions) {
+    searchSuggestions.addEventListener('click', (event) => {
+      const suggestion = event.target.closest('[data-book-search-value]');
+      if (!suggestion) {
+        return;
+      }
+
+      submitSearchSelection(suggestion.getAttribute('data-book-search-value') || '');
+    });
+  }
+
+  document.addEventListener('click', (event) => {
+    if (event.target === searchInput || (searchSuggestions && searchSuggestions.contains(event.target))) {
+      return;
+    }
+
+    hideSearchSuggestions();
   });
 
   if (categorySelect) {
     categorySelect.addEventListener('change', () => {
       applyFilter();
+      hideSearchSuggestions();
       navigateWithFilters();
     });
   }

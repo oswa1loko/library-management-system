@@ -93,14 +93,14 @@ const contacts = [
 ];
 
 const quickLinks = [
-  { label: "Open Library Portal", href: "/librarymanage/loginpage.php" },
+  { label: "Open Library Portal", href: "/loginpage.php" },
   { label: "Visit Official School Page", href: "https://www.regismariecollege.com/" },
   { label: "Go to Contact Details", href: "#contact" },
-  { label: "Send Feedback", href: "/librarymanage/feedback.php" },
+  { label: "Send Feedback", href: "/feedback.php" },
 ];
 
 const quickAccessImage =
-  "https://images.unsplash.com/photo-1741699427799-3fbb70fce948?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600";
+  "/assets/images/MODERN COVER WEBSITE (2).png";
 
 const campusFacts = [
   { label: "Campus", value: "Parañaque City" },
@@ -117,11 +117,11 @@ const schoolStory = [
 
 const heroImages = [
   {
-    src: "/librarymanage/assets/images/rmc-wildcats.png",
+    src: "/assets/images/rmc-wildcats.png",
     alt: "RMC Wildcats graphic",
   },
   {
-    src: "/librarymanage/assets/images/pikyur.jpg",
+    src: "/assets/images/pikyur.jpg",
     alt: "Regis Marie College image",
   },
 ];
@@ -130,20 +130,26 @@ const builderProfiles = [
   {
     name: "Stromiles Vidal",
     role: "Project Manager, Full Stack Developer, UI/UX Designer, Documentation",
-    note: "Led the project direction while helping build the system, shape the interface, and organize key documentation.",
-    src: "/librarymanage/assets/images/builder-miles.gif",
+    badge: "Lead Development",
+    note: "Led the project direction and contributed to full-stack development, interface planning, and project documentation for the platform.",
+    src: "/assets/images/IMG_5307.jpeg",
+    position: "center 40%",
   },
   {
     name: "Joshua Pasaporte",
     role: "System Analyst, Full Stack Developer, UI/UX Designer, Documentation",
-    note: "Helped analyze system needs, build core features, refine the user experience, and support the project documentation.",
-    src: "/librarymanage/assets/images/builder-joshua.jfif",
+    badge: "System Analysis",
+    note: "Contributed to system analysis, feature implementation, interface design, and technical documentation to support the overall development process.",
+    src: "/assets/images/IMG_5309.jpeg",
+    position: "center 18%",
   },
   {
     name: "Kyrus Tan",
     role: "Documentation",
-    note: "Focused on documenting the system clearly to support understanding, usage, and project presentation.",
-    src: "/librarymanage/assets/images/builder-kyrus.jfif",
+    badge: "Documentation",
+    note: "Supported the project through clear and organized documentation for presentation, reference, and system understanding.",
+    src: "/assets/images/IMG_5308.jpeg",
+    position: "center 46%",
   },
 ];
 
@@ -205,7 +211,6 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("Home");
   const [currentImage, setCurrentImage] = useState(0);
-  const [currentBuilder, setCurrentBuilder] = useState(0);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -223,14 +228,6 @@ export default function LandingPage() {
     const timer = window.setInterval(() => {
       setCurrentImage((value) => (value + 1) % heroImages.length);
     }, 4200);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setCurrentBuilder((value) => (value + 1) % builderProfiles.length);
-    }, 3600);
 
     return () => window.clearInterval(timer);
   }, []);
@@ -282,16 +279,16 @@ export default function LandingPage() {
       className="relative min-h-screen overflow-x-hidden bg-[#071321] text-[#e9f1fb] dark:bg-[#071321] dark:text-[#f8f6f1]"
     >
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#071321_0%,#0a1a2b_52%,#0d2136_100%)] sm:bg-[linear-gradient(rgba(7,19,33,0.86),rgba(11,27,45,0.94)),url('/librarymanage/assets/images/awitmo.jfif')] sm:bg-cover sm:bg-center sm:bg-fixed sm:bg-no-repeat" />
-        <div className="absolute inset-0 bg-[url('/librarymanage/assets/images/awitmo.jfif')] bg-cover bg-[center_top] bg-no-repeat opacity-30 sm:hidden" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,#071321_0%,#0a1a2b_52%,#0d2136_100%)] sm:bg-[linear-gradient(rgba(7,19,33,0.86),rgba(11,27,45,0.94)),url('/assets/images/awitmo.jfif')] sm:bg-cover sm:bg-center sm:bg-fixed sm:bg-no-repeat" />
+        <div className="absolute inset-0 bg-[url('/assets/images/awitmo.jfif')] bg-cover bg-[center_top] bg-no-repeat opacity-30 sm:hidden" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(122,200,255,0.06),rgba(7,19,33,0.76)),linear-gradient(180deg,rgba(7,19,33,0.18),rgba(11,27,45,0.66))] sm:bg-[radial-gradient(circle_at_center,rgba(7,19,33,0.16),rgba(7,19,33,0.56)),radial-gradient(circle_at_top_left,rgba(122,200,255,0.12),transparent_30%),radial-gradient(circle_at_right,rgba(185,231,255,0.08),transparent_18%),linear-gradient(180deg,rgba(7,19,33,0.94),rgba(11,27,45,0.96))]" />
       </div>
 
       <header className="fixed top-0 right-0 left-0 z-[120] border-b border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(11,26,45,0.97),rgba(7,18,32,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-[14px] dark:border-white/10 md:sticky md:z-50 md:bg-[#081422]/88 md:shadow-none md:backdrop-blur-xl">
         <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-0 py-3 md:py-4">
-          <a href="/librarymanage/" className={`group flex min-w-0 flex-nowrap items-center gap-3 md:gap-4 ${focusBase}`}>
+          <a href="/" className={`group flex min-w-0 flex-nowrap items-center gap-3 md:gap-4 ${focusBase}`}>
             <img
-              src="/librarymanage/assets/images/RMLOGO.jfif"
+              src="/assets/images/RMLOGO.jfif"
               alt="Regis Marie College logo"
               className="h-10 w-10 rounded-full border border-[rgba(143,211,255,0.24)] object-cover shadow-[0_10px_24px_rgba(8,24,44,0.26)] transition-transform duration-300 group-hover:scale-[1.03] md:h-[54px] md:w-[54px] md:border-cyan-400/40 md:shadow-[0_14px_28px_rgba(34,83,126,0.24)]"
             />
@@ -318,7 +315,9 @@ export default function LandingPage() {
                 className={`inline-flex min-h-[42px] items-center rounded-full px-4 text-sm font-medium transition-all duration-200 ${focusBase} ${
                   activeSection === link.label
                     ? "bg-cyan-400/16 text-cyan-100 shadow-[0_10px_22px_rgba(34,127,167,0.18)] ring-1 ring-cyan-300/18 dark:bg-cyan-300/12 dark:text-cyan-200"
-                    : "text-slate-300/92 hover:bg-white/[0.04] hover:text-white dark:text-slate-300 dark:hover:text-white"
+                    : isLightTheme
+                      ? "text-slate-600 hover:bg-cyan-400/10 hover:text-[#0d5f8e] hover:shadow-[0_10px_18px_rgba(14,116,144,0.12)]"
+                      : "text-slate-300/92 hover:bg-white/[0.04] hover:text-white dark:text-slate-300 dark:hover:text-white"
                 }`}
               >
                 {link.label}
@@ -328,7 +327,7 @@ export default function LandingPage() {
 
           <div className="hidden items-center gap-3 md:flex">
             <a
-              href="/librarymanage/loginpage.php"
+              href="/loginpage.php"
               className={`inline-flex min-h-[48px] items-center gap-2 rounded-full border border-cyan-200/50 bg-[linear-gradient(135deg,#9be7ff,#32b8f1)] px-6 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#04111d] shadow-[0_16px_34px_rgba(37,173,235,0.34)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_22px_40px_rgba(37,173,235,0.42)] ${focusBase}`}
             >
               <LogIn className="h-4 w-4" />
@@ -385,7 +384,7 @@ export default function LandingPage() {
                 </a>
               ))}
               <a
-                href="/librarymanage/loginpage.php"
+                href="/loginpage.php"
                 className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#32b8f1,#0ea5e9)] px-4 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_14px_28px_rgba(37,173,235,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-cyan-400 ${focusBase}`}
               >
                 <LogIn className="h-4 w-4" />
@@ -399,21 +398,21 @@ export default function LandingPage() {
       <main className="mx-auto flex w-full max-w-[1380px] flex-col gap-8 px-0 py-[72px] md:gap-16 md:py-14">
         <RevealSection className="grid items-center gap-3 sm:gap-8 lg:min-h-[calc(100vh-7rem)] lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:gap-10">
           <div className="order-1 relative sm:order-none">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#75a8db]/25 bg-[#14283f]/88 px-3 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-cyan-200 shadow-sm sm:mb-4 sm:px-4 sm:text-xs sm:tracking-[0.26em] dark:border-cyan-300/20 dark:bg-white/5 dark:text-cyan-300">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#75a8db]/25 bg-[#14283f]/88 px-3.5 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-cyan-200 shadow-sm sm:mb-4 sm:px-4 sm:text-xs sm:tracking-[0.26em] dark:border-cyan-300/20 dark:bg-white/5 dark:text-cyan-300">
               <Sparkles className="h-3.5 w-3.5" />
               Home of Educators
             </div>
-            <h1 className="mt-0 max-w-[14ch] md:max-w-[13ch] text-[1.92rem] font-semibold leading-[1] tracking-[-0.04em] text-white sm:text-4xl md:text-[clamp(2.8rem,5.2vw,5rem)] dark:text-white">
+            <h1 className="mt-0 max-w-[12.8ch] text-[1.72rem] font-semibold leading-[1.08] tracking-[-0.035em] text-white sm:max-w-[14ch] sm:text-4xl sm:leading-[1.02] md:max-w-[13ch] md:text-[clamp(2.8rem,5.2vw,5rem)] dark:text-white">
               Regis Marie College Library Management System for simpler access, borrowing, and support.
             </h1>
-            <p className="mt-3 max-w-[640px] text-[0.92rem] leading-[1.65] text-slate-300 sm:mt-5 sm:text-base sm:leading-7 md:text-[1rem] md:leading-[1.75] dark:text-slate-300/85">
+            <p className="mt-4 max-w-[34ch] text-[0.94rem] leading-[1.78] text-slate-300 sm:mt-5 sm:max-w-[640px] sm:text-base sm:leading-7 md:text-[1rem] md:leading-[1.75] dark:text-slate-300/85">
               A clearer homepage for students, faculty, and staff, bringing library access, school information,
               and support details into one more connected first screen.
             </p>
 
             <div className="mt-[18px] flex flex-col gap-2 sm:mt-7 sm:gap-3 md:mt-[26px] sm:flex-row">
               <a
-                href="/librarymanage/loginpage.php"
+                href="/loginpage.php"
                 className={`inline-flex w-full items-center justify-center gap-2 rounded-full border border-cyan-200/45 bg-[linear-gradient(135deg,#9be7ff,#32b8f1)] px-7 py-3.5 text-sm font-bold uppercase tracking-[0.08em] text-[#04111d] shadow-[0_18px_38px_rgba(37,173,235,0.34)] transition-all duration-200 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_24px_46px_rgba(37,173,235,0.42)] sm:w-auto ${focusBase}`}
               >
                 <LogIn className="h-4 w-4" />
@@ -531,7 +530,7 @@ export default function LandingPage() {
                 <h2 className="mt-2 max-w-[14ch] text-2xl font-semibold text-white dark:text-white">A homepage that feels more aligned with the school brand.</h2>
               </div>
               <img
-                src="/librarymanage/assets/images/RMLOGO.jfif"
+                src="/assets/images/RMLOGO.jfif"
                 alt="Regis Marie College badge"
                 className="h-14 w-14 rounded-full border border-cyan-500/35 object-cover"
               />
@@ -554,13 +553,13 @@ export default function LandingPage() {
             <div className="relative mb-5 min-h-[180px] overflow-hidden rounded-[1.5rem] bg-[#0b1623]">
               <img
                 src={quickAccessImage}
-                alt="Students studying in a large library"
+                alt="Regis Marie College promotional cover"
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,18,30,0.22),rgba(8,18,30,0.82))]" />
               <div className="absolute bottom-4 left-4 right-4">
                 <p className="text-base font-semibold leading-[1.45] text-white">
-                  Useful library and school links can stay in one cleaner starting point.
+                  A stronger first impression for visitors through a more polished school-centered landing page.
                 </p>
               </div>
             </div>
@@ -585,7 +584,7 @@ export default function LandingPage() {
           <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-2 backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-3 dark:border-white/10 dark:bg-white/5">
             <div className="relative h-full min-h-[240px] overflow-hidden rounded-[1.05rem] sm:min-h-[360px] sm:rounded-[1.5rem]">
               <img
-                src="/librarymanage/assets/images/rmc-logo.jpg"
+                src="/assets/images/rmc-logo.jpg"
                 alt="Regis Marie College logo"
                 className="h-full w-full object-cover"
               />
@@ -653,43 +652,66 @@ export default function LandingPage() {
           </div>
         </RevealSection>
 
-        <RevealSection delay={118} className="grid gap-3 sm:gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-8 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Who built this app</p>
-            <h2 className="mt-2 max-w-[16ch] text-3xl font-semibold tracking-tight text-white dark:text-white">Meet the team behind this library management system.</h2>
+        <RevealSection delay={118} className="grid gap-3 sm:gap-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
+          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-7 dark:border-white/10 dark:bg-white/5">
+            <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Development Team</p>
+            <h2 className="mt-2 max-w-[14ch] text-[2rem] font-semibold tracking-tight text-white dark:text-white sm:text-3xl">Built by the development team behind the Regis Marie College Library Management System.</h2>
             <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
-              This library management application was developed for the Regis Marie College community as a school-focused platform for catalog access, borrowing records, and support information.
+              This project was designed and developed to support library operations through a more organized and user-friendly digital platform.
             </p>
             <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
-              The project reflects their effort to build a cleaner, more connected, and more school-aligned digital library experience for students, faculty, librarians, and administrators.
+              The team contributed across development, system analysis, interface design, and documentation to deliver a school-aligned solution for catalog access, borrowing, notifications, and record monitoring.
             </p>
-          </div>
-
-          <div className="relative min-w-0 overflow-hidden rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.12),rgba(8,18,30,0.68))] p-2 shadow-[0_28px_70px_-30px_rgba(0,0,0,0.55)] backdrop-blur-[10px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-3 dark:border-white/10 dark:bg-white/5">
-            <div className="relative h-[280px] overflow-hidden rounded-[1.2rem] sm:h-[420px] sm:rounded-[1.6rem]">
-              {builderProfiles.map((builder, index) => (
-                <img
-                  key={builder.name}
-                  src={builder.src}
-                  alt={builder.name}
-                  className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ${
-                    currentBuilder === index ? "scale-100 opacity-100" : "scale-110 opacity-0"
-                  }`}
-                />
-              ))}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,19,28,0.06),rgba(9,19,28,0.74))]" />
-              <div className="absolute bottom-0 left-0 right-0 z-[3] p-5 text-white sm:p-6">
-                <p className="text-[0.62rem] uppercase tracking-[0.24em] text-cyan-300 sm:text-xs">Development team</p>
-                <p className="mt-2 text-xl font-semibold">{builderProfiles[currentBuilder].name}</p>
-                <p className="mt-1 text-sm font-medium text-cyan-200">{builderProfiles[currentBuilder].role}</p>
-                <p className="mt-2 max-w-md text-sm leading-6 text-slate-200/90">{builderProfiles[currentBuilder].note}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+              The finished system reflects a shared effort to make daily library processes easier to manage for administrators, librarians, students, and faculty members.
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+              Beyond implementation, the team also focused on presentation quality, usability, and workflow clarity so the platform would be practical for deployment and strong enough for academic presentation.
+            </p>
+            <div className="mt-6 rounded-[1.15rem] border border-cyan-300/12 bg-[linear-gradient(180deg,rgba(11,25,39,0.78),rgba(7,18,30,0.92))] p-4 shadow-[0_18px_36px_-24px_rgba(0,0,0,0.5)]">
+              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-cyan-300">Project Summary</p>
+              <p className="mt-3 text-sm leading-7 text-slate-300/92">
+                A multi-role library platform built for catalog browsing, borrowing workflows, return monitoring, penalties, and school-aligned user access.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {["Admin", "Librarian", "Student", "Faculty"].map((role) => (
+                  <span
+                    key={role}
+                    className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-cyan-100"
+                  >
+                    {role}
+                  </span>
+                ))}
               </div>
             </div>
+          </div>
+
+          <div className="grid min-w-0 gap-3 sm:gap-4">
+            {builderProfiles.map((builder) => (
+              <article
+                key={builder.name}
+                className="overflow-hidden rounded-[1.2rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.6rem] xl:grid xl:grid-cols-[220px_minmax(0,1fr)] xl:items-stretch dark:border-white/10 dark:bg-white/5"
+              >
+                <div className="relative h-[220px] overflow-hidden sm:h-[240px] xl:h-full xl:min-h-[224px]">
+                  <img src={builder.src} alt={builder.name} className="h-full w-full object-cover" style={{ objectPosition: builder.position }} />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,19,28,0.02),rgba(9,19,28,0.62))]" />
+                </div>
+                <div className="p-5 sm:p-6 xl:p-7">
+                  <p className="text-[0.62rem] uppercase tracking-[0.24em] text-cyan-300 sm:text-xs">Development Team</p>
+                  <p className="mt-2 text-[1.12rem] font-semibold text-white sm:text-[1.22rem]">{builder.name}</p>
+                  <div className="mt-2 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-cyan-100">
+                    {builder.badge}
+                  </div>
+                  <p className="mt-3 text-[0.95rem] font-medium leading-6 text-cyan-200">{builder.role}</p>
+                  <p className="mt-3 text-[0.92rem] leading-7 text-slate-200/90">{builder.note}</p>
+                </div>
+              </article>
+            ))}
           </div>
         </RevealSection>
 
         <RevealSection id="contact" delay={130} className="rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_22px_55px_-28px_rgba(0,0,0,0.45)] sm:rounded-[2rem] sm:p-8 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,17,25,0.82))]">
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="grid gap-6">
             <div>
               <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Contact</p>
               <h2 className="mt-2 max-w-[14ch] text-3xl font-semibold tracking-tight text-white dark:text-white">Reach the campus and library support team through the official public channels.</h2>
@@ -742,6 +764,7 @@ export default function LandingPage() {
                   </article>
                 );
               })}
+
             </div>
           </div>
         </RevealSection>
@@ -757,10 +780,10 @@ export default function LandingPage() {
             <a href="#top" onClick={(event) => handleNavClick(event, "#top")} className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
               Back to top
             </a>
-            <a href="/librarymanage/loginpage.php" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
+            <a href="/loginpage.php" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
               Portal login
             </a>
-            <a href="/librarymanage/feedback.php" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
+            <a href="/feedback.php" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-300">
               Feedback
             </a>
           </div>

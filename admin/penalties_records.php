@@ -240,7 +240,6 @@ $penalties = $stmt->get_result();
             </div>
           </div>
           <div class="inline-actions">
-            <button type="submit">Apply</button>
             <a class="button secondary" href="penalties_records.php">Reset</a>
           </div>
         </form>
@@ -289,5 +288,33 @@ $penalties = $stmt->get_result();
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
+<script>
+(() => {
+  const filterForm = document.querySelector('.penalties-record-filters');
+  const statusFilter = document.getElementById('status_filter');
+  const roleFilter = document.getElementById('role_filter');
+
+  if (!filterForm) {
+    return;
+  }
+
+  const submitFilters = () => {
+    if (filterForm.requestSubmit) {
+      filterForm.requestSubmit();
+      return;
+    }
+    filterForm.submit();
+  };
+
+  if (statusFilter) {
+    statusFilter.addEventListener('change', submitFilters);
+  }
+
+  if (roleFilter) {
+    roleFilter.addEventListener('change', submitFilters);
+  }
+})();
+</script>
 </body>
 </html>
+

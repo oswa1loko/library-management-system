@@ -93,7 +93,7 @@ if ($initialCategoryFilter !== '' && !in_array($initialCategoryFilter, array_map
 }
 
 $booksSql = "
-    SELECT b.id, b.title, b.author, b.category, b.cover_path, b.qty_available
+    SELECT b.id, b.title, b.author, b.category, b.description, b.cover_path, b.qty_available
     FROM books b
 ";
 
@@ -148,6 +148,29 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
         $availableBooks[] = $bookRow;
     } else {
         $unavailableBooks[] = $bookRow;
+    }
+}
+
+$bookSearchSuggestions = [];
+$bookSearchSuggestionIndex = [];
+foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) {
+    $candidates = [
+        trim((string) ($bookSuggestionRow['title'] ?? '')),
+        trim((string) ($bookSuggestionRow['author'] ?? '')),
+    ];
+
+    foreach ($candidates as $candidate) {
+        if ($candidate === '') {
+            continue;
+        }
+
+        $normalizedCandidate = strtolower(preg_replace('/\s+/', ' ', $candidate));
+        if (isset($bookSearchSuggestionIndex[$normalizedCandidate])) {
+            continue;
+        }
+
+        $bookSearchSuggestionIndex[$normalizedCandidate] = true;
+        $bookSearchSuggestions[] = $candidate;
     }
 }
 ?>
@@ -246,7 +269,10 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
             <div>
               <label for="book_ids">Books</label>
               <div class="member-book-filters">
-                <input id="member-book-search" type="search" class="member-book-search" placeholder="Search title or author" autocomplete="off" value="<?php echo h($initialSearchFilter); ?>" data-book-search>
+                <div class="member-book-search-field">
+                  <input id="member-book-search" type="search" class="member-book-search" placeholder="Search title or author" autocomplete="off" value="<?php echo h($initialSearchFilter); ?>" data-book-search>
+                  <div class="member-book-search-suggestions" data-book-search-suggestions hidden></div>
+                </div>
                 <div class="ui-select-shell member-book-category-shell">
                   <select class="ui-select" data-book-category>
                     <option value="">All categories</option>
@@ -272,20 +298,24 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
                           data-book-title="<?php echo h($book['title']); ?>"
                           data-book-author="<?php echo h($book['author']); ?>"
                           data-book-category-label="<?php echo h($book['category']); ?>"
-                          data-book-cover="<?php echo h((string) ($book['cover_path'] ?? '')); ?>"
+                          data-book-description="<?php echo h((string) ($book['description'] ?? '')); ?>"
+                          data-book-cover="<?php echo h(app_url((string) ($book['cover_path'] ?? ''))); ?>"
                           data-book-available="<?php echo (int) $book['qty_available']; ?>"
                           data-book-max-qty="<?php echo max(1, min(5, (int) $book['qty_available'])); ?>"
                           data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>"
                           data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>"
                         >
                           <?php if (!empty($book['cover_path'])): ?>
-                            <img class="member-book-option-cover" src="/librarymanage/<?php echo h($book['cover_path']); ?>" alt="<?php echo h($book['title']); ?>">
+                            <img class="member-book-option-cover" src="<?php echo h(app_url((string) $book['cover_path'])); ?>" alt="<?php echo h($book['title']); ?>">
                           <?php else: ?>
                             <div class="member-book-option-cover member-book-option-cover-placeholder">No Cover</div>
                           <?php endif; ?>
                           <span class="member-book-option-copy">
                             <strong><?php echo h($book['title']); ?></strong>
                             <span class="muted"><?php echo h($book['author']); ?> - <?php echo h($book['category']); ?></span>
+                            <?php if (!empty($book['description'])): ?>
+                              <span class="member-book-description"><?php echo h((string) $book['description']); ?></span>
+                            <?php endif; ?>
                           </span>
                         </button>
                       <?php endforeach; ?>
@@ -299,13 +329,16 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
                       <?php foreach ($unavailableBooks as $book): ?>
                         <div class="member-book-option member-book-option-static is-unavailable" data-book-option data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>" data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
                           <?php if (!empty($book['cover_path'])): ?>
-                            <img class="member-book-option-cover" src="/librarymanage/<?php echo h($book['cover_path']); ?>" alt="<?php echo h($book['title']); ?>">
+                            <img class="member-book-option-cover" src="<?php echo h(app_url((string) $book['cover_path'])); ?>" alt="<?php echo h($book['title']); ?>">
                           <?php else: ?>
                             <div class="member-book-option-cover member-book-option-cover-placeholder">No Cover</div>
                           <?php endif; ?>
                             <span class="member-book-option-copy">
                             <strong><?php echo h($book['title']); ?></strong>
                             <span class="muted"><?php echo h($book['author']); ?> - <?php echo h($book['category']); ?></span>
+                            <?php if (!empty($book['description'])): ?>
+                              <span class="member-book-description"><?php echo h((string) $book['description']); ?></span>
+                            <?php endif; ?>
                             <span class="member-book-option-meta">
                               <span class="badge"><?php echo (int) ($book['blocked_for_penalty'] ?? 0) === 1 ? 'Penalty hold' : 'Unavailable'; ?></span>
                               <?php if ((int) ($book['blocked_for_penalty'] ?? 0) === 1): ?>
@@ -350,6 +383,7 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
         </div>
         <strong class="label-block meta-top-sm" data-book-modal-book-title></strong>
         <span class="muted" data-book-modal-book-meta></span>
+        <p class="muted member-borrow-modal-description" data-book-modal-description hidden></p>
         <span class="badge" data-book-modal-available></span>
       </div>
       <form method="post" class="stack member-workspace-form">
@@ -375,5 +409,8 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/member_borrow_return.js?v=<?php echo urlencode($memberBorrowReturnVersion); ?>"></script>
+<script>
+window.memberBookSearchOptions = <?php echo json_encode($bookSearchSuggestions, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+</script>
 </body>
 </html>

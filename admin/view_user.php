@@ -11,7 +11,7 @@ if ($viewId <= 0) {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT id, fullname, email, username, role, course, created_at, profile_photo_path FROM users WHERE id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT id, fullname, email, username, role, account_status, course, created_at, profile_photo_path FROM users WHERE id = ? LIMIT 1");
 $stmt->bind_param('i', $viewId);
 $stmt->execute();
 $viewUser = $stmt->get_result()->fetch_assoc() ?: null;
@@ -101,6 +101,7 @@ if (in_array($role, ['student', 'faculty'], true)) {
           <h2 class="member-profile-name"><?php echo h($fullName !== '' ? $fullName : 'User'); ?></h2>
           <div class="inline-actions chips-row member-profile-chips">
             <span class="chip"><?php echo h(role_label((string) ($viewUser['role'] ?? ''))); ?></span>
+            <span class="chip"><?php echo h(ucfirst((string) ($viewUser['account_status'] ?? 'active'))); ?></span>
             <?php if (($viewUser['role'] ?? '') === 'student' && trim((string) ($viewUser['course'] ?? '')) !== ''): ?>
               <span class="chip"><?php echo h((string) $viewUser['course']); ?></span>
             <?php endif; ?>
@@ -117,6 +118,10 @@ if (in_array($role, ['student', 'faculty'], true)) {
         <div class="member-profile-meta-card">
           <span class="muted">Access</span>
           <strong><?php echo h(role_label((string) ($viewUser['role'] ?? ''))); ?> Account</strong>
+        </div>
+        <div class="member-profile-meta-card">
+          <span class="muted">Account status</span>
+          <strong><?php echo h(ucfirst((string) ($viewUser['account_status'] ?? 'active'))); ?></strong>
         </div>
         <?php if (($viewUser['role'] ?? '') === 'student'): ?>
           <div class="member-profile-meta-card">

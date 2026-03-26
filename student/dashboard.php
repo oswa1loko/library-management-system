@@ -25,7 +25,7 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
 <body>
 <div class="site-desktop-header member-mobile-hide">
   <a class="site-footer-brand" href="/librarymanage/index.php">
-    <img class="site-footer-brand-mark" src="/librarymanage/assets/images/RMLOGO.jfif" alt="Regis Marie College logo">
+    <img class="site-footer-brand-mark" src="/librarymanage/assets/images/regismarielogo.png" alt="Regis Marie College logo">
     <span class="site-footer-copy">
       <strong>Regis Marie College</strong>
       <span>Library Management System</span>
@@ -146,3 +146,4 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 </body>
 </html>
+

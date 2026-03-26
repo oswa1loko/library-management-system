@@ -155,7 +155,7 @@ $pageQuery = $_GET;
           <p class="muted">Search borrower name, username, title, or author when you need to verify a specific record.</p>
         </div>
       </div>
-      <form method="get" class="toolbar flow-top-md borrow-records-toolbar">
+      <form method="get" class="toolbar flow-top-md borrow-records-toolbar" data-auto-submit-filter>
         <div class="grow">
           <label for="search">Search</label>
           <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Borrower or book">
@@ -172,7 +172,7 @@ $pageQuery = $_GET;
           </div>
         </div>
         <div class="inline-actions">
-          <button type="submit">Apply</button>
+          <button type="submit">Search</button>
           <a class="button secondary" href="manage_borrow_records.php">Reset</a>
         </div>
       </form>
@@ -267,5 +267,17 @@ $pageQuery = $_GET;
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+<script>
+document.querySelectorAll('[data-auto-submit-filter]').forEach(function (form) {
+  var statusSelect = form.querySelector('select[name="status"]');
+  if (!statusSelect) {
+    return;
+  }
+
+  statusSelect.addEventListener('change', function () {
+    form.submit();
+  });
+});
+</script>
 </body>
 </html>

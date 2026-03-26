@@ -26,9 +26,4 @@
 
   updateGeneratedAt();
   window.addEventListener('beforeprint', updateGeneratedAt);
-  window.addEventListener('load', function () {
-    updateGeneratedAt();
-    window.print();
-  });
 })();
-

@@ -382,7 +382,6 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
             </div>
           </div>
           <div class="inline-actions">
-            <button type="submit">Apply</button>
             <a class="button secondary" href="payments_records.php">Reset</a>
           </div>
         </form>
@@ -427,7 +426,7 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                 <td><?php echo h(format_currency($payment['amount'])); ?></td>
                 <td><?php echo h(format_currency($payment['current_balance'] ?? 0)); ?></td>
                 <td><span class="badge"><span class="status-dot <?php echo h($payment['status']); ?>"></span><?php echo h($payment['status']); ?></span></td>
-                <td><?php if (!empty($payment['proof_path'])): ?><a href="/librarymanage/<?php echo h($payment['proof_path']); ?>" target="_blank">View</a><?php else: ?><span class="muted">None</span><?php endif; ?></td>
+                <td><?php if (!empty($payment['proof_path'])): ?><a href="<?php echo h(app_url((string) $payment['proof_path'])); ?>" target="_blank">View</a><?php else: ?><span class="muted">None</span><?php endif; ?></td>
                 <td>
                   <?php
                   $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
@@ -478,5 +477,33 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+<script>
+(() => {
+  const filterForm = document.querySelector('.admin-record-filters');
+  const statusFilter = document.getElementById('status_filter');
+  const roleFilter = document.getElementById('role_filter');
+
+  if (!filterForm) {
+    return;
+  }
+
+  const submitFilters = () => {
+    if (filterForm.requestSubmit) {
+      filterForm.requestSubmit();
+      return;
+    }
+    filterForm.submit();
+  };
+
+  if (statusFilter) {
+    statusFilter.addEventListener('change', submitFilters);
+  }
+
+  if (roleFilter) {
+    roleFilter.addEventListener('change', submitFilters);
+  }
+})();
+</script>
 </body>
 </html>
+

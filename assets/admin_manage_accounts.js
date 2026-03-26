@@ -2,7 +2,6 @@
   var selectAll = document.getElementById('selectAllUsers');
   var printAction = document.getElementById('printAction');
   var printShell = document.querySelector('.manage-users-print-shell');
-  var runPrintAction = document.getElementById('runPrintAction');
   var filterForm = document.querySelector('.js-auto-submit-filters');
   var searchInput = document.getElementById('search');
   var roleFilter = document.getElementById('role_filter');
@@ -91,26 +90,24 @@
   });
 
   if (printAction) {
-    printAction.addEventListener('change', syncPrintSelectState);
-    syncPrintSelectState();
-  }
+    printAction.addEventListener('change', function () {
+      syncPrintSelectState();
 
-  if (runPrintAction && printAction) {
-    runPrintAction.addEventListener('click', function () {
       var action = printAction.value;
-
       if (!action) {
-        window.alert('Select a print option first.');
         return;
       }
 
       var params = buildPrintParams(action);
       if (!params) {
+        printAction.value = '';
+        syncPrintSelectState();
         return;
       }
 
       window.location.href = 'manage_accounts.php?' + params.toString();
     });
+    syncPrintSelectState();
   }
 
   if (searchInput) {

@@ -8,7 +8,6 @@ $formData = [
     'fullname' => '',
     'email' => '',
     'role' => 'guest',
-    'mobile_number' => '',
     'message' => '',
 ];
 
@@ -16,7 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formData['fullname'] = trim($_POST['fullname'] ?? '');
     $formData['email'] = trim($_POST['email'] ?? '');
     $formData['role'] = trim($_POST['role'] ?? 'guest');
-    $formData['mobile_number'] = trim($_POST['mobile_number'] ?? '');
     $formData['message'] = trim($_POST['message'] ?? '');
 
     $allowedRoles = ['guest', 'student', 'faculty', 'librarian', 'admin'];
@@ -27,16 +25,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($formData['fullname'] === '') {
         $msg = 'Full name is required.';
         $msgType = 'error';
-    } elseif ($formData['mobile_number'] === '') {
-        $msg = 'Mobile number is required.';
+    } elseif ($formData['email'] === '') {
+        $msg = 'Email is required so the admin can send a response.';
         $msgType = 'error';
-    } elseif (!preg_match('/^(09|\+639)\d{9}$/', str_replace([' ', '-'], '', $formData['mobile_number']))) {
-        $msg = 'Enter a valid mobile number like 09XXXXXXXXX or +639XXXXXXXXX.';
+    } elseif (!filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
+        $msg = 'Enter a valid email address.';
         $msgType = 'error';
     } elseif ($formData['message'] === '') {
         $msg = 'Please enter your complaint or report details.';
         $msgType = 'error';
     } else {
+        $emptyMobile = '';
         $stmt = $conn->prepare("
             INSERT INTO complaints (fullname, email, role, mobile_number, message, status)
             VALUES (?, ?, ?, ?, ?, 'new')
@@ -46,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $formData['fullname'],
             $formData['email'],
             $formData['role'],
-            $formData['mobile_number'],
+            $emptyMobile,
             $formData['message']
         );
 
@@ -68,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'fullname' => '',
                 'email' => '',
                 'role' => 'guest',
-                'mobile_number' => '',
                 'message' => '',
             ];
         } else {
@@ -253,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="inline-actions flow-top-md feedback-tags">
           <span class="chip">Direct to admin</span>
-          <span class="chip">Mobile number required</span>
+          <span class="chip">Email required</span>
           <span class="chip">Status starts as new</span>
         </div>
 
@@ -269,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div>
               <label for="email">Email</label>
-              <input id="email" name="email" type="email" value="<?php echo h($formData['email']); ?>">
+              <input id="email" name="email" type="email" value="<?php echo h($formData['email']); ?>" required>
             </div>
             <div>
               <label for="role">Role</label>
@@ -284,13 +282,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="ui-select-caret" aria-hidden="true"></span>
               </div>
             </div>
-            <div>
-              <label for="mobile_number">Mobile Number</label>
-              <input id="mobile_number" name="mobile_number" value="<?php echo h($formData['mobile_number']); ?>" placeholder="09XXXXXXXXX" pattern="^(09|\+639)[0-9]{9}$" required>
-            </div>
           </div>
           <div class="empty-state">
-            Use a reachable mobile number and describe the problem clearly so the admin can verify the concern faster.
+            Use an active email address and describe the concern clearly so the admin can respond through email.
           </div>
           <div>
             <label for="message">Complaint / Report Details</label>
@@ -298,7 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
           <div class="inline-actions feedback-actions">
             <button type="submit">Submit Complaint</button>
-            <a class="button secondary" href="/librarymanage/index.php">Back Home</a>
+            <a class="button secondary" href="/index.php">Back Home</a>
           </div>
         </form>
       </div>
@@ -309,21 +303,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div>
             <span class="chip">Admin Review</span>
             <h3 class="heading-top heading-tight">What happens after submission</h3>
-            <p class="muted">Each complaint enters the admin queue where it can be reviewed, updated, resolved, and removed only after closure.</p>
+            <p class="muted">Each complaint is recorded in the admin queue for review, follow-up, and status updates.</p>
           </div>
         </div>
         <div class="stack flow-top-md">
           <div class="empty-state">
-            <strong class="label-block-gap">Step 1</strong>
-            Your entry is saved in the system as a new complaint record.
+            <strong class="label-block-gap">After you submit</strong>
+            Your report is saved as a new complaint record and can be reviewed by the admin.
           </div>
           <div class="empty-state">
-            <strong class="label-block-gap">Step 2</strong>
-            The admin can review, track, and update its status as needed.
-          </div>
-          <div class="empty-state">
-            <strong class="label-block-gap">Step 3</strong>
-            Resolved issues can later be cleaned from the queue, but only after the concern has been closed.
+            <strong class="label-block-gap">Status updates</strong>
+            The complaint may be marked as reviewed or resolved depending on the action taken.
           </div>
         </div>
 
@@ -333,12 +323,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div>
               <p class="muted eyebrow-compact">Helpful Tips</p>
               <h3 class="heading-card">For faster review</h3>
-              <p class="muted">Specific details reduce back-and-forth and make it easier for admin to identify the right account, book, or transaction.</p>
+              <p class="muted">Clear and specific details make it easier to identify the correct account, book, or transaction.</p>
             </div>
           </div>
           <div class="stack">
             <div class="empty-state">Mention the book title, account name, or page involved when possible.</div>
-            <div class="empty-state">Use one clear issue per submission so status tracking stays simple.</div>
+            <div class="empty-state">Submit one concern at a time so tracking and follow-up stay clear.</div>
           </div>
         </div>
       </div>

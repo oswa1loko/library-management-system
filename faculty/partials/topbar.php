@@ -1,7 +1,7 @@
 <?php
 $pageTitle = isset($pageTitle) ? (string) $pageTitle : 'Faculty';
 $pageSubtitle = isset($pageSubtitle) ? (string) $pageSubtitle : '';
-$topbarPrimaryHref = isset($topbarPrimaryHref) ? (string) $topbarPrimaryHref : '/librarymanage/index.php';
+$topbarPrimaryHref = isset($topbarPrimaryHref) ? (string) $topbarPrimaryHref : '/index.php';
 $topbarPrimaryLabel = isset($topbarPrimaryLabel) ? (string) $topbarPrimaryLabel : 'Home';
 ?>
 <div class="topbar">

@@ -43,7 +43,7 @@
         <span class="manage-users-print-caret" aria-hidden="true"></span>
       </div>
     </div>
-    <button type="button" class="button secondary" id="runPrintAction">Print Now</button>
+    <span class="muted">Choosing an option opens the matching print preview.</span>
   </div>
   <div class="table-wrap table-wrap-top">
     <table>
@@ -55,6 +55,8 @@
           <th>Email</th>
           <th>Username</th>
           <th>Role</th>
+          <th>Status</th>
+          <th>Access</th>
           <th>Course</th>
           <th>Created</th>
           <th>Action</th>
@@ -62,7 +64,7 @@
       </thead>
       <tbody>
         <?php if ($users->num_rows === 0): ?>
-          <tr><td colspan="9" class="muted">No users matched your filters.</td></tr>
+          <tr><td colspan="11" class="muted">No users matched your filters.</td></tr>
         <?php endif; ?>
         <?php while ($user = $users->fetch_assoc()): ?>
           <tr>
@@ -82,17 +84,55 @@
             <td><?php echo h($user['email']); ?></td>
             <td><?php echo h($user['username']); ?></td>
             <td><span class="badge"><?php echo h(role_label((string) $user['role'])); ?></span></td>
+            <td>
+              <?php if ((string) ($user['account_status'] ?? 'active') === 'inactive'): ?>
+                <span class="badge complaint-status-badge complaint-status-reviewed">Inactive</span>
+              <?php else: ?>
+                <span class="badge complaint-status-badge complaint-status-resolved">Active</span>
+              <?php endif; ?>
+            </td>
+            <td>
+              <?php if ((int) ($user['password_setup_required'] ?? 0) === 1): ?>
+                <span class="badge complaint-status-badge complaint-status-new">Pending Setup</span>
+              <?php else: ?>
+                <span class="badge complaint-status-badge complaint-status-resolved">Active</span>
+              <?php endif; ?>
+            </td>
             <td><?php echo h((string) (($user['role'] ?? '') === 'student' ? ($user['course'] ?? '-') : '-')); ?></td>
             <td><?php echo h(format_display_date((string) $user['created_at'])); ?></td>
             <td>
               <div class="inline-actions manage-users-actions">
+                <?php if ((int) ($user['active_borrow_count'] ?? 0) > 0 || (int) ($user['unpaid_penalty_count'] ?? 0) > 0 || (int) ($user['pending_payment_count'] ?? 0) > 0): ?>
+                  <span class="chip">Delete locked</span>
+                <?php endif; ?>
                 <?php if (($user['role'] ?? '') === 'student'): ?>
                   <a class="button secondary" href="view_user.php?id=<?php echo (int) $user['id']; ?>">View Profile</a>
                 <?php endif; ?>
                 <a class="button secondary" href="edit_user.php?id=<?php echo (int) $user['id']; ?>">Edit</a>
+                <form method="post" class="inline-form">
+                  <input type="hidden" name="id" value="<?php echo (int) $user['id']; ?>">
+                  <input type="hidden" name="status" value="<?php echo (string) ($user['account_status'] ?? 'active') === 'inactive' ? 'active' : 'inactive'; ?>">
+                  <?php if ((string) ($user['account_status'] ?? 'active') === 'inactive'): ?>
+                    <button type="submit" class="button secondary" name="set_status" value="1">Reactivate</button>
+                  <?php else: ?>
+                    <button type="submit" class="button secondary" name="set_status" value="1">Deactivate</button>
+                  <?php endif; ?>
+                </form>
+                <?php if ((int) ($user['password_setup_required'] ?? 0) === 1): ?>
+                  <form method="post" class="inline-form">
+                    <input type="hidden" name="id" value="<?php echo (int) $user['id']; ?>">
+                    <button type="submit" class="button secondary" name="send_invite" value="1">Resend Invite</button>
+                  </form>
+                <?php endif; ?>
                 <form method="post" class="inline-form js-confirm-delete-user">
                   <input type="hidden" name="id" value="<?php echo (int) $user['id']; ?>">
-                  <button type="submit" class="danger" name="delete" value="1">Delete</button>
+                  <button
+                    type="submit"
+                    class="danger"
+                    name="delete"
+                    value="1"
+                    <?php echo ((int) ($user['active_borrow_count'] ?? 0) > 0 || (int) ($user['unpaid_penalty_count'] ?? 0) > 0 || (int) ($user['pending_payment_count'] ?? 0) > 0) ? 'disabled title="Resolve active borrow, penalty, and payment records first."' : ''; ?>
+                  >Delete</button>
                 </form>
               </div>
             </td>

@@ -13,18 +13,92 @@ function h($value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function app_base_path(): string
+{
+    static $basePath = null;
+
+    if ($basePath !== null) {
+        return $basePath;
+    }
+
+    $configured = '';
+    if (isset($GLOBALS['library_runtime_config']['app_base_path'])) {
+        $configured = trim((string) $GLOBALS['library_runtime_config']['app_base_path']);
+    }
+
+    if ($configured === '') {
+        $scriptName = trim((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if ($scriptName !== '') {
+            $scriptDir = str_replace('\\', '/', dirname($scriptName));
+            $scriptDir = $scriptDir === '/' || $scriptDir === '.' ? '' : rtrim($scriptDir, '/');
+
+            if ($scriptDir !== '' && preg_match('#/(admin|student|faculty|librarian|api/v1|includes|frontend/dist)$#', $scriptDir) === 1) {
+                $scriptDir = preg_replace('#/(admin|student|faculty|librarian|api/v1|includes|frontend/dist)$#', '', $scriptDir) ?? $scriptDir;
+            }
+
+            $configured = trim($scriptDir, '/');
+        }
+    }
+
+    if ($configured === '' || $configured === '/') {
+        $basePath = '';
+        return $basePath;
+    }
+
+    $basePath = '/' . trim($configured, '/');
+    return $basePath;
+}
+
+function app_url(string $path = ''): string
+{
+    $path = trim($path);
+    if ($path === '' || $path === '/') {
+        return app_base_path() !== '' ? app_base_path() . '/' : '/';
+    }
+
+    if (preg_match('#^(?:https?:)?//#i', $path) === 1) {
+        return $path;
+    }
+
+    return (app_base_path() !== '' ? app_base_path() : '') . '/' . ltrim($path, '/');
+}
+
+function app_public_url(string $path = ''): string
+{
+    $configured = trim(library_runtime_value('app_public_url'));
+    if ($configured !== '') {
+        $path = trim($path);
+        if ($path === '' || $path === '/') {
+            return rtrim($configured, '/');
+        }
+        return rtrim($configured, '/') . '/' . ltrim($path, '/');
+    }
+
+    $host = trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost'));
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    return $scheme . '://' . $host . app_url($path);
+}
+
+function app_is_local_environment(): bool
+{
+    $host = strtolower(trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '')));
+    $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+}
+
 function redirect_to_dashboard(?string $role = null): void
 {
     $role = canonical_role($role ?? ($_SESSION['role'] ?? ''));
 
     $map = [
-        'admin' => '/librarymanage/admin/dashboard.php',
-        'student' => '/librarymanage/student/dashboard.php',
-        'faculty' => '/librarymanage/faculty/dashboard.php',
-        'librarian' => '/librarymanage/librarian/dashboard.php',
+        'admin' => app_url('admin/dashboard.php'),
+        'student' => app_url('student/dashboard.php'),
+        'faculty' => app_url('faculty/dashboard.php'),
+        'librarian' => app_url('librarian/dashboard.php'),
     ];
 
-    header('Location: ' . ($map[$role] ?? '/librarymanage/loginpage.php'));
+    header('Location: ' . ($map[$role] ?? app_url('loginpage.php')));
     exit;
 }
 
@@ -161,6 +235,31 @@ function get_member_due_soon_books(mysqli $conn, int $userId, int $limit = 5): a
         LIMIT ?
     ");
     $stmt->bind_param('iii', $userId, $delayMinutes, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($result && ($row = $result->fetch_assoc())) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+
+    return $rows;
+}
+
+function get_member_overdue_books(mysqli $conn, int $userId, int $limit = 5): array
+{
+    $limit = max(1, $limit);
+    $stmt = $conn->prepare("
+        SELECT br.id, b.title, br.due_date, br.status
+        FROM borrows br
+        JOIN books b ON b.id = br.book_id
+        WHERE br.user_id = ?
+          AND br.status IN ('borrowed', 'return_requested')
+          AND br.due_date < CURDATE()
+        ORDER BY br.due_date ASC, br.id DESC
+        LIMIT ?
+    ");
+    $stmt->bind_param('ii', $userId, $limit);
     $stmt->execute();
     $result = $stmt->get_result();
     $rows = [];
@@ -489,6 +588,361 @@ function enqueue_login_otp_email_job(mysqli $conn, string $email, string $fullNa
     return enqueue_email_job(
         $conn,
         'login_otp',
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
+function password_setup_expiry_hours(): int
+{
+    $hours = (int) library_runtime_value('LIBRARY_PASSWORD_SETUP_EXPIRY_HOURS');
+    return $hours >= 1 ? min($hours, 168) : 72;
+}
+
+function generate_placeholder_password(): string
+{
+    return password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT);
+}
+
+function password_token_url(string $token, string $purpose = 'account_setup'): string
+{
+    $token = trim($token);
+    $purpose = trim($purpose) !== '' ? trim($purpose) : 'account_setup';
+
+    $path = $purpose === 'password_reset' ? 'reset_password.php' : 'setup_password.php';
+    return app_public_url($path . '?token=' . urlencode($token));
+}
+
+function password_setup_url(string $token): string
+{
+    return password_token_url($token, 'account_setup');
+}
+
+function invalidate_password_setup_tokens(mysqli $conn, int $userId, ?string $purpose = null): void
+{
+    if ($userId <= 0) {
+        return;
+    }
+
+    if ($purpose !== null && $purpose !== '') {
+        $stmt = $conn->prepare("
+            UPDATE password_setup_tokens
+            SET used_at = NOW()
+            WHERE user_id = ?
+              AND purpose = ?
+              AND used_at IS NULL
+        ");
+        $stmt->bind_param('is', $userId, $purpose);
+        $stmt->execute();
+        $stmt->close();
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE password_setup_tokens
+        SET used_at = NOW()
+        WHERE user_id = ?
+          AND used_at IS NULL
+    ");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function issue_password_setup_token(mysqli $conn, int $userId, string $purpose = 'account_setup'): ?array
+{
+    $userId = max(0, $userId);
+    $purpose = trim($purpose) !== '' ? trim($purpose) : 'account_setup';
+    if ($userId <= 0) {
+        return null;
+    }
+
+    invalidate_password_setup_tokens($conn, $userId, $purpose);
+
+    $plainToken = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $plainToken);
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+' . password_setup_expiry_hours() . ' hours'));
+
+    $stmt = $conn->prepare("
+        INSERT INTO password_setup_tokens (user_id, token_hash, purpose, expires_at)
+        VALUES (?, ?, ?, ?)
+    ");
+    $stmt->bind_param('isss', $userId, $tokenHash, $purpose, $expiresAt);
+    $ok = $stmt->execute();
+    $stmt->close();
+
+    if (!$ok) {
+        return null;
+    }
+
+    if ($purpose === 'account_setup') {
+        $update = $conn->prepare("
+            UPDATE users
+            SET password_setup_required = 1
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $update->bind_param('i', $userId);
+        $update->execute();
+        $update->close();
+    }
+
+    return [
+        'token' => $plainToken,
+        'expires_at' => $expiresAt,
+        'url' => password_token_url($plainToken, $purpose),
+    ];
+}
+
+function find_password_setup_token(mysqli $conn, string $plainToken, string $purpose = 'account_setup'): ?array
+{
+    $plainToken = trim($plainToken);
+    if ($plainToken === '') {
+        return null;
+    }
+
+    $tokenHash = hash('sha256', $plainToken);
+    $stmt = $conn->prepare("
+        SELECT
+            pst.id,
+            pst.user_id,
+            pst.purpose,
+            pst.expires_at,
+            pst.used_at,
+            u.fullname,
+            u.email,
+            u.username,
+            u.role,
+            u.password_setup_required
+        FROM password_setup_tokens pst
+        JOIN users u ON u.id = pst.user_id
+        WHERE pst.token_hash = ?
+          AND pst.purpose = ?
+          AND pst.used_at IS NULL
+          AND pst.expires_at > NOW()
+        LIMIT 1
+    ");
+    $stmt->bind_param('ss', $tokenHash, $purpose);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row ?: null;
+}
+
+function complete_password_setup(mysqli $conn, int $userId, int $tokenId, string $password, string $purpose = 'account_setup'): bool
+{
+    $userId = max(0, $userId);
+    $tokenId = max(0, $tokenId);
+    $password = trim($password);
+    $purpose = trim($purpose) !== '' ? trim($purpose) : 'account_setup';
+    if ($userId <= 0 || $tokenId <= 0 || $password === '') {
+        return false;
+    }
+
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+
+    if ($purpose === 'account_setup') {
+        $updateUser = $conn->prepare("
+            UPDATE users
+            SET password = ?,
+                password_setup_required = 0,
+                password_setup_completed_at = NOW()
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $updateUser->bind_param('si', $passwordHash, $userId);
+    } else {
+        $updateUser = $conn->prepare("
+            UPDATE users
+            SET password = ?
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $updateUser->bind_param('si', $passwordHash, $userId);
+    }
+    $userOk = $updateUser->execute();
+    $updateUser->close();
+
+    if (!$userOk) {
+        return false;
+    }
+
+    $consume = $conn->prepare("
+        UPDATE password_setup_tokens
+        SET used_at = NOW()
+        WHERE id = ?
+          AND user_id = ?
+          AND used_at IS NULL
+        LIMIT 1
+    ");
+    $consume->bind_param('ii', $tokenId, $userId);
+    $consume->execute();
+    $consume->close();
+
+    invalidate_password_setup_tokens($conn, $userId, $purpose);
+    clear_login_otp($conn, $userId);
+
+    return true;
+}
+
+function build_password_reset_email_payload(
+    string $email,
+    string $fullName,
+    string $role,
+    string $username,
+    string $resetUrl
+): ?array {
+    $email = trim($email);
+    $fullName = trim($fullName);
+    $username = trim($username);
+    $resetUrl = trim($resetUrl);
+
+    if (!is_valid_email_address($email) || $resetUrl === '') {
+        set_library_mail_last_error('Missing or invalid password reset recipient.');
+        return null;
+    }
+
+    $roleLabel = role_label($role);
+    $subject = 'Library Account Password Reset Request';
+    $message = "Dear {$fullName},\n\n"
+        . "A request has been received to reset the password for your library account.\n\n"
+        . "Account details:\n"
+        . "Role: {$roleLabel}\n"
+        . "Username: {$username}\n\n"
+        . "To continue, please use the secure link below to create a new password:\n"
+        . "{$resetUrl}\n\n"
+        . "For your security, this reset link will expire in " . password_setup_expiry_hours() . " hours.\n\n"
+        . "If you did not request a password reset, no further action is required and you may disregard this message.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Dear <strong>' . h($fullName) . '</strong>,</p>'
+        . '<p>A request has been received to reset the password for your library account.</p>'
+        . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
+        . '<p style="margin:0 0 10px;font-weight:700;color:#27496b;">Account details</p>'
+        . '<p style="margin:0 0 8px;"><strong>Role:</strong> ' . h($roleLabel) . '</p>'
+        . '<p style="margin:0;"><strong>Username:</strong> ' . h($username) . '</p>'
+        . '</div>'
+        . '<p>To continue, please use the secure link below to create a new password:</p>'
+        . '<p style="margin:18px 0;">'
+        . '<a href="' . h($resetUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#124170;color:#ffffff;text-decoration:none;font-weight:700;">Reset Password</a>'
+        . '</p>'
+        . '<p>If the button above does not open, copy and paste this link into your browser:</p>'
+        . '<p><a href="' . h($resetUrl) . '">' . h($resetUrl) . '</a></p>'
+        . '<p>For your security, this reset link will expire in <strong>' . password_setup_expiry_hours() . ' hours</strong>.</p>'
+        . '<p style="color:#5c7188;">If you did not request a password reset, no further action is required and you may disregard this message.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return [
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function enqueue_password_reset_email_job(
+    mysqli $conn,
+    string $email,
+    string $fullName,
+    string $role,
+    string $username,
+    string $resetUrl
+): bool {
+    $payload = build_password_reset_email_payload($email, $fullName, $role, $username, $resetUrl);
+    if (!$payload) {
+        return false;
+    }
+
+    return enqueue_email_job(
+        $conn,
+        'password_reset',
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
+function build_account_setup_email_payload(
+    string $email,
+    string $fullName,
+    string $role,
+    string $username,
+    string $setupUrl
+): ?array {
+    $email = trim($email);
+    $fullName = trim($fullName);
+    $username = trim($username);
+    $setupUrl = trim($setupUrl);
+
+    if (!is_valid_email_address($email) || $setupUrl === '') {
+        set_library_mail_last_error('Missing or invalid account setup recipient.');
+        return null;
+    }
+
+    $roleLabel = role_label($role);
+    $subject = 'Library Account Activation';
+    $message = "Dear {$fullName},\n\n"
+        . "A library account has been created for you.\n\n"
+        . "Account details:\n"
+        . "Role: {$roleLabel}\n"
+        . "Username: {$username}\n\n"
+        . "To activate your account, please use the secure link below to create your password:\n"
+        . "{$setupUrl}\n\n"
+        . "For your security, this activation link will expire in " . password_setup_expiry_hours() . " hours.\n\n"
+        . "After completing password setup, you may sign in to the library system using your username or registered email address.\n\n"
+        . "If you were not expecting this account, no further action is required and you may disregard this message.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Dear <strong>' . h($fullName) . '</strong>,</p>'
+        . '<p>A library account has been created for you.</p>'
+        . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
+        . '<p style="margin:0 0 10px;font-weight:700;color:#27496b;">Account details</p>'
+        . '<p style="margin:0 0 8px;"><strong>Role:</strong> ' . h($roleLabel) . '</p>'
+        . '<p style="margin:0;"><strong>Username:</strong> ' . h($username) . '</p>'
+        . '</div>'
+        . '<p>To activate your account, please use the secure link below to create your password:</p>'
+        . '<p style="margin:18px 0;">'
+        . '<a href="' . h($setupUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#124170;color:#ffffff;text-decoration:none;font-weight:700;">Set Your Password</a>'
+        . '</p>'
+        . '<p>If the button above does not open, copy and paste this link into your browser:</p>'
+        . '<p><a href="' . h($setupUrl) . '">' . h($setupUrl) . '</a></p>'
+        . '<p>For your security, this activation link will expire in <strong>' . password_setup_expiry_hours() . ' hours</strong>.</p>'
+        . '<p>After completing password setup, you may sign in using your username or registered email address.</p>'
+        . '<p style="color:#5c7188;">If you were not expecting this account, no further action is required and you may disregard this message.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return [
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function enqueue_account_setup_email_job(
+    mysqli $conn,
+    string $email,
+    string $fullName,
+    string $role,
+    string $username,
+    string $setupUrl
+): bool {
+    $payload = build_account_setup_email_payload($email, $fullName, $role, $username, $setupUrl);
+    if (!$payload) {
+        return false;
+    }
+
+    return enqueue_email_job(
+        $conn,
+        'account_setup',
         (string) $payload['to'],
         (string) $payload['subject'],
         (string) $payload['text'],
@@ -1247,21 +1701,81 @@ function sync_overdue_penalties(mysqli $conn): array
     return ['inserted' => $inserted, 'updated' => $updated];
 }
 
-function sync_overdue_penalties_if_needed(mysqli $conn, int $seconds = 60): void
+function overdue_penalty_sync_runtime_file(): string
 {
-    $lastRun = (int) ($_SESSION['overdue_penalty_sync_at'] ?? 0);
-    $now = time();
+    return dirname(__DIR__) . '/storage/runtime/overdue_penalty_sync.json';
+}
 
-    if ($now - $lastRun < $seconds) {
+function ensure_overdue_penalty_runtime_directory(): void
+{
+    $directory = dirname(overdue_penalty_sync_runtime_file());
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0777, true);
+    }
+}
+
+function sync_overdue_penalties_if_needed(mysqli $conn, int $seconds = 3600): void
+{
+    if (PHP_SAPI === 'cli') {
         return;
     }
 
-    $_SESSION['overdue_penalty_sync_at'] = $now;
+    $seconds = max(300, $seconds);
+    ensure_overdue_penalty_runtime_directory();
+    $runtimeFile = overdue_penalty_sync_runtime_file();
+    $handle = @fopen($runtimeFile, 'c+');
+    if (!$handle) {
+        return;
+    }
 
     try {
-        sync_overdue_penalties($conn);
+        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+            return;
+        }
+
+        $existing = stream_get_contents($handle);
+        $state = json_decode($existing ?: '{}', true);
+        if (!is_array($state)) {
+            $state = [];
+        }
+
+        $now = time();
+        $lastRun = (int) ($state['last_run_at'] ?? 0);
+        if ($lastRun > 0 && ($now - $lastRun) < $seconds) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+            return;
+        }
+
+        $state['last_run_at'] = $now;
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode($state, JSON_UNESCAPED_SLASHES));
+        fflush($handle);
+
+        try {
+            $result = sync_overdue_penalties($conn);
+            $state['last_success_at'] = $now;
+            $state['last_result'] = [
+                'inserted' => (int) ($result['inserted'] ?? 0),
+                'updated' => (int) ($result['updated'] ?? 0),
+            ];
+            unset($state['last_error']);
+        } catch (Throwable $e) {
+            $state['last_error'] = $e->getMessage();
+        }
+
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode($state, JSON_UNESCAPED_SLASHES));
+        fflush($handle);
+
+        flock($handle, LOCK_UN);
+        fclose($handle);
     } catch (Throwable $e) {
-        // Keep the request flow resilient even if sync fails.
+        @flock($handle, LOCK_UN);
+        fclose($handle);
     }
 }
 
@@ -1463,7 +1977,7 @@ function member_api_post_request(string $endpoint, array $fields, string $token)
 {
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-    $url = $scheme . '://' . $host . '/librarymanage/api/v1/' . ltrim($endpoint, '/');
+    $url = $scheme . '://' . $host . app_url('api/v1/' . ltrim($endpoint, '/'));
     $payload = http_build_query($fields);
 
     if (function_exists('curl_init')) {
@@ -1935,6 +2449,7 @@ function send_overdue_notices(mysqli $conn): array
 }
 
 if (isset($conn) && $conn instanceof mysqli) {
+    sync_overdue_penalties_if_needed($conn);
     run_due_reminder_sync_if_needed($conn);
 }
 

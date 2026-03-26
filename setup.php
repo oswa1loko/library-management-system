@@ -41,6 +41,7 @@ run_sql(
         username VARCHAR(50) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         role ENUM('admin','student','faculty','librarian') NOT NULL,
+        account_status ENUM('active','inactive') NOT NULL DEFAULT 'active',
         login_otp_hash CHAR(64) DEFAULT NULL,
         login_otp_expires_at DATETIME DEFAULT NULL,
         login_otp_sent_at DATETIME DEFAULT NULL,
@@ -131,6 +132,9 @@ run_sql(
         role VARCHAR(30) NOT NULL DEFAULT 'guest',
         mobile_number VARCHAR(20) NOT NULL,
         message TEXT NOT NULL,
+        admin_response TEXT DEFAULT NULL,
+        responded_at DATETIME DEFAULT NULL,
+        responded_by INT DEFAULT NULL,
         status ENUM('new','reviewed','resolved') NOT NULL DEFAULT 'new',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
@@ -153,6 +157,10 @@ if (!column_exists($conn, 'users', 'login_otp_expires_at')) {
 
 if (!column_exists($conn, 'users', 'login_otp_sent_at')) {
     $conn->query("ALTER TABLE users ADD COLUMN login_otp_sent_at DATETIME DEFAULT NULL AFTER login_otp_expires_at");
+}
+
+if (!column_exists($conn, 'users', 'account_status')) {
+    $conn->query("ALTER TABLE users ADD COLUMN account_status ENUM('active','inactive') NOT NULL DEFAULT 'active' AFTER role");
 }
 
 if (!column_exists($conn, 'borrows', 'borrow_days')) {
@@ -230,6 +238,18 @@ if (!column_exists($conn, 'complaints', 'mobile_number')) {
     $conn->query("ALTER TABLE complaints ADD COLUMN mobile_number VARCHAR(20) NOT NULL DEFAULT '' AFTER role");
 }
 
+if (!column_exists($conn, 'complaints', 'admin_response')) {
+    $conn->query("ALTER TABLE complaints ADD COLUMN admin_response TEXT DEFAULT NULL AFTER message");
+}
+
+if (!column_exists($conn, 'complaints', 'responded_at')) {
+    $conn->query("ALTER TABLE complaints ADD COLUMN responded_at DATETIME DEFAULT NULL AFTER admin_response");
+}
+
+if (!column_exists($conn, 'complaints', 'responded_by')) {
+    $conn->query("ALTER TABLE complaints ADD COLUMN responded_by INT DEFAULT NULL AFTER responded_at");
+}
+
 if (column_exists($conn, 'complaints', 'subject') && column_exists($conn, 'complaints', 'mobile_number')) {
     $conn->query("
         UPDATE complaints
@@ -265,7 +285,7 @@ add_message($messages, 'Setup finished. Default password for sample accounts: ad
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Setup | Library</title>
 <script src="/librarymanage/assets/theme.js"></script>
-<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="/librarymanage/assets/app.css">
 </head>
 <body>
 <div class="auth-shell">

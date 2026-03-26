@@ -381,3 +381,4 @@ $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRem
 <script src="/librarymanage/assets/librarian_edit_book.js"></script>
 </body>
 </html>
+

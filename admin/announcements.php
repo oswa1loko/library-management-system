@@ -27,7 +27,10 @@ if (isset($_POST['send_announcement'])) {
     if ($title === '' || $body === '') {
         $message = 'Title and message are required.';
         $messageType = 'error';
-    } else {
+    }
+
+    if ($message === '') {
+        $announcementAt = date('Y-m-d H:i:s');
         $targetRoles = $audience === 'both' ? ['student', 'faculty'] : [$audience];
         $recipientIds = [];
 
@@ -61,17 +64,17 @@ if (isset($_POST['send_announcement'])) {
 
             try {
                 $announcementStmt = $conn->prepare("
-                    INSERT INTO announcements (audience, title, body, severity, created_by)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO announcements (audience, title, body, severity, created_by, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ");
-                $announcementStmt->bind_param('ssssi', $audience, $title, $body, $severity, $adminUserId);
+                $announcementStmt->bind_param('ssssis', $audience, $title, $body, $severity, $adminUserId, $announcementAt);
                 $announcementStmt->execute();
                 $announcementId = (int) $announcementStmt->insert_id;
                 $announcementStmt->close();
 
                 $notificationStmt = $conn->prepare("
-                    INSERT INTO notifications (role, user_id, title, body, severity, is_read)
-                    VALUES (?, ?, ?, ?, ?, 0)
+                    INSERT INTO notifications (role, user_id, title, body, severity, is_read, created_at)
+                    VALUES (?, ?, ?, ?, ?, 0, ?)
                 ");
 
                 foreach ($recipientIds as $recipient) {
@@ -81,7 +84,7 @@ if (isset($_POST['send_announcement'])) {
                         continue;
                     }
 
-                    $notificationStmt->bind_param('sisss', $targetRole, $targetUserId, $title, $body, $severity);
+                    $notificationStmt->bind_param('sissss', $targetRole, $targetUserId, $title, $body, $severity, $announcementAt);
                     $notificationStmt->execute();
                     $recipientCount++;
                 }

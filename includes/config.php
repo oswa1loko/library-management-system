@@ -19,7 +19,19 @@ function library_open_connection(): mysqli
 {
     global $servername, $dbusername, $dbpassword, $dbname;
 
-    $db = new mysqli($servername, $dbusername, $dbpassword);
+    mysqli_report(MYSQLI_REPORT_OFF);
+
+    $db = mysqli_init();
+    if (!$db instanceof mysqli) {
+        throw new RuntimeException('Unable to initialize database connection.');
+    }
+
+    $db->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+    $connected = @$db->real_connect($servername, $dbusername, $dbpassword);
+    if (!$connected) {
+        throw new RuntimeException('Database connection failed: ' . mysqli_connect_error());
+    }
+
     $db->query("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
     $db->select_db($dbname);
     $db->set_charset("utf8mb4");
@@ -46,7 +58,9 @@ function library_ping_or_reconnect(mysqli &$conn): void
     }
 
     $conn = library_open_connection();
-    ensure_library_schema($conn);
+    if (library_should_run_schema_bootstrap($conn)) {
+        ensure_library_schema($conn);
+    }
 }
 
 function library_safe_query(mysqli &$conn, string $sql)
@@ -61,7 +75,9 @@ function library_safe_query(mysqli &$conn, string $sql)
         }
 
         $conn = library_open_connection();
-        ensure_library_schema($conn);
+        if (library_should_run_schema_bootstrap($conn)) {
+            ensure_library_schema($conn);
+        }
         return $conn->query($sql);
     }
 }
@@ -78,7 +94,9 @@ function library_safe_prepare(mysqli &$conn, string $sql): mysqli_stmt
         }
 
         $conn = library_open_connection();
-        ensure_library_schema($conn);
+        if (library_should_run_schema_bootstrap($conn)) {
+            ensure_library_schema($conn);
+        }
         $stmt = $conn->prepare($sql);
     }
 
@@ -91,14 +109,86 @@ function library_safe_prepare(mysqli &$conn, string $sql): mysqli_stmt
 
 try {
     $conn = library_open_connection();
-} catch (mysqli_sql_exception $exception) {
+} catch (Throwable $exception) {
     http_response_code(500);
-    die('Database connection failed. Start MySQL in XAMPP, then refresh this page.');
+    die('Database connection failed. Make sure MySQL is running and responsive in XAMPP, then refresh this page.');
 }
 
 if ($conn->connect_error) {
     http_response_code(500);
-    die('Database connection failed. Start MySQL in XAMPP, then refresh this page.');
+    die('Database connection failed. Make sure MySQL is running and responsive in XAMPP, then refresh this page.');
+}
+
+function library_should_rewrite_public_output(): bool
+{
+    if (PHP_SAPI === 'cli') {
+        return false;
+    }
+
+    $scriptName = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+    $requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+
+    if ($scriptName !== '' && preg_match('#/(ebook_stream|api/v1)/#', $scriptName) === 1) {
+        return false;
+    }
+
+    if ($requestUri !== '' && preg_match('#^/(api/v1|ebook_stream\\.php)#', $requestUri) === 1) {
+        return false;
+    }
+
+    return true;
+}
+
+function library_rewrite_public_output(string $buffer): string
+{
+    $host = strtolower(trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '')));
+    $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+    $isLocal = in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+
+    if ($isLocal) {
+        $buffer = strtr($buffer, [
+            '="/assets/' => '="/librarymanage/assets/',
+            "='/assets/" => "'/librarymanage/assets/",
+            '="/index.php' => '="/librarymanage/index.php',
+            "='/index.php" => "'/librarymanage/index.php",
+            '="/loginpage.php' => '="/librarymanage/loginpage.php',
+            "='/loginpage.php" => "'/librarymanage/loginpage.php",
+            '="/api/v1/' => '="/librarymanage/api/v1/',
+            "='/api/v1/" => "'/librarymanage/api/v1/",
+            'url("/assets/' => 'url("/librarymanage/assets/',
+            "url('/assets/" => "url('/librarymanage/assets/",
+        ]);
+
+        if (stripos($buffer, '<head') !== false && stripos($buffer, 'rel="icon"') === false && stripos($buffer, "rel='icon'") === false) {
+            $faviconMarkup = "\n"
+                . '    <link rel="icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
+                . '    <link rel="shortcut icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
+                . '    <link rel="apple-touch-icon" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n";
+            $buffer = preg_replace('/<\/head>/i', $faviconMarkup . '</head>', $buffer, 1) ?? $buffer;
+        }
+
+        return $buffer;
+    }
+
+    $buffer = str_replace('/librarymanage/', '/', $buffer);
+
+    if (stripos($buffer, '<head') !== false && stripos($buffer, 'rel="icon"') === false && stripos($buffer, "rel='icon'") === false) {
+        $faviconMarkup = "\n"
+            . '    <link rel="icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
+            . '    <link rel="shortcut icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
+            . '    <link rel="apple-touch-icon" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n";
+        $buffer = preg_replace('/<\/head>/i', $faviconMarkup . '</head>', $buffer, 1) ?? $buffer;
+    }
+
+    return $buffer;
+}
+
+if (!defined('LIBRARY_PUBLIC_OUTPUT_REWRITE')) {
+    define('LIBRARY_PUBLIC_OUTPUT_REWRITE', true);
+
+    if (library_should_rewrite_public_output()) {
+        ob_start('library_rewrite_public_output');
+    }
 }
 
 function table_exists(mysqli $conn, string $table): bool
@@ -106,6 +196,20 @@ function table_exists(mysqli $conn, string $table): bool
     $safeTable = $conn->real_escape_string($table);
     $result = $conn->query("SHOW TABLES LIKE '{$safeTable}'");
     return $result instanceof mysqli_result && $result->num_rows > 0;
+}
+
+function library_should_run_schema_bootstrap(mysqli $conn): bool
+{
+    if (PHP_SAPI === 'cli') {
+        return true;
+    }
+
+    $scriptName = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($scriptName === 'setup.php') {
+        return true;
+    }
+
+    return !table_exists($conn, 'users');
 }
 
 function column_exists(mysqli $conn, string $table, string $column): bool
@@ -142,9 +246,12 @@ function ensure_library_schema(mysqli $conn): void
             username VARCHAR(50) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             role ENUM('admin','student','faculty','librarian') NOT NULL,
+            account_status ENUM('active','inactive') NOT NULL DEFAULT 'active',
             login_otp_hash CHAR(64) DEFAULT NULL,
             login_otp_expires_at DATETIME DEFAULT NULL,
             login_otp_sent_at DATETIME DEFAULT NULL,
+            password_setup_required TINYINT(1) NOT NULL DEFAULT 0,
+            password_setup_completed_at DATETIME DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
@@ -242,6 +349,9 @@ function ensure_library_schema(mysqli $conn): void
             role VARCHAR(30) NOT NULL DEFAULT 'guest',
             mobile_number VARCHAR(20) NOT NULL,
             message TEXT NOT NULL,
+            admin_response TEXT DEFAULT NULL,
+            responded_at DATETIME DEFAULT NULL,
+            responded_by INT DEFAULT NULL,
             status ENUM('new','reviewed','resolved') NOT NULL DEFAULT 'new',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
@@ -324,6 +434,21 @@ function ensure_library_schema(mysqli $conn): void
     ");
 
     $conn->query("
+        CREATE TABLE IF NOT EXISTS password_setup_tokens (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            token_hash CHAR(64) NOT NULL UNIQUE,
+            purpose ENUM('account_setup','password_reset') NOT NULL DEFAULT 'account_setup',
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_password_setup_tokens_user (user_id),
+            INDEX idx_password_setup_tokens_expires (expires_at),
+            INDEX idx_password_setup_tokens_purpose_used (purpose, used_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
         CREATE TABLE IF NOT EXISTS ebooks (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
@@ -365,6 +490,18 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'users', 'course')) {
         $conn->query("ALTER TABLE users ADD COLUMN course VARCHAR(120) DEFAULT NULL AFTER profile_photo_path");
+    }
+
+    if (!column_exists($conn, 'users', 'password_setup_required')) {
+        $conn->query("ALTER TABLE users ADD COLUMN password_setup_required TINYINT(1) NOT NULL DEFAULT 0 AFTER course");
+    }
+
+    if (!column_exists($conn, 'users', 'password_setup_completed_at')) {
+        $conn->query("ALTER TABLE users ADD COLUMN password_setup_completed_at DATETIME DEFAULT NULL AFTER password_setup_required");
+    }
+
+    if (!column_exists($conn, 'users', 'account_status')) {
+        $conn->query("ALTER TABLE users ADD COLUMN account_status ENUM('active','inactive') NOT NULL DEFAULT 'active' AFTER role");
     }
 
     if (!column_exists($conn, 'notifications', 'user_id')) {
@@ -634,6 +771,18 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("ALTER TABLE complaints ADD COLUMN mobile_number VARCHAR(20) NOT NULL DEFAULT '' AFTER role");
     }
 
+    if (!column_exists($conn, 'complaints', 'admin_response')) {
+        $conn->query("ALTER TABLE complaints ADD COLUMN admin_response TEXT DEFAULT NULL AFTER message");
+    }
+
+    if (!column_exists($conn, 'complaints', 'responded_at')) {
+        $conn->query("ALTER TABLE complaints ADD COLUMN responded_at DATETIME DEFAULT NULL AFTER admin_response");
+    }
+
+    if (!column_exists($conn, 'complaints', 'responded_by')) {
+        $conn->query("ALTER TABLE complaints ADD COLUMN responded_by INT DEFAULT NULL AFTER responded_at");
+    }
+
     if (!column_exists($conn, 'api_tokens', 'scopes')) {
         $conn->query("ALTER TABLE api_tokens ADD COLUMN scopes VARCHAR(100) NOT NULL DEFAULT 'read,write' AFTER label");
     }
@@ -664,5 +813,8 @@ function ensure_library_schema(mysqli $conn): void
     }
 }
 
-ensure_library_schema($conn);
+if (library_should_run_schema_bootstrap($conn)) {
+    ensure_library_schema($conn);
+}
 ?>
+

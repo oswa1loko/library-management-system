@@ -76,14 +76,15 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
 function confirm_requested_return(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT user_id, book_id, due_date, status
-        FROM borrows
+        SELECT br.user_id, br.book_id, br.due_date, br.status, u.role
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
         WHERE id = ?
         LIMIT 1
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $dueDate, $borrowStatus);
+    $borrowStmt->bind_result($userId, $bookId, $dueDate, $borrowStatus, $userRole);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -120,6 +121,7 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
         'borrow_id' => $borrowId,
         'book_id' => $bookId,
         'user_id' => $userId,
+        'user_role' => (string) $userRole,
         'returned_at' => $returnedAt,
         'return_date' => $returnDate,
     ];
@@ -188,6 +190,17 @@ if (isset($_POST['mark_returned'])) {
             'Borrow #' . $borrowId . ' was confirmed as returned by a librarian.',
             'info'
         );
+        $memberRole = (string) ($result['user_role'] ?? '');
+        if (in_array($memberRole, ['student', 'faculty'], true)) {
+            create_notification(
+                $conn,
+                $memberRole,
+                'Return Request Approved',
+                'Your return request for borrow #' . $borrowId . ' was confirmed by the librarian.',
+                'info',
+                (int) $result['user_id']
+            );
+        }
 
         $msg = 'Borrow record marked as returned.';
     } catch (Throwable $e) {
@@ -360,6 +373,26 @@ if (isset($_POST['confirm_return_batch'])) {
                         'return_date' => (string) $result['return_date'],
                         'return_batch' => $returnBatch,
                     ]);
+                }
+
+                create_notification(
+                    $conn,
+                    'admin',
+                    'Borrow Return Confirmed',
+                    count($confirmed) . ' return' . (count($confirmed) === 1 ? '' : 's') . ' were confirmed by a librarian from one batch.',
+                    'info'
+                );
+                $memberRole = (string) ($confirmed[0]['user_role'] ?? '');
+                $memberUserId = (int) ($confirmed[0]['user_id'] ?? 0);
+                if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
+                    create_notification(
+                        $conn,
+                        $memberRole,
+                        'Return Request Approved',
+                        count($confirmed) . ' return' . (count($confirmed) === 1 ? '' : 's') . ' in your batch were confirmed by the librarian.',
+                        'info',
+                        $memberUserId
+                    );
                 }
 
                 $msg = count($confirmed) . ' return' . (count($confirmed) === 1 ? '' : 's') . ' confirmed from this batch.';
@@ -774,7 +807,7 @@ $selectedPendingReturnBatch = $selectedReturnBatch !== '' ? ($pendingReturnBatch
           <p class="muted">Search borrower name, username, title, or author when you need to verify a specific record.</p>
         </div>
       </div>
-      <form method="get" class="toolbar flow-top-md borrow-records-toolbar">
+      <form method="get" class="toolbar flow-top-md borrow-records-toolbar" data-auto-submit-filter>
           <div class="grow">
             <label for="search">Search</label>
             <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Borrower or book">
@@ -791,7 +824,7 @@ $selectedPendingReturnBatch = $selectedReturnBatch !== '' ? ($pendingReturnBatch
             </div>
           </div>
           <div class="inline-actions">
-            <button type="submit">Apply</button>
+            <button type="submit">Search</button>
             <a class="button secondary" href="manage_borrows.php">Reset</a>
           </div>
       </form>
@@ -1002,5 +1035,18 @@ $selectedPendingReturnBatch = $selectedReturnBatch !== '' ? ($pendingReturnBatch
 <script src="/librarymanage/assets/librarian_manage_borrows.js"></script>
 <script src="/librarymanage/assets/librarian_borrowdesk_modal.js"></script>
 <script src="/librarymanage/assets/email_queue_worker.js"></script>
+<script>
+document.querySelectorAll('[data-auto-submit-filter]').forEach(function (form) {
+  var statusSelect = form.querySelector('select[name="status"]');
+  if (!statusSelect) {
+    return;
+  }
+
+  statusSelect.addEventListener('change', function () {
+    form.submit();
+  });
+});
+</script>
 </body>
 </html>
+

@@ -1,0 +1,14 @@
+RewriteEngine On
+
+# Redirect old visible /librarymanage URLs to the root domain paths.
+RewriteCond %{THE_REQUEST} \s/+librarymanage/([^\s?]*) [NC]
+RewriteRule ^librarymanage/(.*)$ /$1 [R=301,L]
+
+# Serve the landing page from the app subfolder when visiting the root domain.
+RewriteRule ^$ /librarymanage/index.php [L]
+
+# Internally map root-based requests to the existing /librarymanage app files.
+RewriteCond %{REQUEST_URI} !^/librarymanage/
+RewriteCond %{DOCUMENT_ROOT}/librarymanage/$1 -f [OR]
+RewriteCond %{DOCUMENT_ROOT}/librarymanage/$1 -d
+RewriteRule ^(.*)$ /librarymanage/$1 [L]

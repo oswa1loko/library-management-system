@@ -418,9 +418,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
                 </select>
                 <span class="manage-users-print-caret" aria-hidden="true"></span>
               </div>
-              <div class="manage-books-print-action">
-                <button type="button" class="button secondary" id="runBooksPrintAction">Print Now</button>
-              </div>
+              <span class="muted manage-books-print-hint">Choosing an option opens the preview first.</span>
             </div>
           </div>
           <div class="inline-actions">
@@ -588,3 +586,4 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
 <?php endif; ?>
 </body>
 </html>
+

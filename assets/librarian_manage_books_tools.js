@@ -1,13 +1,12 @@
 (function () {
   var printAction = document.getElementById('printBooksAction');
   var printShell = document.querySelector('.manage-users-print-shell');
-  var runPrintAction = document.getElementById('runBooksPrintAction');
   var filterForm = document.querySelector('.js-auto-submit-filters');
   var searchInput = document.getElementById('search');
   var catalogFilter = document.getElementById('catalog_filter');
   var autoSubmitTimer = null;
 
-  if (!printAction || !printShell || !runPrintAction) {
+  if (!printAction || !printShell) {
     return;
   }
 
@@ -57,20 +56,18 @@
     return params;
   }
 
-  printAction.addEventListener('change', syncPrintSelectState);
-  syncPrintSelectState();
+  printAction.addEventListener('change', function () {
+    syncPrintSelectState();
 
-  runPrintAction.addEventListener('click', function () {
     var action = printAction.value;
-
     if (!action) {
-      window.alert('Select a print option first.');
       return;
     }
 
     var params = buildPrintParams(action);
     window.location.href = 'manage_books.php?' + params.toString();
   });
+  syncPrintSelectState();
 
   if (searchInput) {
     searchInput.addEventListener('input', queueFilterSubmit);

@@ -7,11 +7,11 @@ $password = trim((string) ($_POST['password'] ?? ''));
 $confirmPassword = trim((string) ($_POST['confirm_password'] ?? ''));
 $error = '';
 $info = '';
-$tokenRecord = $token !== '' ? find_password_setup_token($conn, $token, 'password_reset') : null;
+$tokenRecord = $token !== '' ? find_password_setup_token($conn, $token, 'account_setup') : null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$tokenRecord) {
-        $error = 'This password reset link is invalid or has already expired. Request a new reset link from the login page.';
+        $error = 'This password setup link is invalid or has already expired. Ask the administrator to send a new invitation.';
     } elseif ($password === '' || $confirmPassword === '') {
         $error = 'Enter and confirm the new password.';
     } elseif (strlen($password) < 8) {
@@ -23,12 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn,
             (int) ($tokenRecord['user_id'] ?? 0),
             (int) ($tokenRecord['id'] ?? 0),
-            $password,
-            'password_reset'
+            $password
         );
 
         if ($completed) {
-            audit_log($conn, 'auth.password_reset.complete', [
+            audit_log($conn, 'auth.account_setup.complete', [
                 'user_id' => (int) ($tokenRecord['user_id'] ?? 0),
                 'username' => (string) ($tokenRecord['username'] ?? ''),
                 'role' => (string) ($tokenRecord['role'] ?? ''),
@@ -36,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $_SESSION['loginpage_flash'] = [
                 'type' => 'info',
-                'message' => 'Password reset successfully. You can now log in with your new password.',
+                'message' => 'Password set successfully. You can now log in with your email or username.',
             ];
 
             header('Location: ' . app_url('loginpage.php'));
@@ -48,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($tokenRecord && $info === '') {
-    $info = 'Resetting password for ' . (string) ($tokenRecord['fullname'] ?? 'your account') . ' (' . role_label((string) ($tokenRecord['role'] ?? '')) . ').';
+    $info = 'Setting up access for ' . (string) ($tokenRecord['fullname'] ?? 'your account') . ' (' . role_label((string) ($tokenRecord['role'] ?? '')) . ').';
 }
 ?>
 <!DOCTYPE html>
@@ -56,7 +55,7 @@ if ($tokenRecord && $info === '') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reset Password | Library</title>
+<title>Set Password | Library</title>
 <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css')); ?>">
 </head>
 <body class="auth-page">
@@ -64,9 +63,9 @@ if ($tokenRecord && $info === '') {
   <div class="auth-card-shell">
     <div class="split auth-split">
       <div class="auth-panel auth-panel-main">
-        <p class="muted auth-kicker">Password Recovery</p>
-        <h2 class="auth-title">Set a New Password</h2>
-        <p class="muted auth-intro">Choose a new password for your library account. After saving, use it the next time you log in.</p>
+        <p class="muted auth-kicker">Account Activation</p>
+        <h2 class="auth-title">Set Your Password</h2>
+        <p class="muted auth-intro">Finish setting up your library account by choosing a password only you know.</p>
 
         <?php if ($info !== ''): ?>
           <div class="notice info"><?php echo h($info); ?></div>
@@ -88,43 +87,43 @@ if ($tokenRecord && $info === '') {
               <input id="confirm_password" type="password" name="confirm_password" placeholder="Repeat the password" required>
             </div>
             <div class="inline-actions">
-              <button type="submit">Save New Password</button>
+              <button type="submit">Save Password</button>
               <a class="button secondary" href="<?php echo h(app_url('loginpage.php')); ?>">Back to Login</a>
             </div>
           </form>
-          <div class="footer-note">Choose at least 8 characters. After saving, use the new password on your next login.</div>
+          <div class="footer-note">Use at least 8 characters. After saving, you can log in with your email or username.</div>
         <?php else: ?>
-          <div class="notice warning">This reset link is no longer active.</div>
+          <div class="notice warning">This setup link is no longer active.</div>
           <div class="inline-actions">
-            <a class="button secondary" href="<?php echo h(app_url('forgot_password.php')); ?>">Request New Reset Link</a>
+            <a class="button secondary" href="<?php echo h(app_url('loginpage.php')); ?>">Back to Login</a>
           </div>
-          <div class="footer-note">If you still need access, request a fresh reset link from the login page.</div>
+          <div class="footer-note">If you still need access, ask the administrator to resend your invitation email.</div>
         <?php endif; ?>
       </div>
 
       <div class="auth-panel auth-panel-side">
-        <span class="chip">Secure Reset</span>
-        <h3 class="auth-side-title">Recovery notes</h3>
+        <span class="chip">Secure Onboarding</span>
+        <h3 class="auth-side-title">Why this step matters</h3>
         <div class="stack auth-role-list">
           <div class="auth-role-item auth-role-item-compact">
             <span class="auth-role-marker" aria-hidden="true"></span>
             <div>
-              <strong>Link-based recovery</strong>
-              <span>The reset link only works once and expires automatically.</span>
+              <strong>No shared default password</strong>
+              <span>Each user sets a private password instead of receiving a reusable one.</span>
             </div>
           </div>
           <div class="auth-role-item auth-role-item-compact">
             <span class="auth-role-marker" aria-hidden="true"></span>
             <div>
-              <strong>Private password setup</strong>
-              <span>No plain password is ever sent through email during recovery.</span>
+              <strong>Email-based activation</strong>
+              <span>Account invitations can be sent automatically after creation.</span>
             </div>
           </div>
           <div class="auth-role-item auth-role-item-compact">
             <span class="auth-role-marker" aria-hidden="true"></span>
             <div>
-              <strong>Works with your current login</strong>
-              <span>After saving, the new password is used for the same username or email account.</span>
+              <strong>Thesis-ready flow</strong>
+              <span>Shows a more realistic institutional onboarding workflow for demos and defense.</span>
             </div>
           </div>
         </div>

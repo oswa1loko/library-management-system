@@ -19,4 +19,9 @@
     <strong><?php echo (int) ($stats['librarians'] ?? 0); ?></strong>
     <span class="muted">Librarian accounts</span>
   </div>
+  <div class="stat-card">
+    <span class="code-pill">Inactive</span>
+    <strong><?php echo (int) ($stats['inactive_users'] ?? 0); ?></strong>
+    <span class="muted">Archived/deactivated accounts</span>
+  </div>
 </div>
