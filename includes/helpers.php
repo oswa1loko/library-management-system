@@ -27,9 +27,17 @@ function app_base_path(): string
     }
 
     if ($configured === '') {
-        $scriptName = trim((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-        if ($scriptName !== '') {
-            $scriptDir = str_replace('\\', '/', dirname($scriptName));
+        $requestPathCandidates = [
+            (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH),
+            trim((string) ($_SERVER['SCRIPT_NAME'] ?? '')),
+        ];
+
+        foreach ($requestPathCandidates as $requestPath) {
+            if ($requestPath === '') {
+                continue;
+            }
+
+            $scriptDir = str_replace('\\', '/', dirname($requestPath));
             $scriptDir = $scriptDir === '/' || $scriptDir === '.' ? '' : rtrim($scriptDir, '/');
 
             if ($scriptDir !== '' && preg_match('#/(admin|student|faculty|librarian|api/v1|includes|frontend/dist)$#', $scriptDir) === 1) {
@@ -37,6 +45,7 @@ function app_base_path(): string
             }
 
             $configured = trim($scriptDir, '/');
+            break;
         }
     }
 
