@@ -192,6 +192,8 @@ function library_rewrite_public_output(string $buffer): string
     $isLocal = in_array($host, ['localhost', '127.0.0.1', '::1'], true);
     $configuredBasePath = trim((string) ($GLOBALS['library_runtime_config']['app_base_path'] ?? ''));
     $configuredBasePath = $configuredBasePath === '' ? '' : '/' . trim($configuredBasePath, '/');
+    $faviconFile = dirname(__DIR__) . '/assets/images/regismarielogo.png';
+    $faviconVersion = is_file($faviconFile) ? '?v=' . urlencode((string) filemtime($faviconFile)) : '';
 
     if ($isLocal) {
         $buffer = strtr($buffer, [
@@ -209,9 +211,9 @@ function library_rewrite_public_output(string $buffer): string
 
         if (stripos($buffer, '<head') !== false && stripos($buffer, 'rel="icon"') === false && stripos($buffer, "rel='icon'") === false) {
             $faviconMarkup = "\n"
-                . '    <link rel="icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
-                . '    <link rel="shortcut icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n"
-                . '    <link rel="apple-touch-icon" href="/librarymanage/assets/images/regismarielogo.png" />' . "\n";
+                . '    <link rel="icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png' . $faviconVersion . '" />' . "\n"
+                . '    <link rel="shortcut icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png' . $faviconVersion . '" />' . "\n"
+                . '    <link rel="apple-touch-icon" href="/librarymanage/assets/images/regismarielogo.png' . $faviconVersion . '" />' . "\n";
             $buffer = preg_replace('/<\/head>/i', $faviconMarkup . '</head>', $buffer, 1) ?? $buffer;
         }
 
@@ -226,9 +228,9 @@ function library_rewrite_public_output(string $buffer): string
 
     if (stripos($buffer, '<head') !== false && stripos($buffer, 'rel="icon"') === false && stripos($buffer, "rel='icon'") === false) {
         $faviconMarkup = "\n"
-            . '    <link rel="icon" type="image/png" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png" />' . "\n"
-            . '    <link rel="shortcut icon" type="image/png" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png" />' . "\n"
-            . '    <link rel="apple-touch-icon" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png" />' . "\n";
+            . '    <link rel="icon" type="image/png" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png' . $faviconVersion . '" />' . "\n"
+            . '    <link rel="shortcut icon" type="image/png" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png' . $faviconVersion . '" />' . "\n"
+            . '    <link rel="apple-touch-icon" href="' . ($configuredBasePath !== '' ? $configuredBasePath : '') . '/assets/images/regismarielogo.png' . $faviconVersion . '" />' . "\n";
         $buffer = preg_replace('/<\/head>/i', $faviconMarkup . '</head>', $buffer, 1) ?? $buffer;
     }
 

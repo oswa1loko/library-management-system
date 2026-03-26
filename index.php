@@ -15,6 +15,8 @@ if ($requestDir !== '' && preg_match('#/(frontend/dist)$#', $requestDir) === 1) 
 
 $basePath = trim($requestDir, '/');
 $basePath = $basePath === '' ? '' : '/' . $basePath;
+$faviconFile = __DIR__ . '/assets/images/regismarielogo.png';
+$faviconVersion = is_file($faviconFile) ? '?v=' . urlencode((string) filemtime($faviconFile)) : '';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -27,6 +29,8 @@ if ($basePath === '') {
 } elseif ($basePath !== '/librarymanage') {
     $html = str_replace('/librarymanage/', $basePath . '/', $html);
 }
+
+$html = str_replace('/assets/images/regismarielogo.png"', '/assets/images/regismarielogo.png' . $faviconVersion . '"', $html);
 
 echo $html;
 exit;
