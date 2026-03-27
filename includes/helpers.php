@@ -594,6 +594,16 @@ function enqueue_login_otp_email_job(mysqli $conn, string $email, string $fullNa
         return false;
     }
 
+    $clearPendingStmt = $conn->prepare("
+        DELETE FROM email_jobs
+        WHERE job_type = 'login_otp'
+          AND recipient_email = ?
+          AND status = 'pending'
+    ");
+    $clearPendingStmt->bind_param('s', $payload['to']);
+    $clearPendingStmt->execute();
+    $clearPendingStmt->close();
+
     return enqueue_email_job(
         $conn,
         'login_otp',
@@ -1380,7 +1390,10 @@ function process_pending_email_jobs(mysqli $conn, int $limit = 5): array
         SELECT id, recipient_email, subject, text_body, html_body
         FROM email_jobs
         WHERE status = 'pending' AND available_at <= NOW()
-        ORDER BY CASE WHEN job_type = 'login_otp' THEN 0 ELSE 1 END ASC, id ASC
+        ORDER BY
+            CASE WHEN job_type = 'login_otp' THEN 0 ELSE 1 END ASC,
+            CASE WHEN job_type = 'login_otp' THEN id ELSE NULL END DESC,
+            CASE WHEN job_type <> 'login_otp' THEN id ELSE NULL END ASC
         LIMIT ?
     ");
     $jobsStmt->bind_param('i', $limit);
