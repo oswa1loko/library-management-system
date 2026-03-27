@@ -6457,6 +6457,9 @@ button.catalog-search-suggestion{
 }
 
 .member-book-group-title{
+  display:inline-flex;
+  width:fit-content;
+  justify-self:start;
   margin:0;
   padding:0 2px;
   font-size:0.82rem;
