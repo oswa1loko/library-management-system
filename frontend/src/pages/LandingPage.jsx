@@ -349,11 +349,11 @@ export default function LandingPage() {
           <div className="flex flex-none items-center gap-1.5 md:hidden">
             <button
               onClick={toggleTheme}
-              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
+              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-300/90 bg-slate-50 text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]" : ""} ${focusBase}`}
               aria-label={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
               aria-pressed={isLightTheme}
             >
-              <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200 ${isLightTheme ? "bg-slate-100 text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_4px_rgba(15,23,42,0.08)]" : "bg-white/8 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"}`}>
+              <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200 ${isLightTheme ? "border border-slate-300/80 bg-[linear-gradient(180deg,#ffffff,#eaf4ff)] text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_2px_6px_rgba(15,23,42,0.12)]" : "bg-white/8 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"}`}>
                 {isLightTheme ? <Sun className="h-[16px] w-[16px] rotate-[8deg] transition-transform duration-300" /> : <Moon className="h-[16px] w-[16px] -rotate-[7deg] transition-transform duration-300" />}
               </span>
             </button>
