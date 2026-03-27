@@ -6454,6 +6454,14 @@ button.catalog-search-suggestion{
 .member-book-group{
   display:grid;
   gap:12px;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+  outline:none;
+  overflow:visible;
 }
 
 .member-book-group-title{
