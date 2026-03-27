@@ -7465,16 +7465,7 @@ body.modal-open{
 }
 
 .ui-select-shell::after{
-  content:"";
-  position:absolute;
-  top:7px;
-  bottom:7px;
-  right:42px;
-  width:1px;
-  background:currentColor;
-  opacity:0.12;
-  pointer-events:none;
-  transition:opacity .2s ease;
+  content:none;
 }
 
 .toolbar .ui-select-shell,
@@ -7556,16 +7547,7 @@ body.modal-open{
 }
 
 .manage-users-print-shell::after{
-  content:"";
-  position:absolute;
-  top:7px;
-  bottom:7px;
-  right:42px;
-  width:1px;
-  background:currentColor;
-  opacity:0.12;
-  pointer-events:none;
-  transition:opacity .2s ease;
+  content:none;
 }
 
 .manage-users-stats .stat-card{
