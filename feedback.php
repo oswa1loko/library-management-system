@@ -10,19 +10,64 @@ $formData = [
     'role' => 'guest',
     'message' => '',
 ];
+$feedbackFormStartedAt = (int) ($_SESSION['feedback_form_started_at'] ?? time());
+if ($feedbackFormStartedAt <= 0) {
+    $feedbackFormStartedAt = time();
+}
+$_SESSION['feedback_form_started_at'] = $feedbackFormStartedAt;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formData['fullname'] = trim($_POST['fullname'] ?? '');
     $formData['email'] = trim($_POST['email'] ?? '');
     $formData['role'] = trim($_POST['role'] ?? 'guest');
     $formData['message'] = trim($_POST['message'] ?? '');
+    $website = trim($_POST['website'] ?? '');
+    $submittedStartedAt = (int) ($_POST['form_started_at'] ?? 0);
+    $secondsToSubmit = max(0, time() - $submittedStartedAt);
 
     $allowedRoles = ['guest', 'student', 'faculty', 'librarian', 'admin'];
     if (!in_array($formData['role'], $allowedRoles, true)) {
         $formData['role'] = 'guest';
     }
 
-    if ($formData['fullname'] === '') {
+    $messageLower = strtolower($formData['message']);
+    $spamIndicators = [
+        'https://',
+        'http://',
+        'www.',
+        '.info',
+        '.zone',
+        'google search index',
+        'search results',
+        'beta period',
+        'invite link',
+        'social media shoutouts',
+        'newsletter mentions',
+        'counter flyers',
+        'promotions',
+    ];
+    $matchedSpamSignals = 0;
+    foreach ($spamIndicators as $indicator) {
+        if ($indicator !== '' && strpos($messageLower, $indicator) !== false) {
+            $matchedSpamSignals++;
+        }
+    }
+    preg_match_all('~https?://|www\.|[a-z0-9-]+\.(com|net|org|info|biz|co|io|zone|online|site)\b~i', $formData['message'], $linkMatches);
+    $detectedLinkCount = count($linkMatches[0] ?? []);
+
+    if ($website !== '') {
+        $msg = 'Unable to submit your complaint right now.';
+        $msgType = 'error';
+    } elseif ($submittedStartedAt <= 0 || $submittedStartedAt !== $feedbackFormStartedAt) {
+        $msg = 'Please reload the page and try again.';
+        $msgType = 'error';
+    } elseif ($secondsToSubmit < 4) {
+        $msg = 'Please take a little more time to describe your concern clearly before submitting.';
+        $msgType = 'error';
+    } elseif ($detectedLinkCount >= 2 || $matchedSpamSignals >= 2) {
+        $msg = 'External promotional links are not allowed in feedback submissions.';
+        $msgType = 'error';
+    } elseif ($formData['fullname'] === '') {
         $msg = 'Full name is required.';
         $msgType = 'error';
     } elseif ($formData['email'] === '') {
@@ -69,6 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'role' => 'guest',
                 'message' => '',
             ];
+            $_SESSION['feedback_form_started_at'] = time();
+            $feedbackFormStartedAt = (int) $_SESSION['feedback_form_started_at'];
         } else {
             $msg = 'Unable to submit your complaint right now.';
             $msgType = 'error';
@@ -529,6 +576,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="post" class="stack flow-top-md feedback-form">
+          <input type="hidden" name="form_started_at" value="<?php echo (int) $feedbackFormStartedAt; ?>">
+          <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
+            <label for="website">Website</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
           <div class="grid form">
             <div>
               <label for="fullname">Full Name</label>
