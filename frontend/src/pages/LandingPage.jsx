@@ -701,7 +701,7 @@ export default function LandingPage() {
                 <div className="p-5 sm:p-6 xl:p-7">
                   <p className="text-[0.62rem] uppercase tracking-[0.24em] text-cyan-300 [html[data-theme='light']_&]:text-sky-700 sm:text-xs">Development Team</p>
                   <p className="mt-2 text-[1.12rem] font-semibold text-slate-50 [html[data-theme='light']_&]:text-slate-900 sm:text-[1.22rem]">{builder.name}</p>
-                  <div className="mt-2 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-cyan-100 [html[data-theme='light']_&]:border-sky-200 [html[data-theme='light']_&]:bg-sky-100 [html[data-theme='light']_&]:text-sky-800">
+                  <div className="mt-2 inline-flex rounded-full border border-cyan-300/28 bg-cyan-300/14 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] [html[data-theme='light']_&]:border-sky-200 [html[data-theme='light']_&]:bg-sky-100 [html[data-theme='light']_&]:text-sky-800 [html[data-theme='light']_&]:shadow-none">
                     {builder.badge}
                   </div>
                   <p className="mt-3 text-[0.95rem] font-medium leading-6 text-cyan-100 [html[data-theme='light']_&]:text-sky-700">{builder.role}</p>
