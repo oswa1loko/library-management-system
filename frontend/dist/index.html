@@ -2568,9 +2568,12 @@
       <script>
         (function () {
           const root = document.documentElement;
+          const body = document.body;
 
           function syncTeamCardTheme() {
-            const isLight = root.getAttribute("data-theme") === "light";
+            const isLight =
+              root.getAttribute("data-theme") === "light" ||
+              (body && body.classList.contains("light"));
             document.querySelectorAll(".team-member-card").forEach((card) => {
               const media = card.querySelector(".team-member-media");
               const overlay = media ? media.querySelector("div") : null;
@@ -2638,6 +2641,12 @@
             attributes: true,
             attributeFilter: ["data-theme"],
           });
+          if (body) {
+            new MutationObserver(syncTeamCardTheme).observe(body, {
+              attributes: true,
+              attributeFilter: ["class"],
+            });
+          }
         })();
       </script>
 
