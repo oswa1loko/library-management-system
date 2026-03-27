@@ -72,6 +72,7 @@ function library_open_connection(): mysqli
     }
 
     $db->set_charset("utf8mb4");
+    $db->query("SET time_zone = '+08:00'");
 
     return $db;
 }
