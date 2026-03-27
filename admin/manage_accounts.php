@@ -408,6 +408,7 @@ $printUserIds = array_values(array_filter(array_map('intval', explode(',', (stri
 $createData = ['fullname' => '', 'email' => '', 'username' => '', 'role' => 'student', 'course' => ''];
 $bulkData = trim((string) ($_POST['bulk_rows'] ?? ''));
 $queuedEmailTarget = 0;
+$activeProvisioningTab = 'single';
 
 if (isset($_GET['updated'])) {
     manage_accounts_push_notice($noticeItems, 'success', 'User updated successfully.');
@@ -494,6 +495,7 @@ if (isset($_POST['send_invite'])) {
 }
 
 if (isset($_POST['create'])) {
+    $activeProvisioningTab = 'single';
     $createData = manage_accounts_create_payload($_POST);
     $createResult = manage_accounts_create_invited_user($conn, $createData, $rolesAllowed, $courseOptions);
 
@@ -519,6 +521,7 @@ if (isset($_POST['create'])) {
 }
 
 if (isset($_POST['bulk_create'])) {
+    $activeProvisioningTab = 'bulk';
     $parsedBulk = manage_accounts_parse_bulk_rows($bulkData);
     foreach ((array) ($parsedBulk['errors'] ?? []) as $bulkError) {
         manage_accounts_push_notice($noticeItems, 'error', (string) $bulkError);

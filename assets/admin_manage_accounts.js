@@ -8,6 +8,7 @@
   var checks = Array.prototype.slice.call(document.querySelectorAll('.user-print-check'));
   var deleteForms = Array.prototype.slice.call(document.querySelectorAll('.js-confirm-delete-user'));
   var createForm = document.querySelector('.manage-users-create-form');
+  var provisioningShell = document.querySelector('.js-manage-users-provisioning');
   var autoSubmitTimer = null;
 
   function submitFilters() {
@@ -158,5 +159,37 @@
       roleSelect.addEventListener('change', syncProgramFieldState);
       syncProgramFieldState();
     }
+  }
+
+  if (provisioningShell) {
+    var tabButtons = Array.prototype.slice.call(provisioningShell.querySelectorAll('[data-tab-trigger]'));
+    var tabPanels = Array.prototype.slice.call(provisioningShell.querySelectorAll('[data-tab-panel]'));
+
+    var setActiveProvisioningTab = function (tabId) {
+      var activeId = tabId === 'bulk' ? 'bulk' : 'single';
+
+      tabButtons.forEach(function (button) {
+        var isActive = button.getAttribute('data-tab-trigger') === activeId;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.tabIndex = isActive ? 0 : -1;
+      });
+
+      tabPanels.forEach(function (panel) {
+        var isActive = panel.getAttribute('data-tab-panel') === activeId;
+        panel.classList.toggle('is-active', isActive);
+        panel.hidden = !isActive;
+      });
+
+      provisioningShell.setAttribute('data-active-tab', activeId);
+    };
+
+    tabButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        setActiveProvisioningTab(button.getAttribute('data-tab-trigger'));
+      });
+    });
+
+    setActiveProvisioningTab(provisioningShell.getAttribute('data-active-tab') || 'single');
   }
 })();

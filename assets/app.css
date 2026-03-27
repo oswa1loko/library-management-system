@@ -7593,11 +7593,64 @@ body.modal-open{
   margin-bottom:2px;
 }
 
+.manage-users-provisioning{
+  margin-top:18px;
+  display:grid;
+  gap:18px;
+}
+
+.manage-users-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.manage-users-tab{
+  min-height:40px;
+  padding:0 16px;
+  border-radius:999px;
+  border:1px solid rgba(143,211,255,0.12);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+    rgba(255,255,255,0.02);
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.01em;
+  box-shadow:none;
+}
+
+.manage-users-tab:hover,
+.manage-users-tab:focus-visible{
+  transform:translateY(-1px);
+  border-color:rgba(143,211,255,0.22);
+  box-shadow:0 10px 18px rgba(0,0,0,0.08);
+}
+
+.manage-users-tab.is-active{
+  border-color:rgba(143,211,255,0.26);
+  background:linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color:var(--brand-ink);
+  box-shadow:0 14px 24px rgba(71,180,255,0.22);
+}
+
+.manage-users-tab-panel[hidden]{
+  display:none !important;
+}
+
+.manage-users-tab-panel{
+  animation:fade-up .28s var(--ease-standard);
+}
+
 .manage-users-create-grid{
   display:grid;
   grid-template-columns:minmax(0, 1.4fr) minmax(320px, .95fr);
   gap:22px;
   align-items:start;
+}
+
+.manage-users-create-grid-single{
+  grid-template-columns:minmax(0, 1fr);
 }
 
 .manage-users-create .grid.form{
@@ -7643,6 +7696,7 @@ body.modal-open{
 
 .manage-users-bulk-form{
   min-width:0;
+  max-width:100%;
 }
 
 .manage-users-bulk-head{
@@ -7733,6 +7787,11 @@ body.modal-open{
 }
 
 @media (max-width: 720px){
+  .manage-users-tabs{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+  }
+
   .manage-users-create-form{
     grid-template-columns:minmax(0, 1fr);
   }
@@ -7917,6 +7976,28 @@ body.modal-open{
     rgba(255,255,255,0.98);
   border-color:rgba(47,109,255,0.1);
   box-shadow:0 12px 22px rgba(34,63,112,0.05);
+}
+
+:root[data-theme="light"] .manage-users-tab{
+  border-color:rgba(47,109,255,0.12);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,246,255,0.94)),
+    rgba(255,255,255,0.92);
+  color:#516987;
+  box-shadow:0 8px 18px rgba(34,63,112,0.06);
+}
+
+:root[data-theme="light"] .manage-users-tab:hover,
+:root[data-theme="light"] .manage-users-tab:focus-visible{
+  border-color:rgba(47,109,255,0.2);
+  box-shadow:0 10px 18px rgba(34,63,112,0.08);
+}
+
+:root[data-theme="light"] .manage-users-tab.is-active{
+  border-color:rgba(47,109,255,0.22);
+  background:linear-gradient(135deg, #2f6dff, #5a96ff);
+  color:#f8fbff;
+  box-shadow:0 14px 24px rgba(47,109,255,0.2);
 }
 
 :root[data-theme="light"] .manage-users-summary .chip{
