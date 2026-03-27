@@ -7443,11 +7443,16 @@ body.modal-open{
   appearance:none;
   -webkit-appearance:none;
   -moz-appearance:none;
+  background-image:none !important;
   cursor:pointer;
   font-weight:600;
   position:relative;
   z-index:1;
   transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease, background .2s ease, color .2s ease;
+}
+
+.ui-select::-ms-expand{
+  display:none;
 }
 
 .ui-select-caret{
