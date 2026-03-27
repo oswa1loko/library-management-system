@@ -2565,6 +2565,82 @@
         </div>
       </section>
 
+      <script>
+        (function () {
+          const root = document.documentElement;
+
+          function syncTeamCardTheme() {
+            const isLight = root.getAttribute("data-theme") === "light";
+            document.querySelectorAll(".team-member-card").forEach((card) => {
+              const media = card.querySelector(".team-member-media");
+              const overlay = media ? media.querySelector("div") : null;
+              const sectionNote = card.querySelector(".section-note");
+              const name = card.querySelector("h3");
+              const badge = name ? name.nextElementSibling : null;
+              const role = badge ? badge.nextElementSibling : null;
+              const note = role ? role.nextElementSibling : null;
+
+              card.style.border = isLight
+                ? "1px solid rgba(191,219,254,0.9)"
+                : "1px solid rgba(125,211,252,0.2)";
+              card.style.background = isLight
+                ? "linear-gradient(135deg,rgba(255,255,255,0.998),rgba(246,250,255,0.995) 48%,rgba(236,245,255,0.99))"
+                : "linear-gradient(135deg,rgba(7,16,28,0.96),rgba(10,24,40,0.9) 48%,rgba(8,18,30,0.96))";
+              card.style.boxShadow = isLight
+                ? "0 18px 34px -24px rgba(14,116,144,0.12)"
+                : "";
+
+              if (media) {
+                media.style.borderBottom = isLight
+                  ? "1px solid rgba(191,219,254,0.8)"
+                  : "1px solid rgba(255,255,255,0.1)";
+              }
+
+              if (overlay) {
+                overlay.style.background = isLight
+                  ? "linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.08) 36%,rgba(233,244,255,0.24))"
+                  : "linear-gradient(180deg,rgba(5,10,18,0.06),rgba(5,10,18,0.16) 38%,rgba(5,10,18,0.68))";
+              }
+
+              if (sectionNote) {
+                sectionNote.style.color = isLight ? "#0284c7" : "#67e8f9";
+              }
+
+              if (name) {
+                name.style.color = isLight ? "#0f172a" : "#ffffff";
+              }
+
+              if (badge) {
+                badge.style.border = isLight
+                  ? "1px solid rgba(191,219,254,0.9)"
+                  : "1px solid rgba(186,230,253,0.35)";
+                badge.style.background = isLight
+                  ? "rgba(240,249,255,0.96)"
+                  : "rgba(186,230,253,0.16)";
+                badge.style.color = isLight ? "#0369a1" : "#f8fdff";
+                badge.style.boxShadow = isLight
+                  ? "inset 0 1px 0 rgba(255,255,255,0.75)"
+                  : "inset 0 1px 0 rgba(255,255,255,0.08)";
+              }
+
+              if (role) {
+                role.style.color = isLight ? "#1e293b" : "#e0f2fe";
+              }
+
+              if (note) {
+                note.style.color = isLight ? "#475569" : "rgba(241,245,249,0.95)";
+              }
+            });
+          }
+
+          syncTeamCardTheme();
+          new MutationObserver(syncTeamCardTheme).observe(root, {
+            attributes: true,
+            attributeFilter: ["data-theme"],
+          });
+        })();
+      </script>
+
       <section id="contact" class="shell contact-panel">
         <div class="section-note">Contact</div>
         <h2>Reach the campus and library support team through the official public channels.</h2>
