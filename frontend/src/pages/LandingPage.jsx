@@ -705,7 +705,7 @@ export default function LandingPage() {
                     {builder.badge}
                   </div>
                   <p className="mt-3 text-[0.95rem] font-medium leading-6 text-cyan-100 [html[data-theme='light']_&]:text-sky-700">{builder.role}</p>
-                  <p className="mt-3 text-[0.92rem] leading-7 text-slate-200/90 [html[data-theme='light']_&]:text-slate-600">{builder.note}</p>
+                  <p className="mt-3 text-[0.92rem] leading-7 text-slate-100/92 [html[data-theme='light']_&]:text-slate-600">{builder.note}</p>
                 </div>
               </article>
             ))}
