@@ -66,7 +66,7 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
         SELECT br.user_id, br.book_id, br.due_date, br.status, u.role
         FROM borrows br
         JOIN users u ON u.id = br.user_id
-        WHERE id = ?
+        WHERE br.id = ?
         LIMIT 1
     ");
     $borrowStmt->bind_param('i', $borrowId);
