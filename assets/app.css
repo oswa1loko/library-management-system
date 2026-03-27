@@ -10853,6 +10853,14 @@ body.ebook-reader-screen {
     color: #7f1717;
   }
 
+  :root[data-theme="light"] .member-dashboard-overview .stat-card,
+  :root[data-theme="light"] .member-workspace-overview .stat-card {
+    min-height: 128px !important;
+    height: 128px !important;
+    padding: 18px 16px !important;
+    border-radius: 18px !important;
+  }
+
   :root[data-theme="light"] .member-mobile-header .member-mobile-nav-actions > .student-mobile-notification-shortcut,
   :root[data-theme="light"] .member-mobile-header .member-mobile-nav-actions > .member-mobile-theme-toggle,
   :root[data-theme="light"] .member-mobile-header .member-mobile-nav-actions > .member-mobile-nav-toggle {
@@ -11076,6 +11084,14 @@ body.ebook-reader-screen {
   :root[data-theme="light"] .member-workspace-overview .stat-card,
   :root[data-theme="light"] .member-dashboard-grid .panel {
     padding: 15px;
+  }
+
+  :root[data-theme="light"] .member-dashboard-overview .stat-card,
+  :root[data-theme="light"] .member-workspace-overview .stat-card {
+    min-height: 116px !important;
+    height: 116px !important;
+    padding: 15px !important;
+    border-radius: 18px !important;
   }
 
   .member-main > .topbar {
