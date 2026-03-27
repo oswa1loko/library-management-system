@@ -106,6 +106,7 @@ $notificationsStmt->execute();
 $notificationsResult = $notificationsStmt->get_result();
 $storedNotifications = [];
 while ($notificationsResult && ($row = $notificationsResult->fetch_assoc())) {
+    $destination = notification_destination_for_viewer('student', $row);
     $storedNotifications[] = [
         'id' => (int) ($row['id'] ?? 0),
         'title' => (string) ($row['title'] ?? ''),
@@ -114,6 +115,8 @@ while ($notificationsResult && ($row = $notificationsResult->fetch_assoc())) {
         'is_read' => (int) ($row['is_read'] ?? 0) === 1,
         'created_at' => format_display_datetime((string) ($row['created_at'] ?? ''), '-'),
         'kind' => 'notification',
+        'destination_url' => (string) ($destination['url'] ?? ''),
+        'destination_label' => (string) ($destination['label'] ?? ''),
     ];
 }
 $notificationsStmt->close();
@@ -139,6 +142,8 @@ foreach ($dueSoonBooks as $dueBook) {
         'is_read' => $isRead,
         'created_at' => 'Due soon',
         'kind' => 'due_soon',
+        'destination_url' => '/librarymanage/student/borrow_return.php',
+        'destination_label' => 'Open borrow status',
     ];
 }
 
@@ -163,6 +168,8 @@ foreach ($overdueBooks as $dueBook) {
         'is_read' => $isRead,
         'created_at' => 'Overdue',
         'kind' => 'overdue',
+        'destination_url' => '/librarymanage/student/borrow_return.php',
+        'destination_label' => 'Open borrow status',
     ];
 }
 

@@ -243,6 +243,14 @@
 
       var readChip = event.target.closest('.student-notification-unread');
       if (!readChip) {
+        var notificationItem = event.target.closest('.student-notification-item[data-destination-url]');
+        if (!notificationItem) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        openStudentNotificationDestination(panel, notificationItem);
         return;
       }
 
@@ -276,6 +284,9 @@
       var severityClass = item.severity === 'critical'
         ? 'unpaid'
         : (item.severity === 'warning' ? 'due' : 'approved');
+      var destinationUrl = String(item.destination_url || '');
+      var destinationLabel = String(item.destination_label || '');
+      var isLinked = destinationUrl !== '';
       var unreadChip = item.is_read
         ? '<span class="chip student-notification-read">Read</span>'
         : (
@@ -284,17 +295,51 @@
             : '<span class="chip">Unread</span>'
         );
       return (
-        '<div class="student-notification-item">' +
+        '<div class="student-notification-item' + (isLinked ? ' is-linked' : '') + '"' +
+          (isLinked ? ' data-destination-url="' + escapeHtml(destinationUrl) + '"' : '') +
+          (Number(item.id || 0) > 0 ? ' data-notification-id="' + Number(item.id || 0) + '"' : '') +
+          ' data-notification-unread="' + (item.is_read ? 'false' : 'true') + '">' +
           '<div class="student-notification-title">' +
             '<span class="status-dot ' + severityClass + '"></span>' +
             '<strong>' + escapeHtml(item.title || 'Notification') + '</strong>' +
             unreadChip +
           '</div>' +
           '<div class="student-notification-copy">' + escapeHtml(item.body || '') + '</div>' +
-          '<div class="student-notification-meta">' + escapeHtml(item.created_at || '-') + '</div>' +
+          '<div class="student-notification-meta">' +
+            '<span>' + escapeHtml(item.created_at || '-') + '</span>' +
+            (isLinked ? '<span class="student-notification-link-hint">' + escapeHtml(destinationLabel || 'Open item') + '</span>' : '') +
+          '</div>' +
         '</div>'
       );
     }).join('');
+  }
+
+  function openStudentNotificationDestination(panel, notificationItem) {
+    if (!notificationItem) {
+      return;
+    }
+
+    var destinationUrl = notificationItem.getAttribute('data-destination-url') || '';
+    if (!destinationUrl) {
+      return;
+    }
+
+    var notificationId = Number(notificationItem.getAttribute('data-notification-id') || 0);
+    var isUnread = notificationItem.getAttribute('data-notification-unread') === 'true';
+    var navigate = function () {
+      window.location.assign(destinationUrl);
+    };
+
+    if (isUnread && notificationId > 0) {
+      markStudentNotificationRead(panel, notificationId)
+        .catch(function () {
+          // Navigate even if the read update fails so the click still feels reliable.
+        })
+        .finally(navigate);
+      return;
+    }
+
+    navigate();
   }
 
   function updateStudentNotificationBadges(unreadCount) {

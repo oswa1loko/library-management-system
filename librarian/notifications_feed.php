@@ -73,6 +73,7 @@ $notifications = $conn->query("
 
 $items = [];
 while ($notifications instanceof mysqli_result && ($row = $notifications->fetch_assoc())) {
+    $destination = notification_destination_for_viewer('librarian', $row);
     $items[] = [
         'id' => (int) ($row['id'] ?? 0),
         'title' => (string) ($row['title'] ?? ''),
@@ -81,6 +82,8 @@ while ($notifications instanceof mysqli_result && ($row = $notifications->fetch_
         'is_read' => (int) ($row['is_read'] ?? 0) === 1,
         'created_at' => format_display_datetime((string) ($row['created_at'] ?? ''), '-'),
         'kind' => 'notification',
+        'destination_url' => (string) ($destination['url'] ?? ''),
+        'destination_label' => (string) ($destination['label'] ?? ''),
     ];
 }
 

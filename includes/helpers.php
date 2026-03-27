@@ -1966,6 +1966,78 @@ function create_notification(mysqli $conn, string $role, string $title, string $
     $stmt->close();
 }
 
+function notification_destination_for_viewer(string $viewerRole, array $notification): array
+{
+    $viewerRole = trim(strtolower($viewerRole));
+    $title = trim((string) ($notification['title'] ?? ''));
+    $body = trim((string) ($notification['body'] ?? ''));
+    $kind = trim((string) ($notification['kind'] ?? 'notification'));
+    $titleLower = strtolower($title);
+    $bodyLower = strtolower($body);
+
+    $url = '';
+    $label = '';
+
+    if ($viewerRole === 'student') {
+        if ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
+            $url = '/librarymanage/student/borrow_return.php';
+            $label = 'Open borrow status';
+        } elseif (strpos($titleLower, 'payment') !== false) {
+            $url = '/librarymanage/student/payment_upload.php';
+            $label = 'Open payments';
+        } else {
+            $url = '/librarymanage/student/notifications.php';
+            $label = 'Open notifications';
+        }
+    } elseif ($viewerRole === 'faculty') {
+        if ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
+            $url = '/librarymanage/faculty/borrow_return.php';
+            $label = 'Open borrow status';
+        } elseif (strpos($titleLower, 'payment') !== false) {
+            $url = '/librarymanage/faculty/payment_upload.php';
+            $label = 'Open payments';
+        } else {
+            $url = '/librarymanage/faculty/dashboard.php';
+            $label = 'Open dashboard';
+        }
+    } elseif ($viewerRole === 'admin') {
+        if (strpos($titleLower, 'payment') !== false) {
+            $url = '/librarymanage/admin/payments_records.php';
+            $label = 'Open payments';
+        } elseif (strpos($titleLower, 'complaint') !== false) {
+            $url = '/librarymanage/admin/complaints_records.php';
+            $label = 'Open complaints';
+        } elseif (strpos($titleLower, 'announcement') !== false) {
+            $url = '/librarymanage/admin/announcements.php';
+            $label = 'Open announcements';
+        } elseif (strpos($titleLower, 'account') !== false || strpos($bodyLower, 'account') !== false) {
+            $url = '/librarymanage/admin/manage_accounts.php';
+            $label = 'Open accounts';
+        } else {
+            $url = '/librarymanage/admin/notifications.php';
+            $label = 'Open notifications';
+        }
+    } elseif ($viewerRole === 'librarian') {
+        if (
+            strpos($titleLower, 'borrow') !== false
+            || strpos($titleLower, 'return') !== false
+            || strpos($bodyLower, 'borrow') !== false
+            || strpos($bodyLower, 'return') !== false
+        ) {
+            $url = '/librarymanage/librarian/manage_borrows.php';
+            $label = 'Open borrow workflow';
+        } else {
+            $url = '/librarymanage/librarian/manage_borrows.php';
+            $label = 'Open notifications';
+        }
+    }
+
+    return [
+        'url' => $url,
+        'label' => $label,
+    ];
+}
+
 function ensure_member_api_token(mysqli $conn, int $userId, string $label = 'member-ui', int $expiresDays = 30): string
 {
     $key = 'member_api_token_' . $userId;
