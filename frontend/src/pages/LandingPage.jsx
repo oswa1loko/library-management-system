@@ -349,11 +349,11 @@ export default function LandingPage() {
           <div className="flex flex-none items-center gap-1.5 md:hidden">
             <button
               onClick={toggleTheme}
-              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-300 bg-[linear-gradient(180deg,#f8fbff,#e8f1f8)] text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.12),inset_0_1px_0_rgba(255,255,255,0.98)]" : ""} ${focusBase}`}
+              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
               aria-label={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
               aria-pressed={isLightTheme}
             >
-              <span className={`inline-flex items-center justify-center rounded-full transition-colors duration-200 ${isLightTheme ? "h-[29px] w-[29px] border border-sky-200 bg-[linear-gradient(180deg,#ffffff,#d8ebfa)] text-sky-700 shadow-[0_0_0_1px_rgba(255,255,255,0.95),inset_0_1px_0_rgba(255,255,255,0.98),0_3px_8px_rgba(15,23,42,0.18)]" : "h-7 w-7 bg-white/8 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"}`}>
+              <span className={`inline-flex items-center justify-center rounded-full transition-colors duration-200 ${isLightTheme ? "h-7 w-7 border border-slate-200 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_1px_3px_rgba(15,23,42,0.12)]" : "h-7 w-7 bg-white/8 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"}`}>
                 {isLightTheme ? <Sun className="h-[16px] w-[16px] rotate-[8deg] transition-transform duration-300" /> : <Moon className="h-[16px] w-[16px] -rotate-[7deg] transition-transform duration-300" />}
               </span>
             </button>
