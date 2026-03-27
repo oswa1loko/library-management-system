@@ -6514,6 +6514,10 @@ button.catalog-search-suggestion{
   box-shadow:0 14px 28px rgba(2, 10, 24, 0.3);
 }
 
+.member-book-search-suggestions[hidden]{
+  display:none !important;
+}
+
 .member-book-search-suggestion,
 button.member-book-search-suggestion{
   width:100%;
