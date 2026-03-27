@@ -655,19 +655,19 @@ export default function LandingPage() {
         </RevealSection>
 
         <RevealSection delay={118} className="grid gap-3 sm:gap-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
-          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[2rem] sm:p-7 dark:border-white/10 dark:bg-white/5">
+          <div className="min-w-0 rounded-[1.35rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] p-[18px] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] [html[data-theme='light']_&]:border-sky-200/75 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(250,253,255,0.99),rgba(234,244,255,0.95))] [html[data-theme='light']_&]:shadow-[0_20px_36px_-24px_rgba(14,116,144,0.16)] sm:rounded-[2rem] sm:p-7 dark:border-white/10 dark:bg-white/5">
             <p className="text-xs uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Development Team</p>
-            <h2 className="mt-2 max-w-[14ch] text-[2rem] font-semibold tracking-tight text-white dark:text-white sm:text-3xl">Built by the development team behind the Regis Marie College Library Management System.</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+            <h2 className="mt-2 max-w-[14ch] text-[2rem] font-semibold tracking-tight text-white dark:text-white [html[data-theme='light']_&]:text-slate-900 sm:text-3xl">Built by the development team behind the Regis Marie College Library Management System.</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82 [html[data-theme='light']_&]:text-slate-600">
               This project was designed and developed to support library operations through a more organized and user-friendly digital platform.
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82 [html[data-theme='light']_&]:text-slate-600">
               The team contributed across development, system analysis, interface design, and documentation to deliver a school-aligned solution for catalog access, borrowing, notifications, and record monitoring.
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82 [html[data-theme='light']_&]:text-slate-600">
               The finished system reflects a shared effort to make daily library processes easier to manage for administrators, librarians, students, and faculty members.
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
+            <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82 [html[data-theme='light']_&]:text-slate-600">
               Beyond implementation, the team also focused on presentation quality, usability, and workflow clarity so the platform would be practical for deployment and strong enough for academic presentation.
             </p>
             <div className="mt-6 rounded-[1.15rem] border border-cyan-300/12 bg-[linear-gradient(180deg,rgba(11,25,39,0.78),rgba(7,18,30,0.92))] p-4 shadow-[0_18px_36px_-24px_rgba(0,0,0,0.5)] [html[data-theme='light']_&]:border-sky-200/80 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(232,244,255,0.94))] [html[data-theme='light']_&]:shadow-[0_18px_30px_-24px_rgba(14,116,144,0.2)]">
@@ -692,20 +692,20 @@ export default function LandingPage() {
             {builderProfiles.map((builder) => (
               <article
                 key={builder.name}
-                className="overflow-hidden rounded-[1.2rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] sm:rounded-[1.6rem] xl:grid xl:grid-cols-[220px_minmax(0,1fr)] xl:items-stretch dark:border-white/10 dark:bg-white/5"
+                className="overflow-hidden rounded-[1.2rem] border border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(8,18,30,0.14),rgba(8,18,30,0.82))] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/30 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] [html[data-theme='light']_&]:border-sky-200/80 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(251,253,255,0.995),rgba(235,244,252,0.96))] [html[data-theme='light']_&]:shadow-[0_18px_34px_-24px_rgba(14,116,144,0.16)] sm:rounded-[1.6rem] xl:grid xl:grid-cols-[220px_minmax(0,1fr)] xl:items-stretch dark:border-white/10 dark:bg-white/5"
               >
                 <div className="relative h-[220px] overflow-hidden sm:h-[240px] xl:h-full xl:min-h-[224px]">
                   <img src={builder.src} alt={builder.name} className="h-full w-full object-cover" style={{ objectPosition: builder.position }} />
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,19,28,0.02),rgba(9,19,28,0.62))]" />
                 </div>
                 <div className="p-5 sm:p-6 xl:p-7">
-                  <p className="text-[0.62rem] uppercase tracking-[0.24em] text-cyan-300 sm:text-xs">Development Team</p>
-                  <p className="mt-2 text-[1.12rem] font-semibold text-white sm:text-[1.22rem]">{builder.name}</p>
-                  <div className="mt-2 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-cyan-100">
+                  <p className="text-[0.62rem] uppercase tracking-[0.24em] text-cyan-300 [html[data-theme='light']_&]:text-sky-700 sm:text-xs">Development Team</p>
+                  <p className="mt-2 text-[1.12rem] font-semibold text-white [html[data-theme='light']_&]:text-slate-900 sm:text-[1.22rem]">{builder.name}</p>
+                  <div className="mt-2 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-cyan-100 [html[data-theme='light']_&]:border-sky-200 [html[data-theme='light']_&]:bg-sky-100 [html[data-theme='light']_&]:text-sky-800">
                     {builder.badge}
                   </div>
-                  <p className="mt-3 text-[0.95rem] font-medium leading-6 text-cyan-200">{builder.role}</p>
-                  <p className="mt-3 text-[0.92rem] leading-7 text-slate-200/90">{builder.note}</p>
+                  <p className="mt-3 text-[0.95rem] font-medium leading-6 text-cyan-200 [html[data-theme='light']_&]:text-sky-700">{builder.role}</p>
+                  <p className="mt-3 text-[0.92rem] leading-7 text-slate-200/90 [html[data-theme='light']_&]:text-slate-600">{builder.note}</p>
                 </div>
               </article>
             ))}
