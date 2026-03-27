@@ -293,7 +293,7 @@ export default function LandingPage() {
               className="h-11 w-11 rounded-full border border-[rgba(143,211,255,0.24)] object-cover shadow-[0_10px_24px_rgba(8,24,44,0.26)] transition-transform duration-300 group-hover:scale-[1.03] md:h-[54px] md:w-[54px] md:border-cyan-400/40 md:shadow-[0_14px_28px_rgba(34,83,126,0.24)]"
             />
             <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-116px)]">
-              <p className="truncate text-[0.64rem] leading-none font-semibold uppercase tracking-[0.18em] text-cyan-300/88 md:text-[0.76rem] md:tracking-[0.28em]">
+              <p className="truncate text-[0.64rem] leading-none font-semibold uppercase tracking-[0.18em] text-cyan-300/88 [html[data-theme='light']_&]:text-sky-700 md:text-[0.76rem] md:tracking-[0.28em]">
                 RMC
               </p>
               <p className="truncate text-[1rem] leading-[1.08] font-semibold tracking-[-0.01em] text-[#f4f8ff] md:text-[1.1rem]">
@@ -353,7 +353,9 @@ export default function LandingPage() {
               aria-label={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
               aria-pressed={isLightTheme}
             >
-              {isLightTheme ? <Sun className="h-[18px] w-[18px] translate-x-px rotate-[8deg] transition-transform duration-300" /> : <Moon className="h-[18px] w-[18px] -translate-x-px -rotate-[7deg] transition-transform duration-300" />}
+              <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200 ${isLightTheme ? "bg-slate-100 text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_4px_rgba(15,23,42,0.08)]" : "bg-white/8 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"}`}>
+                {isLightTheme ? <Sun className="h-[16px] w-[16px] rotate-[8deg] transition-transform duration-300" /> : <Moon className="h-[16px] w-[16px] -rotate-[7deg] transition-transform duration-300" />}
+              </span>
             </button>
             <button
               onClick={() => setMenuOpen((value) => !value)}
