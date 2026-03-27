@@ -9174,6 +9174,7 @@ body.ebook-reader-screen {
   .member-dashboard-overview .stat-card,
   .member-workspace-overview .stat-card {
     min-height: 128px;
+    height: 128px;
     padding: 18px 16px;
   }
 
@@ -11108,6 +11109,7 @@ body.ebook-reader-screen {
   .member-dashboard-overview .stat-card,
   .member-workspace-overview .stat-card {
     min-height: 116px;
+    height: 116px;
   }
 
   .activity-item {
