@@ -73,7 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $queued = enqueue_login_otp_email_job($conn, $pendingEmail, $pendingFullName, $pendingRole, $issued['code']);
 
                     if ($queued) {
-                        process_pending_email_jobs($conn, 2);
                         $_SESSION['pending_login_otp']['otp_attempts'] = 0;
                         loginpage_set_flash('info', 'New code is being sent to ' . $pendingEmail . '.');
                         header('Location: ' . app_url('loginpage.php'));
@@ -159,7 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $queued = enqueue_login_otp_email_job($conn, $dbEmail, $dbFullName, $dbRole, $issued['code']);
 
                                 if ($queued) {
-                                    process_pending_email_jobs($conn, 2);
                                     $_SESSION['pending_login_otp'] = [
                                         'user_id' => (int) $id,
                                         'fullname' => $dbFullName,

@@ -1380,7 +1380,7 @@ function process_pending_email_jobs(mysqli $conn, int $limit = 5): array
         SELECT id, recipient_email, subject, text_body, html_body
         FROM email_jobs
         WHERE status = 'pending' AND available_at <= NOW()
-        ORDER BY id ASC
+        ORDER BY CASE WHEN job_type = 'login_otp' THEN 0 ELSE 1 END ASC, id ASC
         LIMIT ?
     ");
     $jobsStmt->bind_param('i', $limit);
