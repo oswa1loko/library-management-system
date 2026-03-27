@@ -6453,16 +6453,21 @@ button.catalog-search-suggestion{
 
 .member-book-group{
   display:grid;
-  gap:10px;
+  gap:12px;
 }
 
 .member-book-group-title{
-  margin:2px 2px 0;
+  margin:0;
+  padding:0 2px;
   font-size:0.82rem;
   font-weight:700;
   letter-spacing:0.08em;
+  line-height:1.2;
   text-transform:uppercase;
   color:var(--muted);
+  background:transparent;
+  border:0;
+  box-shadow:none;
 }
 
 .member-book-group-grid{
@@ -9336,7 +9341,13 @@ body.ebook-reader-screen {
 
   .member-book-picker {
     max-height: none;
-    padding: 10px;
+    padding: 0;
+    gap: 12px;
+  }
+
+  .member-book-group-title {
+    margin: 0;
+    padding: 0 2px;
   }
 
   .member-book-group-grid {
