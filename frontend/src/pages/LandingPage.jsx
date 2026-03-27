@@ -285,21 +285,21 @@ export default function LandingPage() {
       </div>
 
       <header className="fixed top-0 right-0 left-0 z-[120] border-b border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(11,26,45,0.97),rgba(7,18,32,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-[14px] dark:border-white/10 md:sticky md:z-50 md:bg-[#081422]/88 md:shadow-none md:backdrop-blur-xl">
-        <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-0 py-3 md:py-4">
-          <a href="/" className={`group flex min-w-0 flex-nowrap items-center gap-3 md:gap-4 ${focusBase}`}>
+        <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-2.5 px-0 py-3.5 md:gap-3 md:py-4">
+          <a href="/" className={`group flex min-w-0 flex-1 flex-nowrap items-center gap-3.5 md:flex-none md:gap-4 ${focusBase}`}>
             <img
               src="/assets/images/RMLOGO.jfif"
               alt="Regis Marie College logo"
-              className="h-10 w-10 rounded-full border border-[rgba(143,211,255,0.24)] object-cover shadow-[0_10px_24px_rgba(8,24,44,0.26)] transition-transform duration-300 group-hover:scale-[1.03] md:h-[54px] md:w-[54px] md:border-cyan-400/40 md:shadow-[0_14px_28px_rgba(34,83,126,0.24)]"
+              className="h-11 w-11 rounded-full border border-[rgba(143,211,255,0.24)] object-cover shadow-[0_10px_24px_rgba(8,24,44,0.26)] transition-transform duration-300 group-hover:scale-[1.03] md:h-[54px] md:w-[54px] md:border-cyan-400/40 md:shadow-[0_14px_28px_rgba(34,83,126,0.24)]"
             />
-            <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-124px)]">
-              <p className="truncate text-[0.7rem] leading-none font-semibold uppercase tracking-[0.28em] text-cyan-300/88 md:text-[0.76rem]">
+            <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-116px)]">
+              <p className="truncate text-[0.64rem] leading-none font-semibold uppercase tracking-[0.18em] text-cyan-300/88 md:text-[0.76rem] md:tracking-[0.28em]">
                 RMC
               </p>
-              <p className="truncate text-[0.98rem] leading-[1.1] font-semibold tracking-[-0.01em] text-[#f4f8ff] md:text-[1.1rem]">
+              <p className="truncate text-[1rem] leading-[1.08] font-semibold tracking-[-0.01em] text-[#f4f8ff] md:text-[1.1rem]">
                 Regis Marie College Library
               </p>
-              <p className="truncate text-[0.69rem] leading-none text-slate-400 md:text-[0.78rem]">
+              <p className="truncate text-[0.72rem] leading-[1.1] text-slate-400 md:text-[0.78rem]">
                 Learning resources and campus access
               </p>
             </div>
@@ -346,10 +346,10 @@ export default function LandingPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex flex-none items-center gap-1.5 md:hidden">
             <button
               onClick={toggleTheme}
-              className={`inline-flex h-9 w-9 appearance-none items-center justify-center border-0 rounded-none bg-transparent p-0 text-[#eef6ff] shadow-none transition-none [-webkit-tap-highlight-color:transparent] focus:outline-none ${focusBase}`}
+              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
               aria-label={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
               aria-pressed={isLightTheme}
             >
@@ -357,7 +357,7 @@ export default function LandingPage() {
             </button>
             <button
               onClick={() => setMenuOpen((value) => !value)}
-              className={`inline-flex h-9 w-9 appearance-none items-center justify-center border-0 rounded-none bg-transparent p-0 text-[#eef6ff] shadow-none transition-none [-webkit-tap-highlight-color:transparent] focus:outline-none ${focusBase}`}
+              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
               aria-label="Toggle menu"
             >
               {menuOpen ? <X className="h-[18px] w-[18px]" /> : <Menu className="h-[18px] w-[18px]" />}
@@ -668,16 +668,16 @@ export default function LandingPage() {
             <p className="mt-4 text-sm leading-7 text-slate-300 dark:text-slate-300/82">
               Beyond implementation, the team also focused on presentation quality, usability, and workflow clarity so the platform would be practical for deployment and strong enough for academic presentation.
             </p>
-            <div className="mt-6 rounded-[1.15rem] border border-cyan-300/12 bg-[linear-gradient(180deg,rgba(11,25,39,0.78),rgba(7,18,30,0.92))] p-4 shadow-[0_18px_36px_-24px_rgba(0,0,0,0.5)]">
-              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-cyan-300">Project Summary</p>
-              <p className="mt-3 text-sm leading-7 text-slate-300/92">
+            <div className="mt-6 rounded-[1.15rem] border border-cyan-300/12 bg-[linear-gradient(180deg,rgba(11,25,39,0.78),rgba(7,18,30,0.92))] p-4 shadow-[0_18px_36px_-24px_rgba(0,0,0,0.5)] [html[data-theme='light']_&]:border-sky-200/80 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(232,244,255,0.94))] [html[data-theme='light']_&]:shadow-[0_18px_30px_-24px_rgba(14,116,144,0.2)]">
+              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-cyan-300 [html[data-theme='light']_&]:text-sky-700">Project Summary</p>
+              <p className="mt-3 text-sm leading-7 text-slate-300/92 [html[data-theme='light']_&]:text-slate-600">
                 A multi-role library platform built for catalog browsing, borrowing workflows, return monitoring, penalties, and school-aligned user access.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {["Admin", "Librarian", "Student", "Faculty"].map((role) => (
                   <span
                     key={role}
-                    className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-cyan-100"
+                    className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-cyan-100 [html[data-theme='light']_&]:border-sky-200 [html[data-theme='light']_&]:bg-sky-50 [html[data-theme='light']_&]:text-sky-800"
                   >
                     {role}
                   </span>
