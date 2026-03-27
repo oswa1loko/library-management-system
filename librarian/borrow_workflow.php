@@ -63,7 +63,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
 function confirm_requested_return(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT br.user_id, br.book_id, br.due_date, br.status, u.role
+        SELECT br.user_id, br.book_id, br.due_date, br.status, br.return_requested_at, u.role
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         WHERE br.id = ?
@@ -71,7 +71,7 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $dueDate, $borrowStatus, $userRole);
+    $borrowStmt->bind_result($userId, $bookId, $dueDate, $borrowStatus, $returnRequestedAt, $userRole);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -101,7 +101,7 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
     $stockStmt->execute();
     $stockStmt->close();
 
-    create_penalty_if_late($conn, $borrowId, $userId, $dueDate, $returnDate);
+    create_penalty_if_late($conn, $borrowId, $userId, $dueDate, $returnDate, (string) $returnRequestedAt);
 
     return [
         'ok' => true,
@@ -114,10 +114,28 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
     ];
 }
 
-function create_penalty_if_late(mysqli $conn, int $borrowId, int $userId, string $dueDate, string $returnDate): void
+function create_penalty_if_late(mysqli $conn, int $borrowId, int $userId, string $dueDate, string $returnDate, string $returnRequestedAt = ''): void
 {
     $due = new DateTime($dueDate);
     $returned = new DateTime($returnDate);
+
+    $requestedOnTime = false;
+    $returnRequestedAt = trim($returnRequestedAt);
+    if ($returnRequestedAt !== '') {
+        $requestTimestamp = strtotime($returnRequestedAt);
+        $dueTimestamp = strtotime($dueDate);
+        if ($requestTimestamp !== false && $dueTimestamp !== false) {
+            $requestedOnTime = date('Y-m-d', $requestTimestamp) <= date('Y-m-d', $dueTimestamp);
+        }
+    }
+
+    if ($requestedOnTime) {
+        $deletePenalty = $conn->prepare("DELETE FROM penalties WHERE borrow_id = ? AND status = 'unpaid'");
+        $deletePenalty->bind_param('i', $borrowId);
+        $deletePenalty->execute();
+        $deletePenalty->close();
+        return;
+    }
 
     if ($returned <= $due) {
         return;

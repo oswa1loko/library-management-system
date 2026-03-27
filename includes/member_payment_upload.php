@@ -601,7 +601,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
                 <td><span class="badge"><span class="status-dot <?php echo h($payment['status']); ?>"></span><?php echo h($payment['status']); ?></span></td>
                 <td>
                   <?php if (!empty($payment['proof_path'])): ?>
-                    <a href="/librarymanage/<?php echo h($payment['proof_path']); ?>" target="_blank">View</a>
+                    <a href="<?php echo h(app_url('proof_view.php?payment_id=' . (int) $payment['id'])); ?>" target="_blank">View</a>
                   <?php else: ?>
                     <span class="muted">None</span>
                   <?php endif; ?>

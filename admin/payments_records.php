@@ -426,7 +426,7 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                 <td><?php echo h(format_currency($payment['amount'])); ?></td>
                 <td><?php echo h(format_currency($payment['current_balance'] ?? 0)); ?></td>
                 <td><span class="badge"><span class="status-dot <?php echo h($payment['status']); ?>"></span><?php echo h($payment['status']); ?></span></td>
-                <td><?php if (!empty($payment['proof_path'])): ?><a href="<?php echo h(app_url((string) $payment['proof_path'])); ?>" target="_blank">View</a><?php else: ?><span class="muted">None</span><?php endif; ?></td>
+                <td><?php if (!empty($payment['proof_path'])): ?><a href="<?php echo h(app_url('proof_view.php?payment_id=' . (int) $payment['id'])); ?>" target="_blank">View</a><?php else: ?><span class="muted">None</span><?php endif; ?></td>
                 <td>
                   <?php
                   $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
