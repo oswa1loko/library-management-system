@@ -252,7 +252,7 @@ $pageQuery = $_GET;
                   <?php endif; ?>
                 </div>
                 <div class="librarian-batch-meta">
-                  <span class="chip">Requested <?php echo h(format_display_date($batch['request_date'], '-')); ?></span>
+                  <span class="chip">Requested <?php echo h(format_display_datetime($batch['request_date'], '-')); ?></span>
                 </div>
               </div>
               <div class="inline-actions chips-row batch-status-row">

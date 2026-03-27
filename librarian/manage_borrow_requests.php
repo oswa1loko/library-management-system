@@ -265,7 +265,7 @@ $pageQuery = $_GET;
                 </p>
               </div>
               <div class="librarian-batch-meta">
-                <span class="chip"><?php echo h(format_display_date($batch['created_at'], '-')); ?></span>
+                <span class="chip">Requested <?php echo h(format_display_datetime($batch['created_at'], '-')); ?></span>
               </div>
             </div>
             <div class="inline-actions chips-row batch-status-row">
