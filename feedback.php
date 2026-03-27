@@ -504,7 +504,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 </style>
 </head>
-<body>
+<body data-skip-theme-toggle="true">
 <div class="auth-shell feedback-page">
   <div class="card surface-shell-wide feedback-card">
     <div class="split split-stretch feedback-layout">
@@ -570,7 +570,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card-head">
           <div class="dashboard-icon icon-feedback" aria-hidden="true"></div>
           <div>
-            <span class="chip">Admin Review</span>
             <h3 class="heading-top heading-tight">What happens after submission</h3>
             <p class="muted">Each complaint is recorded in the admin queue for review, follow-up, and status updates.</p>
           </div>
