@@ -64,6 +64,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Forgot Password | Library</title>
+<script>
+(() => {
+  const storageKey = 'librarymanage-theme';
+  const root = document.documentElement;
+
+  try {
+    const storedTheme = window.localStorage.getItem(storageKey);
+    const theme = storedTheme === 'light' ? 'light' : 'dark';
+    root.setAttribute('data-theme', theme);
+    root.style.colorScheme = theme;
+  } catch (error) {
+    root.setAttribute('data-theme', 'dark');
+    root.style.colorScheme = 'dark';
+  }
+})();
+</script>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/assets/app.css'); ?>
 <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css')); ?>?v=<?php echo urlencode($assetVersion); ?>">
 </head>
