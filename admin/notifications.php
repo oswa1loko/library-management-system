@@ -7,6 +7,10 @@ require_role('admin');
 
 $message = '';
 $messageType = 'success';
+$activeTab = trim((string) ($_GET['tab'] ?? 'inbox'));
+if (!in_array($activeTab, ['inbox', 'diagnostics'], true)) {
+    $activeTab = 'inbox';
+}
 $emailReminderDebug = is_array($_SESSION['email_reminder_debug'] ?? null) ? $_SESSION['email_reminder_debug'] : [];
 $mailHealth = library_mail_health_snapshot(false);
 
@@ -109,187 +113,220 @@ $notifications = $conn->query("
       <div class="notice <?php echo $messageType === 'error' ? 'error' : 'success'; ?>"><?php echo h($message); ?></div>
     <?php endif; ?>
 
-    <div class="panel">
-      <p class="muted eyebrow-compact stack-copy">Mail Health</p>
-      <div class="toolbar toolbar-top">
+    <div class="librarian-desk-tabs-shell">
+      <div class="librarian-desk-tabs-head">
         <div class="grow">
-          <h3 class="heading-card">Sender and transport status</h3>
+          <p class="muted eyebrow-compact">Admin Center</p>
+          <h3 class="heading-card">Choose what you want to review</h3>
         </div>
-        <form method="post" class="inline-form">
-          <button type="submit" name="run_mail_health_check" value="1">Run Mail Health Check</button>
-        </form>
+        <div class="librarian-desk-tablist" role="tablist" aria-label="Admin notification sections">
+          <a
+            class="button librarian-desk-tab"
+            href="<?php echo h(app_url('admin/notifications.php?tab=inbox')); ?>"
+            role="tab"
+            aria-selected="<?php echo $activeTab === 'inbox' ? 'true' : 'false'; ?>"
+            aria-controls="admin-notifications-tab-inbox"
+          >Inbox</a>
+          <a
+            class="button librarian-desk-tab"
+            href="<?php echo h(app_url('admin/notifications.php?tab=diagnostics')); ?>"
+            role="tab"
+            aria-selected="<?php echo $activeTab === 'diagnostics' ? 'true' : 'false'; ?>"
+            aria-controls="admin-notifications-tab-diagnostics"
+          >System Diagnostics</a>
+        </div>
       </div>
-      <div class="stat-grid">
-        <div class="stat-card">
-          <strong><?php echo h(strtoupper((string) ($mailHealth['mode'] ?? 'unknown'))); ?></strong>
-          <span class="muted">Mailer mode</span>
-        </div>
-        <div class="stat-card">
-          <strong><?php echo !empty($mailHealth['smtp_configured']) ? 'Configured' : 'Incomplete'; ?></strong>
-          <span class="muted">SMTP setup</span>
-        </div>
-        <div class="stat-card">
-          <strong><?php echo !empty($mailHealth['phpmailer_available']) ? 'Available' : 'Missing'; ?></strong>
-          <span class="muted">PHPMailer</span>
-        </div>
-      </div>
-      <div class="activity-feed">
-        <div class="activity-item">
-          <strong>Current sender identity</strong>
-          <div class="meta">From name: <?php echo h((string) ($mailHealth['from_name'] ?? '-')); ?></div>
-          <div class="meta">From address: <?php echo h((string) ($mailHealth['from_address'] ?? '-')); ?></div>
-          <div class="meta">Signature: <?php echo h((string) ($mailHealth['signature'] ?? '-')); ?></div>
-        </div>
-        <div class="activity-item">
-          <strong>SMTP transport</strong>
-          <div class="meta">Host: <?php echo h((string) ($mailHealth['smtp_host'] ?? '-')); ?></div>
-          <div class="meta">Port: <?php echo (int) ($mailHealth['smtp_port'] ?? 0); ?></div>
-          <div class="meta">Security: <?php echo h((string) ($mailHealth['smtp_secure'] ?? '-')); ?></div>
-          <div class="meta">Username: <?php echo h((string) ($mailHealth['smtp_username_masked'] ?? '-')); ?></div>
-        </div>
-        <?php $mailIssues = is_array($mailHealth['issues'] ?? null) ? $mailHealth['issues'] : []; ?>
-        <?php if (!empty($mailIssues)): ?>
-          <div class="activity-item">
-            <strong>Detected issues</strong>
-            <?php foreach ($mailIssues as $issue): ?>
-              <div class="meta"><?php echo h((string) $issue); ?></div>
-            <?php endforeach; ?>
-          </div>
-        <?php endif; ?>
-        <?php $probe = is_array($mailHealth['probe'] ?? null) ? $mailHealth['probe'] : []; ?>
-        <?php if (!empty($probe)): ?>
-          <div class="activity-item">
-            <strong>Latest probe result</strong>
-            <div class="meta">Recipient: <?php echo h((string) ($probe['recipient'] ?? '-')); ?></div>
-            <div class="meta">Status: <?php echo !empty($probe['success']) ? 'Sent' : 'Failed'; ?></div>
-            <?php if (!empty($probe['error'])): ?>
-              <div class="meta">Error: <?php echo h((string) $probe['error']); ?></div>
-            <?php endif; ?>
-            <div class="inline-actions meta-top">
-              <span class="muted"><?php echo h(format_display_datetime((string) ($probe['checked_at'] ?? ''))); ?></span>
-            </div>
-          </div>
-        <?php endif; ?>
-      </div>
-    </div>
 
-    <div class="panel">
-      <p class="muted eyebrow-compact stack-copy">Email Diagnostics</p>
-      <div class="toolbar toolbar-top">
-        <div class="grow">
-          <h3 class="heading-card">Latest reminder sync snapshot</h3>
-        </div>
-        <form method="post" class="inline-form">
-          <button type="submit" name="run_email_reminder_check" value="1">Run Email Reminder Check</button>
-        </form>
-      </div>
-      <?php if (!empty($emailReminderDebug)): ?>
-      <div class="activity-feed">
-        <?php foreach (['due_soon' => 'Due Soon', 'overdue' => 'Overdue'] as $bucketKey => $bucketLabel): ?>
-          <?php $bucket = is_array($emailReminderDebug[$bucketKey] ?? null) ? $emailReminderDebug[$bucketKey] : null; ?>
-          <?php if (!$bucket): ?>
-            <?php continue; ?>
-          <?php endif; ?>
-          <div class="activity-item">
-            <strong>
-              <span class="status-dot <?php echo (int) ($bucket['failed'] ?? 0) > 0 ? 'unpaid' : ((int) ($bucket['sent'] ?? 0) > 0 ? 'approved' : 'due'); ?>"></span>
-              <?php echo h($bucketLabel); ?> reminder run
-            </strong>
-            <div class="meta">
-              Checked: <?php echo (int) ($bucket['checked'] ?? 0); ?>,
-              sent: <?php echo (int) ($bucket['sent'] ?? 0); ?>,
-              failed: <?php echo (int) ($bucket['failed'] ?? 0); ?>,
-              skipped: <?php echo (int) ($bucket['skipped'] ?? 0); ?>
+      <?php if ($activeTab === 'diagnostics'): ?>
+        <div class="librarian-desk-tabpanel" id="admin-notifications-tab-diagnostics" role="tabpanel">
+          <div class="stack">
+            <div class="panel">
+              <p class="muted eyebrow-compact stack-copy">Mail Health</p>
+              <div class="toolbar toolbar-top">
+                <div class="grow">
+                  <h3 class="heading-card">Sender and transport status</h3>
+                </div>
+                <form method="post" class="inline-form">
+                  <button type="submit" name="run_mail_health_check" value="1">Run Mail Health Check</button>
+                </form>
+              </div>
+              <div class="stat-grid">
+                <div class="stat-card">
+                  <strong><?php echo h(strtoupper((string) ($mailHealth['mode'] ?? 'unknown'))); ?></strong>
+                  <span class="muted">Mailer mode</span>
+                </div>
+                <div class="stat-card">
+                  <strong><?php echo !empty($mailHealth['smtp_configured']) ? 'Configured' : 'Incomplete'; ?></strong>
+                  <span class="muted">SMTP setup</span>
+                </div>
+                <div class="stat-card">
+                  <strong><?php echo !empty($mailHealth['phpmailer_available']) ? 'Available' : 'Missing'; ?></strong>
+                  <span class="muted">PHPMailer</span>
+                </div>
+              </div>
+              <div class="activity-feed">
+                <div class="activity-item">
+                  <strong>Current sender identity</strong>
+                  <div class="meta">From name: <?php echo h((string) ($mailHealth['from_name'] ?? '-')); ?></div>
+                  <div class="meta">From address: <?php echo h((string) ($mailHealth['from_address'] ?? '-')); ?></div>
+                  <div class="meta">Signature: <?php echo h((string) ($mailHealth['signature'] ?? '-')); ?></div>
+                </div>
+                <div class="activity-item">
+                  <strong>SMTP transport</strong>
+                  <div class="meta">Host: <?php echo h((string) ($mailHealth['smtp_host'] ?? '-')); ?></div>
+                  <div class="meta">Port: <?php echo (int) ($mailHealth['smtp_port'] ?? 0); ?></div>
+                  <div class="meta">Security: <?php echo h((string) ($mailHealth['smtp_secure'] ?? '-')); ?></div>
+                  <div class="meta">Username: <?php echo h((string) ($mailHealth['smtp_username_masked'] ?? '-')); ?></div>
+                </div>
+                <?php $mailIssues = is_array($mailHealth['issues'] ?? null) ? $mailHealth['issues'] : []; ?>
+                <?php if (!empty($mailIssues)): ?>
+                  <div class="activity-item">
+                    <strong>Detected issues</strong>
+                    <?php foreach ($mailIssues as $issue): ?>
+                      <div class="meta"><?php echo h((string) $issue); ?></div>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
+                <?php $probe = is_array($mailHealth['probe'] ?? null) ? $mailHealth['probe'] : []; ?>
+                <?php if (!empty($probe)): ?>
+                  <div class="activity-item">
+                    <strong>Latest probe result</strong>
+                    <div class="meta">Recipient: <?php echo h((string) ($probe['recipient'] ?? '-')); ?></div>
+                    <div class="meta">Status: <?php echo !empty($probe['success']) ? 'Sent' : 'Failed'; ?></div>
+                    <?php if (!empty($probe['error'])): ?>
+                      <div class="meta">Error: <?php echo h((string) $probe['error']); ?></div>
+                    <?php endif; ?>
+                    <div class="inline-actions meta-top">
+                      <span class="muted"><?php echo h(format_display_datetime((string) ($probe['checked_at'] ?? ''))); ?></span>
+                    </div>
+                  </div>
+                <?php endif; ?>
+              </div>
             </div>
-            <?php $errors = is_array($bucket['errors'] ?? null) ? $bucket['errors'] : []; ?>
-            <?php if (!empty($errors)): ?>
-              <?php foreach ($errors as $error): ?>
-                <div class="meta">Borrow #<?php echo (int) ($error['borrow_id'] ?? 0); ?> to <?php echo h((string) ($error['email'] ?? '-')); ?>: <?php echo h((string) ($error['message'] ?? 'Unknown error')); ?></div>
-              <?php endforeach; ?>
-            <?php endif; ?>
-            <div class="inline-actions meta-top">
-              <span class="muted"><?php echo h(format_display_datetime((string) ($bucket['captured_at'] ?? ''))); ?></span>
+
+            <div class="panel">
+              <p class="muted eyebrow-compact stack-copy">Email Diagnostics</p>
+              <div class="toolbar toolbar-top">
+                <div class="grow">
+                  <h3 class="heading-card">Latest reminder sync snapshot</h3>
+                </div>
+                <form method="post" class="inline-form">
+                  <button type="submit" name="run_email_reminder_check" value="1">Run Email Reminder Check</button>
+                </form>
+              </div>
+              <?php if (!empty($emailReminderDebug)): ?>
+              <div class="activity-feed">
+                <?php foreach (['due_soon' => 'Due Soon', 'overdue' => 'Overdue'] as $bucketKey => $bucketLabel): ?>
+                  <?php $bucket = is_array($emailReminderDebug[$bucketKey] ?? null) ? $emailReminderDebug[$bucketKey] : null; ?>
+                  <?php if (!$bucket): ?>
+                    <?php continue; ?>
+                  <?php endif; ?>
+                  <div class="activity-item">
+                    <strong>
+                      <span class="status-dot <?php echo (int) ($bucket['failed'] ?? 0) > 0 ? 'unpaid' : ((int) ($bucket['sent'] ?? 0) > 0 ? 'approved' : 'due'); ?>"></span>
+                      <?php echo h($bucketLabel); ?> reminder run
+                    </strong>
+                    <div class="meta">
+                      Checked: <?php echo (int) ($bucket['checked'] ?? 0); ?>,
+                      sent: <?php echo (int) ($bucket['sent'] ?? 0); ?>,
+                      failed: <?php echo (int) ($bucket['failed'] ?? 0); ?>,
+                      skipped: <?php echo (int) ($bucket['skipped'] ?? 0); ?>
+                    </div>
+                    <?php $errors = is_array($bucket['errors'] ?? null) ? $bucket['errors'] : []; ?>
+                    <?php if (!empty($errors)): ?>
+                      <?php foreach ($errors as $error): ?>
+                        <div class="meta">Borrow #<?php echo (int) ($error['borrow_id'] ?? 0); ?> to <?php echo h((string) ($error['email'] ?? '-')); ?>: <?php echo h((string) ($error['message'] ?? 'Unknown error')); ?></div>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                    <div class="inline-actions meta-top">
+                      <span class="muted"><?php echo h(format_display_datetime((string) ($bucket['captured_at'] ?? ''))); ?></span>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+              <?php else: ?>
+              <div class="empty-state">Run a manual reminder check here to see due-soon and overdue email results without slowing down every page request.</div>
+              <?php endif; ?>
+            </div>
+
+            <div class="panel">
+              <p class="muted eyebrow-compact stack-copy">Live Alerts</p>
+              <h3 class="heading-card">Current system attention points</h3>
+              <div class="stat-grid">
+                <div class="stat-card">
+                  <strong><?php echo (int) ($liveStats['overdue_borrows'] ?? 0); ?></strong>
+                  <span class="muted">Overdue borrows</span>
+                </div>
+                <div class="stat-card">
+                  <strong><?php echo (int) ($liveStats['pending_payments'] ?? 0); ?></strong>
+                  <span class="muted">Pending payments</span>
+                </div>
+                <div class="stat-card">
+                  <strong><?php echo (int) ($liveStats['new_complaints'] ?? 0); ?></strong>
+                  <span class="muted">New complaints</span>
+                </div>
+              </div>
             </div>
           </div>
-        <?php endforeach; ?>
-      </div>
+        </div>
       <?php else: ?>
-      <div class="empty-state">Run a manual reminder check here to see due-soon and overdue email results without slowing down every page request.</div>
-      <?php endif; ?>
-    </div>
-
-    <div class="panel">
-      <p class="muted eyebrow-compact stack-copy">Live Alerts</p>
-      <h3 class="heading-card">Current system attention points</h3>
-      <div class="stat-grid">
-        <div class="stat-card">
-          <strong><?php echo (int) ($liveStats['overdue_borrows'] ?? 0); ?></strong>
-          <span class="muted">Overdue borrows</span>
-        </div>
-        <div class="stat-card">
-          <strong><?php echo (int) ($liveStats['pending_payments'] ?? 0); ?></strong>
-          <span class="muted">Pending payments</span>
-        </div>
-        <div class="stat-card">
-          <strong><?php echo (int) ($liveStats['new_complaints'] ?? 0); ?></strong>
-          <span class="muted">New complaints</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="toolbar toolbar-top">
-        <div class="grow">
-          <p class="muted eyebrow-compact">Inbox</p>
-          <h3 class="heading-card">Stored notifications</h3>
-        </div>
-        <form method="post" class="inline-form">
-          <button type="submit" name="mark_all_read" value="1">Mark All Read</button>
-        </form>
-      </div>
-      <div class="activity-feed">
-        <?php if (!$notifications || $notifications->num_rows === 0): ?>
-          <div class="empty-state">No notifications yet.</div>
-        <?php endif; ?>
-        <?php while ($row = $notifications->fetch_assoc()): ?>
-          <?php
-            $destination = notification_destination_for_viewer('admin', $row);
-            $notificationId = (int) ($row['id'] ?? 0);
-            $isUnread = (int) ($row['is_read'] ?? 0) === 0;
-            $destinationUrl = trim((string) ($destination['url'] ?? ''));
-            $destinationLabel = trim((string) ($destination['label'] ?? 'Open notification'));
-            $openHref = $destinationUrl !== ''
-              ? app_url('admin/notification_open.php?notification_id=' . $notificationId . '&redirect=' . urlencode($destinationUrl))
-              : '';
-          ?>
-          <?php if ($openHref !== ''): ?>
-            <a class="activity-item activity-item-link<?php echo $isUnread ? ' is-unread' : ''; ?>" href="<?php echo h($openHref); ?>">
-              <strong>
-                <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
-                <?php echo h($row['title']); ?>
-                <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
-              </strong>
-              <div class="meta"><?php echo h($row['body']); ?></div>
-              <div class="inline-actions meta-top">
-                <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
-                <span><?php echo h($destinationLabel); ?></span>
+        <div class="librarian-desk-tabpanel" id="admin-notifications-tab-inbox" role="tabpanel">
+          <div class="panel">
+            <div class="toolbar toolbar-top">
+              <div class="grow">
+                <p class="muted eyebrow-compact">Inbox</p>
+                <h3 class="heading-card">Stored notifications</h3>
               </div>
-            </a>
-          <?php else: ?>
-            <div class="activity-item">
-              <strong>
-                <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
-                <?php echo h($row['title']); ?>
-                <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
-              </strong>
-              <div class="meta"><?php echo h($row['body']); ?></div>
-              <div class="inline-actions meta-top">
-                <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
-              </div>
+              <form method="post" class="inline-form">
+                <button type="submit" name="mark_all_read" value="1">Mark All Read</button>
+              </form>
             </div>
-          <?php endif; ?>
-        <?php endwhile; ?>
-      </div>
+            <div class="activity-feed">
+              <?php if (!$notifications || $notifications->num_rows === 0): ?>
+                <div class="empty-state">No notifications yet.</div>
+              <?php endif; ?>
+              <?php while ($row = $notifications->fetch_assoc()): ?>
+                <?php
+                  $destination = notification_destination_for_viewer('admin', $row);
+                  $notificationId = (int) ($row['id'] ?? 0);
+                  $isUnread = (int) ($row['is_read'] ?? 0) === 0;
+                  $destinationUrl = trim((string) ($destination['url'] ?? ''));
+                  $destinationLabel = trim((string) ($destination['label'] ?? 'Open notification'));
+                  $openHref = $destinationUrl !== ''
+                    ? app_url('admin/notification_open.php?notification_id=' . $notificationId . '&redirect=' . urlencode($destinationUrl))
+                    : '';
+                ?>
+                <?php if ($openHref !== ''): ?>
+                  <a class="activity-item activity-item-link<?php echo $isUnread ? ' is-unread' : ''; ?>" href="<?php echo h($openHref); ?>">
+                    <strong>
+                      <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
+                      <?php echo h($row['title']); ?>
+                      <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
+                    </strong>
+                    <div class="meta"><?php echo h($row['body']); ?></div>
+                    <div class="inline-actions meta-top">
+                      <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
+                      <span><?php echo h($destinationLabel); ?></span>
+                    </div>
+                  </a>
+                <?php else: ?>
+                  <div class="activity-item">
+                    <strong>
+                      <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
+                      <?php echo h($row['title']); ?>
+                      <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
+                    </strong>
+                    <div class="meta"><?php echo h($row['body']); ?></div>
+                    <div class="inline-actions meta-top">
+                      <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
+                    </div>
+                  </div>
+                <?php endif; ?>
+              <?php endwhile; ?>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
     </div>
     </div>
 </div>
