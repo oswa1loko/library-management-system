@@ -241,28 +241,14 @@
         return;
       }
 
-      var readChip = event.target.closest('.student-notification-unread');
-      if (!readChip) {
-        var notificationItem = event.target.closest('.student-notification-item[data-destination-url]');
-        if (!notificationItem) {
-          return;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-        openStudentNotificationDestination(panel, notificationItem);
+      var notificationItem = event.target.closest('.student-notification-item[data-destination-url]');
+      if (!notificationItem) {
         return;
       }
 
       event.preventDefault();
       event.stopPropagation();
-      markStudentNotificationRead(panel, readChip.getAttribute('data-notification-id'))
-        .catch(function () {
-          var body = panel.querySelector('.student-notification-panel-body');
-          if (body) {
-            body.insertAdjacentHTML('afterbegin', '<div class="student-notification-empty">Unable to mark notification as read right now.</div>');
-          }
-        });
+      openStudentNotificationDestination(panel, notificationItem);
     });
 
     return panel;
@@ -289,11 +275,7 @@
       var isLinked = destinationUrl !== '';
       var unreadChip = item.is_read
         ? '<span class="chip student-notification-read">Read</span>'
-        : (
-          item.kind === 'notification' && Number(item.id || 0) > 0
-            ? '<button type="button" class="chip student-notification-unread" data-notification-id="' + Number(item.id) + '">Mark as read</button>'
-            : '<span class="chip">Unread</span>'
-        );
+        : '<span class="chip">Unread</span>';
       return (
         '<div class="student-notification-item' + (isLinked ? ' is-linked' : '') + '"' +
           (isLinked ? ' data-destination-url="' + escapeHtml(destinationUrl) + '"' : '') +

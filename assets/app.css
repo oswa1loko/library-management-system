@@ -5660,15 +5660,6 @@ button.catalog-search-suggestion{
   white-space:nowrap;
 }
 
-.student-notification-unread{
-  cursor:pointer;
-}
-
-.student-notification-unread:hover,
-.student-notification-unread:focus-visible{
-  text-decoration:none;
-}
-
 .student-notification-read{
   opacity:0.78;
 }
