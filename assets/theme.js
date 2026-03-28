@@ -190,7 +190,8 @@
 
     if (window.location.pathname.indexOf('/librarian/') !== -1) {
       return {
-        feedUrl: '/librarymanage/librarian/notifications_feed.php'
+        feedUrl: '/librarymanage/librarian/notifications_feed.php',
+        openUrl: '/librarymanage/librarian/notification_open.php'
       };
     }
 
@@ -214,7 +215,8 @@
   function isFullMemberNotificationsPage() {
     return (
       window.location.pathname.indexOf('/student/notifications.php') !== -1 ||
-      window.location.pathname.indexOf('/faculty/notifications.php') !== -1
+      window.location.pathname.indexOf('/faculty/notifications.php') !== -1 ||
+      window.location.pathname.indexOf('/librarian/notifications.php') !== -1
     );
   }
 

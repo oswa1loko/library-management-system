@@ -6,6 +6,8 @@ require_once __DIR__ . '/../includes/helpers.php';
 require_role('librarian');
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawPayload = json_decode((string) file_get_contents('php://input'), true);
@@ -14,28 +16,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notificationId = (int) ($payload['id'] ?? 0);
 
     if ($action === 'mark_read' && $notificationId > 0) {
-        $markStmt = $conn->prepare("
-            UPDATE notifications
-            SET is_read = 1
+        $sourceStmt = $conn->prepare("
+            SELECT title, body
+            FROM notifications
             WHERE id = ? AND role = 'librarian'
             LIMIT 1
         ");
-        $markStmt->bind_param('i', $notificationId);
-        $markStmt->execute();
-        $changed = $markStmt->affected_rows === 1;
-        $markStmt->close();
+        $sourceStmt->bind_param('i', $notificationId);
+        $sourceStmt->execute();
+        $sourceRow = $sourceStmt->get_result()->fetch_assoc();
+        $sourceStmt->close();
 
-        if (!$changed) {
-            $checkStmt = $conn->prepare("
-                SELECT id
-                FROM notifications
-                WHERE id = ? AND role = 'librarian'
-                LIMIT 1
+        $changed = false;
+        if ($sourceRow) {
+            $title = (string) ($sourceRow['title'] ?? '');
+            $body = (string) ($sourceRow['body'] ?? '');
+            $markStmt = $conn->prepare("
+                UPDATE notifications
+                SET is_read = 1
+                WHERE role = 'librarian' AND title = ? AND body = ? AND is_read = 0
             ");
-            $checkStmt->bind_param('i', $notificationId);
-            $checkStmt->execute();
-            $changed = (bool) $checkStmt->get_result()->fetch_assoc();
-            $checkStmt->close();
+            $markStmt->bind_param('ss', $title, $body);
+            $markStmt->execute();
+            $changed = $markStmt->affected_rows > 0;
+            $markStmt->close();
         }
 
         $countResult = $conn->query("SELECT COUNT(*) AS total FROM notifications WHERE role = 'librarian' AND is_read = 0");

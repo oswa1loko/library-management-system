@@ -40,6 +40,10 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-penalties" aria-hidden="true"></span>
       <span class="member-sidebar-label">Penalties</span>
     </a>
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'notifications' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/notifications.php" data-tooltip="Notifications">
+      <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Notifications</span>
+    </a>
   </nav>
   <p class="member-sidebar-section member-sidebar-label">Account</p>
   <div class="topbar-nav member-sidebar-utilities">

@@ -2037,7 +2037,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $url = '/librarymanage/librarian/manage_borrows.php';
             $label = 'Open borrow workflow';
         } else {
-            $url = '/librarymanage/librarian/manage_borrows.php';
+            $url = '/librarymanage/librarian/notifications.php';
             $label = 'Open notifications';
         }
     }
