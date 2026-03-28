@@ -240,7 +240,8 @@
       }
 
       var shortcut = event.target.closest('.student-header-notification-shortcut');
-      if (panel.contains(event.target) || shortcut) {
+      var themeToggle = event.target.closest('.theme-toggle');
+      if (panel.contains(event.target) || shortcut || themeToggle) {
         return;
       }
 
