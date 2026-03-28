@@ -81,6 +81,7 @@ while ($notifications instanceof mysqli_result && ($row = $notifications->fetch_
         'severity' => (string) ($row['severity'] ?? 'info'),
         'is_read' => (int) ($row['is_read'] ?? 0) === 1,
         'created_at' => format_display_datetime((string) ($row['created_at'] ?? ''), '-'),
+        'created_at_raw' => (string) ($row['created_at'] ?? ''),
         'kind' => 'notification',
         'destination_url' => (string) ($destination['url'] ?? ''),
         'destination_label' => (string) ($destination['label'] ?? ''),

@@ -275,6 +275,59 @@
     return panel;
   }
 
+  function isRecentNotificationItem(item) {
+    if (!item) {
+      return false;
+    }
+
+    if (String(item.kind || '') !== 'notification') {
+      return true;
+    }
+
+    var createdAtRaw = String(item.created_at_raw || '');
+    if (!createdAtRaw) {
+      return false;
+    }
+
+    var createdAt = new Date(createdAtRaw);
+    if (window.Number.isNaN(createdAt.getTime())) {
+      return false;
+    }
+
+    return (Date.now() - createdAt.getTime()) < 86400000;
+  }
+
+  function renderStudentNotificationItem(item) {
+    var severityClass = item.severity === 'critical'
+      ? 'unpaid'
+      : (item.severity === 'warning' ? 'due' : 'approved');
+    var destinationUrl = String(item.destination_url || '');
+    var destinationLabel = String(item.destination_label || '');
+    var isLinked = destinationUrl !== '';
+    var unreadChip = item.is_read
+      ? '<span class="chip student-notification-read">Read</span>'
+      : '<span class="chip">Unread</span>';
+
+    return (
+      '<div class="student-notification-item' + (isLinked ? ' is-linked' : '') + '"' +
+        (isLinked ? ' data-destination-url="' + escapeHtml(destinationUrl) + '"' : '') +
+        (Number(item.id || 0) > 0 ? ' data-notification-id="' + Number(item.id || 0) + '"' : '') +
+        (Number(item.borrow_id || 0) > 0 ? ' data-notification-borrow-id="' + Number(item.borrow_id || 0) + '"' : '') +
+        ' data-notification-unread="' + (item.is_read ? 'false' : 'true') + '">' +
+        '<div class="student-notification-title">' +
+          '<span class="status-dot ' + severityClass + '"></span>' +
+          '<strong>' + escapeHtml(item.title || 'Notification') + '</strong>' +
+          unreadChip +
+        '</div>' +
+        '<div class="student-notification-copy">' + escapeHtml(item.body || '') + '</div>' +
+        '<div class="student-notification-meta">' +
+          '<span>' + escapeHtml(item.created_at || '-') + '</span>' +
+          (isLinked ? '<span class="student-notification-link-hint">' + escapeHtml(destinationLabel || 'Open item') + '</span>' : '') +
+        '</div>' +
+      '</div>'
+    );
+  }
+
   function renderStudentNotifications(panel, payload) {
     var body = panel.querySelector('.student-notification-panel-body');
     if (!body) {
@@ -287,35 +340,38 @@
       return;
     }
 
-    body.innerHTML = items.map(function (item) {
-      var severityClass = item.severity === 'critical'
-        ? 'unpaid'
-        : (item.severity === 'warning' ? 'due' : 'approved');
-      var destinationUrl = String(item.destination_url || '');
-      var destinationLabel = String(item.destination_label || '');
-      var isLinked = destinationUrl !== '';
-      var unreadChip = item.is_read
-        ? '<span class="chip student-notification-read">Read</span>'
-        : '<span class="chip">Unread</span>';
-      return (
-        '<div class="student-notification-item' + (isLinked ? ' is-linked' : '') + '"' +
-          (isLinked ? ' data-destination-url="' + escapeHtml(destinationUrl) + '"' : '') +
-          (Number(item.id || 0) > 0 ? ' data-notification-id="' + Number(item.id || 0) + '"' : '') +
-          (Number(item.borrow_id || 0) > 0 ? ' data-notification-borrow-id="' + Number(item.borrow_id || 0) + '"' : '') +
-          ' data-notification-unread="' + (item.is_read ? 'false' : 'true') + '">' +
-          '<div class="student-notification-title">' +
-            '<span class="status-dot ' + severityClass + '"></span>' +
-            '<strong>' + escapeHtml(item.title || 'Notification') + '</strong>' +
-            unreadChip +
-          '</div>' +
-          '<div class="student-notification-copy">' + escapeHtml(item.body || '') + '</div>' +
-          '<div class="student-notification-meta">' +
-            '<span>' + escapeHtml(item.created_at || '-') + '</span>' +
-            (isLinked ? '<span class="student-notification-link-hint">' + escapeHtml(destinationLabel || 'Open item') + '</span>' : '') +
-          '</div>' +
-        '</div>'
+    var grouped = {
+      recent: [],
+      earlier: []
+    };
+
+    items.forEach(function (item) {
+      if (isRecentNotificationItem(item)) {
+        grouped.recent.push(item);
+      } else {
+        grouped.earlier.push(item);
+      }
+    });
+
+    var sections = [];
+    if (grouped.recent.length > 0) {
+      sections.push(
+        '<section class="student-notification-section">' +
+          '<div class="student-notification-section-label">New</div>' +
+          grouped.recent.map(renderStudentNotificationItem).join('') +
+        '</section>'
       );
-    }).join('');
+    }
+    if (grouped.earlier.length > 0) {
+      sections.push(
+        '<section class="student-notification-section">' +
+          '<div class="student-notification-section-label">Earlier</div>' +
+          grouped.earlier.map(renderStudentNotificationItem).join('') +
+        '</section>'
+      );
+    }
+
+    body.innerHTML = sections.join('');
   }
 
   function setNotificationItemReadState(notificationItem) {
