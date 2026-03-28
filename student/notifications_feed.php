@@ -29,28 +29,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $borrowId = (int) ($payload['borrow_id'] ?? 0);
 
     if ($action === 'mark_read' && $notificationId > 0) {
-        $markStmt = $conn->prepare("
-            UPDATE notifications
-            SET is_read = 1
+        $sourceStmt = $conn->prepare("
+            SELECT title, body
+            FROM notifications
             WHERE id = ? AND role = 'student' AND user_id = ?
             LIMIT 1
         ");
-        $markStmt->bind_param('ii', $notificationId, $userId);
-        $markStmt->execute();
-        $changed = $markStmt->affected_rows === 1;
-        $markStmt->close();
+        $sourceStmt->bind_param('ii', $notificationId, $userId);
+        $sourceStmt->execute();
+        $sourceRow = $sourceStmt->get_result()->fetch_assoc();
+        $sourceStmt->close();
 
-        if (!$changed) {
-            $checkStmt = $conn->prepare("
-                SELECT id
-                FROM notifications
-                WHERE id = ? AND role = 'student' AND user_id = ?
-                LIMIT 1
+        $changed = false;
+        if ($sourceRow) {
+            $title = (string) ($sourceRow['title'] ?? '');
+            $body = (string) ($sourceRow['body'] ?? '');
+            $markStmt = $conn->prepare("
+                UPDATE notifications
+                SET is_read = 1
+                WHERE role = 'student' AND user_id = ? AND title = ? AND body = ? AND is_read = 0
             ");
-            $checkStmt->bind_param('ii', $notificationId, $userId);
-            $checkStmt->execute();
-            $changed = (bool) $checkStmt->get_result()->fetch_assoc();
-            $checkStmt->close();
+            $markStmt->bind_param('iss', $userId, $title, $body);
+            $markStmt->execute();
+            $changed = $markStmt->affected_rows >= 1;
+            $markStmt->close();
+
+            if (!$changed) {
+                $checkStmt = $conn->prepare("
+                    SELECT id
+                    FROM notifications
+                    WHERE id = ? AND role = 'student' AND user_id = ?
+                    LIMIT 1
+                ");
+                $checkStmt->bind_param('ii', $notificationId, $userId);
+                $checkStmt->execute();
+                $changed = (bool) $checkStmt->get_result()->fetch_assoc();
+                $checkStmt->close();
+            }
         }
 
         $countStmt = $conn->prepare("

@@ -13,11 +13,22 @@ $overdueBooks = get_member_overdue_books($conn, $userId, 5);
 if (isset($_POST['mark_read'])) {
     $id = (int) ($_POST['id'] ?? 0);
     if ($id > 0) {
-        $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND role = 'student' AND user_id = ?");
-        $stmt->bind_param('ii', $id, $userId);
-        $stmt->execute();
-        $changed = $stmt->affected_rows === 1;
-        $stmt->close();
+        $sourceStmt = $conn->prepare("SELECT title, body FROM notifications WHERE id = ? AND role = 'student' AND user_id = ? LIMIT 1");
+        $sourceStmt->bind_param('ii', $id, $userId);
+        $sourceStmt->execute();
+        $sourceRow = $sourceStmt->get_result()->fetch_assoc();
+        $sourceStmt->close();
+
+        $changed = false;
+        if ($sourceRow) {
+            $title = (string) ($sourceRow['title'] ?? '');
+            $body = (string) ($sourceRow['body'] ?? '');
+            $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE role = 'student' AND user_id = ? AND title = ? AND body = ? AND is_read = 0");
+            $stmt->bind_param('iss', $userId, $title, $body);
+            $stmt->execute();
+            $changed = $stmt->affected_rows >= 1;
+            $stmt->close();
+        }
         if ($changed) {
             $message = 'Notification marked as read.';
         }
