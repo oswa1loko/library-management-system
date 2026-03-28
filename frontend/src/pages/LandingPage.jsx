@@ -692,9 +692,9 @@ export default function LandingPage() {
             {builderProfiles.map((builder) => (
               <article
                 key={builder.name}
-                className="group overflow-hidden rounded-[1.2rem] border border-[#75a8db]/20 bg-[linear-gradient(135deg,rgba(7,16,28,0.96),rgba(10,24,40,0.9)_48%,rgba(8,18,30,0.96))] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/38 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] [html[data-theme='light']_&]:border-sky-200/90 [html[data-theme='light']_&]:bg-[linear-gradient(135deg,rgba(255,255,255,0.998),rgba(246,250,255,0.995)_48%,rgba(236,245,255,0.99))] [html[data-theme='light']_&]:shadow-[0_18px_34px_-24px_rgba(14,116,144,0.12)] [html[data-theme='light']_&]:hover:border-sky-300/90 [html[data-theme='light']_&]:hover:shadow-[0_24px_40px_-24px_rgba(59,130,246,0.18)] sm:rounded-[1.6rem] xl:grid xl:h-[240px] xl:grid-cols-[220px_minmax(0,1fr)] xl:items-stretch dark:border-white/10 dark:bg-white/5"
+                className="group overflow-hidden rounded-[1.2rem] border border-[#75a8db]/20 bg-[linear-gradient(135deg,rgba(7,16,28,0.96),rgba(10,24,40,0.9)_48%,rgba(8,18,30,0.96))] shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur-[8px] transition-all duration-300 hover:-translate-y-1 hover:border-[#98d9ff]/38 hover:shadow-[0_26px_60px_-28px_rgba(18,54,84,0.82)] [html[data-theme='light']_&]:border-sky-200/90 [html[data-theme='light']_&]:bg-[linear-gradient(135deg,rgba(255,255,255,0.998),rgba(246,250,255,0.995)_48%,rgba(236,245,255,0.99))] [html[data-theme='light']_&]:shadow-[0_18px_34px_-24px_rgba(14,116,144,0.12)] [html[data-theme='light']_&]:hover:border-sky-300/90 [html[data-theme='light']_&]:hover:shadow-[0_24px_40px_-24px_rgba(59,130,246,0.18)] sm:rounded-[1.6rem] xl:grid xl:min-h-[296px] xl:grid-cols-[220px_minmax(0,1fr)] xl:items-stretch dark:border-white/10 dark:bg-white/5"
               >
-                <div className="relative h-[220px] overflow-hidden border-b border-white/10 sm:h-[240px] xl:h-full xl:border-b-0 xl:border-r [html[data-theme='light']_&]:border-sky-200/80">
+                <div className="relative h-[220px] overflow-hidden border-b border-white/10 sm:h-[240px] xl:h-full xl:min-h-[296px] xl:border-b-0 xl:border-r [html[data-theme='light']_&]:border-sky-200/80">
                   <img
                     src={builder.src}
                     alt={builder.name}
@@ -704,15 +704,15 @@ export default function LandingPage() {
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,10,18,0.06),rgba(5,10,18,0.16)_38%,rgba(5,10,18,0.68))] xl:bg-[linear-gradient(90deg,rgba(6,12,20,0.08),rgba(6,12,20,0.18)_38%,rgba(6,12,20,0.5))] [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.08)_36%,rgba(233,244,255,0.24))] [html[data-theme='light']_&]:xl:bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(244,249,255,0.14)_36%,rgba(224,239,255,0.3))]" />
                   <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(2,6,12,0.72))] [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(255,255,255,0),rgba(232,243,255,0.46))] xl:hidden" />
                 </div>
-                <div className="relative p-5 sm:p-6 xl:flex xl:h-full xl:flex-col xl:justify-center xl:p-7">
+                <div className="relative p-5 sm:p-6 xl:p-7">
                   <div className="absolute inset-y-0 right-0 hidden w-28 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.14),transparent_72%)] xl:block [html[data-theme='light']_&]:bg-[radial-gradient(circle_at_center,rgba(96,165,250,0.12),transparent_72%)]" />
                   <p className="relative text-[0.66rem] font-semibold uppercase tracking-[0.26em] text-cyan-300 [html[data-theme='light']_&]:text-sky-600 sm:text-xs">Development Team</p>
                   <p className="relative mt-2 text-[1.28rem] font-semibold tracking-[-0.02em] text-white [html[data-theme='light']_&]:text-slate-900 sm:text-[1.5rem]">{builder.name}</p>
                   <div className="relative mt-3 inline-flex rounded-full border border-cyan-200/35 bg-cyan-300/16 px-3.5 py-1.5 text-[0.72rem] font-bold uppercase tracking-[0.16em] text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] [html[data-theme='light']_&]:border-sky-200/90 [html[data-theme='light']_&]:bg-sky-50 [html[data-theme='light']_&]:text-sky-700 [html[data-theme='light']_&]:shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
                     {builder.badge}
                   </div>
-                  <p className="relative mt-4 max-w-[42ch] text-[0.98rem] font-semibold leading-7 text-sky-100 xl:min-h-[3.5rem] [html[data-theme='light']_&]:text-slate-800">{builder.role}</p>
-                  <p className="relative mt-3 max-w-[46ch] text-[0.95rem] leading-7 text-slate-200/95 xl:flex-1 [html[data-theme='light']_&]:text-slate-600">{builder.note}</p>
+                  <p className="relative mt-4 max-w-[42ch] text-[0.98rem] font-semibold leading-7 text-sky-100 [html[data-theme='light']_&]:text-slate-800">{builder.role}</p>
+                  <p className="relative mt-3 max-w-[46ch] text-[0.95rem] leading-7 text-slate-200/95 [html[data-theme='light']_&]:text-slate-600">{builder.note}</p>
                 </div>
               </article>
             ))}
