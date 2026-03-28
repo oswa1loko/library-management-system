@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
-require_role('student');
+require_role('faculty');
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $message = '';
@@ -13,7 +13,7 @@ $overdueBooks = get_member_overdue_books($conn, $userId, 5);
 if (isset($_POST['mark_read'])) {
     $id = (int) ($_POST['id'] ?? 0);
     if ($id > 0) {
-        $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND role = 'student' AND user_id = ?");
+        $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND role = 'faculty' AND user_id = ?");
         $stmt->bind_param('ii', $id, $userId);
         $stmt->execute();
         $changed = $stmt->affected_rows === 1;
@@ -25,7 +25,7 @@ if (isset($_POST['mark_read'])) {
 }
 
 if (isset($_POST['mark_all_read'])) {
-    $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE role = 'student' AND user_id = ? AND is_read = 0");
+    $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE role = 'faculty' AND user_id = ? AND is_read = 0");
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $stmt->close();
@@ -35,7 +35,7 @@ if (isset($_POST['mark_all_read'])) {
 $notificationsStmt = $conn->prepare("
     SELECT id, title, body, severity, is_read, created_at
     FROM notifications
-    WHERE role = 'student' AND user_id = ?
+    WHERE role = 'faculty' AND user_id = ?
     ORDER BY id DESC
     LIMIT 60
 ");
@@ -44,15 +44,14 @@ $notificationsStmt->execute();
 $notifications = $notificationsStmt->get_result();
 $notificationsStmt->close();
 
-$studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM notifications WHERE role = 'student' AND user_id = " . (int) $userId . " AND is_read = 0")->fetch_assoc()['total'] ?? 0);
-$notificationFeedUrl = app_url('student/notifications_feed.php');
+$notificationFeedUrl = app_url('faculty/notifications_feed.php');
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Student Notifications</title>
+<title>Faculty Notifications</title>
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
@@ -60,7 +59,7 @@ $notificationFeedUrl = app_url('student/notifications_feed.php');
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
-<div class="site-shell member-shell js-member-sidebar" data-sidebar-key="student-notifications">
+<div class="site-shell member-shell js-member-sidebar" data-sidebar-key="faculty-notifications">
   <aside class="panel member-sidebar">
     <div class="member-sidebar-head">
       <div class="member-sidebar-toggle" aria-hidden="true">
@@ -117,8 +116,8 @@ $notificationFeedUrl = app_url('student/notifications_feed.php');
   <div class="member-main">
     <div class="topbar">
       <div>
-        <h1>Student Notifications</h1>
-        <p>Click into your latest return and account updates</p>
+        <h1>Faculty Notifications</h1>
+        <p>Open the latest return, account, and payment updates</p>
       </div>
     </div>
 
@@ -146,9 +145,9 @@ $notificationFeedUrl = app_url('student/notifications_feed.php');
             ?>
             <a
               class="activity-item activity-item-link<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
-              href="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              href="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
               data-notification-link
-              data-destination-url="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              data-destination-url="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
               <strong>
@@ -171,9 +170,9 @@ $notificationFeedUrl = app_url('student/notifications_feed.php');
             <?php $borrowId = (int) ($dueBook['id'] ?? 0); ?>
             <a
               class="activity-item activity-item-link<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
-              href="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              href="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
               data-notification-link
-              data-destination-url="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              data-destination-url="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
               <strong>
@@ -199,16 +198,16 @@ $notificationFeedUrl = app_url('student/notifications_feed.php');
           <?php endif; ?>
           <?php while ($notifications && ($row = $notifications->fetch_assoc())): ?>
             <?php
-              $destination = notification_destination_for_viewer('student', $row);
+              $destination = notification_destination_for_viewer('faculty', $row);
               $destinationUrl = (string) ($destination['url'] ?? '');
               $destinationLabel = (string) ($destination['label'] ?? 'Open notification');
               $isUnread = (int) ($row['is_read'] ?? 0) === 0;
             ?>
             <a
               class="activity-item activity-item-link<?php echo $isUnread ? ' is-unread' : ''; ?>"
-              href="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('student/notifications.php')); ?>"
+              href="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('faculty/notifications.php')); ?>"
               data-notification-link
-              data-destination-url="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('student/notifications.php')); ?>"
+              data-destination-url="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('faculty/notifications.php')); ?>"
               <?php if ($isUnread): ?>data-notification-id="<?php echo (int) $row['id']; ?>" data-notification-unread="true"<?php endif; ?>
             >
               <strong>

@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payload = is_array($rawPayload) ? $rawPayload : $_POST;
     $action = trim((string) ($payload['action'] ?? ''));
     $notificationId = (int) ($payload['id'] ?? 0);
+    $borrowId = (int) ($payload['borrow_id'] ?? 0);
 
     if ($action === 'mark_read' && $notificationId > 0) {
         $markStmt = $conn->prepare("
@@ -88,6 +89,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if ($action === 'mark_alert_read' && $borrowId > 0) {
+        $dismissedDueAlerts[] = $borrowId;
+        $_SESSION['faculty_read_due_alerts'][$userId] = array_values(array_unique(array_filter(array_map('intval', $dismissedDueAlerts))));
+
+        $countStmt = $conn->prepare("
+            SELECT COUNT(*) AS total
+            FROM notifications
+            WHERE role = 'faculty' AND user_id = ? AND is_read = 0
+        ");
+        $countStmt->bind_param('i', $userId);
+        $countStmt->execute();
+        $remainingUnread = (int) ($countStmt->get_result()->fetch_assoc()['total'] ?? 0);
+        $countStmt->close();
+
+        echo json_encode([
+            'ok' => true,
+            'unread_count' => $remainingUnread + $countUnreadDueAlerts($dueSoonBooks) + $countUnreadDueAlerts($overdueBooks),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     echo json_encode([
         'ok' => false,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -136,6 +158,7 @@ foreach ($dueSoonBooks as $dueBook) {
 
     $items[] = [
         'id' => 0,
+        'borrow_id' => $borrowId,
         'title' => 'Due Date Alert',
         'body' => $body,
         'severity' => 'warning',
@@ -162,6 +185,7 @@ foreach ($overdueBooks as $dueBook) {
 
     $items[] = [
         'id' => 0,
+        'borrow_id' => $borrowId,
         'title' => 'Overdue Alert',
         'body' => $body,
         'severity' => 'critical',

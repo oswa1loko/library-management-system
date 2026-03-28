@@ -1997,8 +1997,8 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $url = '/librarymanage/faculty/payment_upload.php';
             $label = 'Open payments';
         } else {
-            $url = '/librarymanage/faculty/dashboard.php';
-            $label = 'Open dashboard';
+            $url = '/librarymanage/faculty/notifications.php';
+            $label = 'Open notifications';
         }
     } elseif ($viewerRole === 'admin') {
         if (strpos($titleLower, 'payment') !== false) {
