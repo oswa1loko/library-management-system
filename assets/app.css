@@ -3150,6 +3150,7 @@ body.auth-page > .theme-toggle{
     width:100%;
     margin-top:0;
     border-radius:20px;
+    box-shadow:0 20px 38px rgba(0,0,0,0.22);
   }
 
   body.auth-page > .theme-toggle{
@@ -3202,25 +3203,65 @@ body.auth-page > .theme-toggle{
   .auth-panel,
   .auth-panel-main,
   .auth-panel-main-otp{
-    padding:22px 18px;
+    padding:24px 20px;
   }
 
   .auth-title{
-    font-size:26px;
-    line-height:1.15;
+    margin-bottom:8px;
+    font-size:28px;
+    line-height:1.12;
   }
 
   .auth-kicker{
     font-size:11px;
-    letter-spacing:.1em;
+    letter-spacing:.14em;
   }
 
   .auth-intro{
-    font-size:14px;
+    font-size:13px;
+    line-height:1.68;
+    max-width:none;
   }
 
   .auth-form{
-    margin-top:14px;
+    margin-top:18px;
+    gap:14px;
+  }
+
+  .auth-form label{
+    margin-bottom:8px;
+    font-size:11px;
+    letter-spacing:.08em;
+  }
+
+  .auth-form input{
+    min-height:50px;
+    padding:14px 15px;
+    border-radius:15px;
+  }
+
+  .auth-inline-note{
+    margin-top:0;
+    margin-bottom:4px;
+  }
+
+  .auth-inline-note a{
+    font-size:12px;
+  }
+
+  .auth-form .inline-actions{
+    gap:10px;
+  }
+
+  .auth-form .inline-actions .button,
+  .auth-form .inline-actions button,
+  .auth-form .inline-actions input[type="submit"]{
+    min-height:46px;
+    border-radius:13px;
+  }
+
+  .auth-form .button.secondary{
+    opacity:.9;
   }
 
   .footer-note{

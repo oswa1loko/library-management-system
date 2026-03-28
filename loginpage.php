@@ -243,7 +243,7 @@ if ($isOtpStep) {
           <?php if ($isOtpStep): ?>
             Enter the 6-digit code sent to <?php echo h((string) ($pendingOtp['email'] ?? 'your email')); ?> to complete your login.
           <?php else: ?>
-            Use your email or username and password. Newly provisioned accounts must first set their password from the invitation email. Student and faculty accounts will then receive a one-time verification code after password login.
+            Sign in with your email or username and password. New accounts must set a password from the invitation email first. Student and faculty accounts receive a one-time verification code after login.
           <?php endif; ?>
         </p>
 
