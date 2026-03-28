@@ -151,9 +151,15 @@
     var panel = document.querySelector('.student-notification-panel');
     var shouldKeepNotificationPanelOpen = !!(panel && panel.dataset.panelOpen === 'true');
     setTheme(nextTheme);
-    if (shouldKeepNotificationPanelOpen && panel) {
-      panel.hidden = false;
+    if (!shouldKeepNotificationPanelOpen) {
+      return;
     }
+
+    window.requestAnimationFrame(function () {
+      var activePanel = ensureStudentNotificationPanel();
+      activePanel.hidden = false;
+      activePanel.dataset.panelOpen = 'true';
+    });
   }
 
   function escapeHtml(value) {
