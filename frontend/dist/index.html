@@ -1108,17 +1108,29 @@
 
         .team-showcase .team-member-card {
           display: grid;
+          height: 240px;
           grid-template-columns: 220px minmax(0, 1fr);
           align-items: stretch;
         }
 
         .team-showcase .team-member-media {
           height: 100% !important;
-          min-height: 224px;
         }
 
         .team-showcase .team-member-body {
+          display: flex;
+          height: 100%;
+          flex-direction: column;
+          justify-content: center;
           padding: 28px !important;
+        }
+
+        .team-showcase .team-member-body p:first-of-type {
+          min-height: 3.5rem;
+        }
+
+        .team-showcase .team-member-body p:last-of-type {
+          flex: 1;
         }
       }
 
