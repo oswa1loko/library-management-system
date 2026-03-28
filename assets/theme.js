@@ -313,7 +313,7 @@
     };
 
     if (isUnread && notificationId > 0) {
-      markStudentNotificationRead(panel, notificationId)
+      markStudentNotificationRead(panel, notificationId, { reload: false })
         .catch(function () {
           // Navigate even if the read update fails so the click still feels reliable.
         })
@@ -380,9 +380,10 @@
       });
   }
 
-  function markStudentNotificationRead(panel, notificationId) {
+  function markStudentNotificationRead(panel, notificationId, options) {
     var config = getMemberNotificationConfig();
     var formData = new window.URLSearchParams();
+    var shouldReload = !options || options.reload !== false;
     formData.set('action', 'mark_read');
     formData.set('id', String(Number(notificationId || 0)));
 
@@ -392,6 +393,7 @@
 
     return window.fetch(config.feedUrl, {
       method: 'POST',
+      keepalive: true,
       credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -408,7 +410,9 @@
         }
 
         updateStudentNotificationBadges(payload.unread_count || 0);
-        loadStudentNotifications(panel);
+        if (shouldReload) {
+          loadStudentNotifications(panel);
+        }
       });
   }
 
