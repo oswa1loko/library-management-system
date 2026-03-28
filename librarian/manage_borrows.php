@@ -571,54 +571,42 @@ $recentRequests = $conn->query("
 $pendingBatches = [];
 $pendingBatchRows = $conn->query("
     SELECT
-      br.request_batch,
-      br.requested_at,
-      b.qty_available,
-      u.fullname,
-      u.username,
-      u.role,
-      b.title,
-      b.author,
-      br.id AS borrow_id
+      CASE
+        WHEN br.request_batch IS NULL OR br.request_batch = '' THEN CONCAT('legacy-', br.id)
+        ELSE br.request_batch
+      END AS batch_key,
+      MAX(br.requested_at) AS requested_at,
+      MAX(u.fullname) AS fullname,
+      MAX(u.username) AS username,
+      MAX(u.role) AS role,
+      COUNT(*) AS total_items,
+      SUM(CASE WHEN b.qty_available > 0 THEN 1 ELSE 0 END) AS actionable_items,
+      SUM(CASE WHEN b.qty_available <= 0 THEN 1 ELSE 0 END) AS waiting_stock_items
     FROM borrows br
     JOIN users u ON u.id = br.user_id
     JOIN books b ON b.id = br.book_id
     WHERE br.status = 'pending'
-    ORDER BY br.created_at DESC, br.id ASC
+    GROUP BY batch_key
+    ORDER BY requested_at DESC
 ");
 
 if ($pendingBatchRows instanceof mysqli_result) {
     while ($row = $pendingBatchRows->fetch_assoc()) {
-        $batchKey = (string) ($row['request_batch'] ?? '');
+        $batchKey = (string) ($row['batch_key'] ?? '');
         if ($batchKey === '') {
-            $batchKey = 'legacy-' . (int) $row['borrow_id'];
+            continue;
         }
 
-        if (!isset($pendingBatches[$batchKey])) {
-            $pendingBatches[$batchKey] = [
-                'request_batch' => $batchKey,/*  */
-                'created_at' => (string) ($row['requested_at'] ?? ''),
-                'fullname' => (string) ($row['fullname'] ?? ''),
-                'username' => (string) ($row['username'] ?? ''),
-                'role' => (string) ($row['role'] ?? ''),
-                'actionable_items' => 0,
-                'waiting_stock_items' => 0,
-                'items' => [],
-            ];/*  */
-        }
-
-        $waitingForStock = (int) ($row['qty_available'] ?? 0) <= 0;
-        if ($waitingForStock) {
-            $pendingBatches[$batchKey]['waiting_stock_items']++;
-        } else {
-            $pendingBatches[$batchKey]['actionable_items']++;
-        }
-
-        $pendingBatches[$batchKey]['items'][] = [
-            'borrow_id' => (int) $row['borrow_id'],
-            'title' => (string) ($row['title'] ?? ''),
-            'author' => (string) ($row['author'] ?? ''),
-            'waiting_for_stock' => $waitingForStock,
+        $pendingBatches[$batchKey] = [
+            'request_batch' => $batchKey,
+            'created_at' => (string) ($row['requested_at'] ?? ''),
+            'fullname' => (string) ($row['fullname'] ?? ''),
+            'username' => (string) ($row['username'] ?? ''),
+            'role' => (string) ($row['role'] ?? ''),
+            'total_items' => (int) ($row['total_items'] ?? 0),
+            'actionable_items' => (int) ($row['actionable_items'] ?? 0),
+            'waiting_stock_items' => (int) ($row['waiting_stock_items'] ?? 0),
+            'items' => [],
         ];
     }
 }
@@ -642,47 +630,37 @@ if ($returnBatchStatsRows instanceof mysqli_result) {
 $pendingReturnBatches = [];
 $pendingReturnRows = $conn->query("
     SELECT
-      br.id AS borrow_id,
       br.return_batch,
-      br.request_batch,
-      br.return_requested_at AS request_date,
-      u.fullname,
-      u.username,
-      u.role,
-      b.title,
-      b.author
+      MAX(br.request_batch) AS request_batch,
+      MAX(br.return_requested_at) AS request_date,
+      MAX(u.fullname) AS fullname,
+      MAX(u.username) AS username,
+      MAX(u.role) AS role
     FROM borrows br
     JOIN users u ON u.id = br.user_id
     JOIN books b ON b.id = br.book_id
     WHERE br.status = 'return_requested'
       AND br.return_batch IS NOT NULL
       AND br.return_batch <> ''
-    ORDER BY br.return_requested_at DESC, br.id ASC
+    GROUP BY br.return_batch
+    ORDER BY request_date DESC
 ");
 if ($pendingReturnRows instanceof mysqli_result) {
     while ($row = $pendingReturnRows->fetch_assoc()) {
         $batchKey = (string) ($row['return_batch'] ?? '');
-        if (!isset($pendingReturnBatches[$batchKey])) {
-            $requestBatchKey = (string) ($row['request_batch'] ?? '');
-            $stats = $returnBatchStats[$requestBatchKey] ?? ['total_items' => 0, 'requested_items' => 0, 'outstanding_items' => 0];
-            $pendingReturnBatches[$batchKey] = [
-                'return_batch' => $batchKey,
-                'request_batch' => $requestBatchKey,
-                'request_date' => (string) ($row['request_date'] ?? ''),
-                'fullname' => (string) ($row['fullname'] ?? ''),
-                'username' => (string) ($row['username'] ?? ''),
-                'role' => (string) ($row['role'] ?? ''),
-                'total_items' => (int) ($stats['total_items'] ?? 0),
-                'requested_items' => (int) ($stats['requested_items'] ?? 0),
-                'outstanding_items' => (int) ($stats['outstanding_items'] ?? 0),
-                'items' => [],
-            ];
-        }
-
-        $pendingReturnBatches[$batchKey]['items'][] = [
-            'borrow_id' => (int) $row['borrow_id'],
-            'title' => (string) ($row['title'] ?? ''),
-            'author' => (string) ($row['author'] ?? ''),
+        $requestBatchKey = (string) ($row['request_batch'] ?? '');
+        $stats = $returnBatchStats[$requestBatchKey] ?? ['total_items' => 0, 'requested_items' => 0, 'outstanding_items' => 0];
+        $pendingReturnBatches[$batchKey] = [
+            'return_batch' => $batchKey,
+            'request_batch' => $requestBatchKey,
+            'request_date' => (string) ($row['request_date'] ?? ''),
+            'fullname' => (string) ($row['fullname'] ?? ''),
+            'username' => (string) ($row['username'] ?? ''),
+            'role' => (string) ($row['role'] ?? ''),
+            'total_items' => (int) ($stats['total_items'] ?? 0),
+            'requested_items' => (int) ($stats['requested_items'] ?? 0),
+            'outstanding_items' => (int) ($stats['outstanding_items'] ?? 0),
+            'items' => [],
         ];
     }
 }
@@ -691,6 +669,66 @@ $selectedRequestBatch = trim((string) ($_GET['request_batch'] ?? ''));
 $selectedReturnBatch = trim((string) ($_GET['return_batch'] ?? ''));
 $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selectedRequestBatch] ?? null) : null;
 $selectedPendingReturnBatch = $selectedReturnBatch !== '' ? ($pendingReturnBatches[$selectedReturnBatch] ?? null) : null;
+
+if ($selectedPendingBatch) {
+    $selectedBorrowId = 0;
+    if (strpos($selectedRequestBatch, 'legacy-') === 0) {
+        $selectedBorrowId = (int) substr($selectedRequestBatch, 7);
+    }
+
+    if ($selectedBorrowId > 0) {
+        $detailStmt = $conn->prepare("
+            SELECT br.id AS borrow_id, b.title, b.author, b.qty_available
+            FROM borrows br
+            JOIN books b ON b.id = br.book_id
+            WHERE br.id = ? AND br.status = 'pending'
+            LIMIT 1
+        ");
+        $detailStmt->bind_param('i', $selectedBorrowId);
+    } else {
+        $detailStmt = $conn->prepare("
+            SELECT br.id AS borrow_id, b.title, b.author, b.qty_available
+            FROM borrows br
+            JOIN books b ON b.id = br.book_id
+            WHERE br.request_batch = ? AND br.status = 'pending'
+            ORDER BY br.id ASC
+        ");
+        $detailStmt->bind_param('s', $selectedRequestBatch);
+    }
+
+    $detailStmt->execute();
+    $detailRows = $detailStmt->get_result();
+    while ($detailRows && ($row = $detailRows->fetch_assoc())) {
+        $selectedPendingBatch['items'][] = [
+            'borrow_id' => (int) ($row['borrow_id'] ?? 0),
+            'title' => (string) ($row['title'] ?? ''),
+            'author' => (string) ($row['author'] ?? ''),
+            'waiting_for_stock' => (int) ($row['qty_available'] ?? 0) <= 0,
+        ];
+    }
+    $detailStmt->close();
+}
+
+if ($selectedPendingReturnBatch) {
+    $detailStmt = $conn->prepare("
+        SELECT br.id AS borrow_id, b.title, b.author
+        FROM borrows br
+        JOIN books b ON b.id = br.book_id
+        WHERE br.return_batch = ? AND br.status = 'return_requested'
+        ORDER BY br.id ASC
+    ");
+    $detailStmt->bind_param('s', $selectedReturnBatch);
+    $detailStmt->execute();
+    $detailRows = $detailStmt->get_result();
+    while ($detailRows && ($row = $detailRows->fetch_assoc())) {
+        $selectedPendingReturnBatch['items'][] = [
+            'borrow_id' => (int) ($row['borrow_id'] ?? 0),
+            'title' => (string) ($row['title'] ?? ''),
+            'author' => (string) ($row['author'] ?? ''),
+        ];
+    }
+    $detailStmt->close();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -815,7 +853,7 @@ $selectedPendingReturnBatch = $selectedReturnBatch !== '' ? ($pendingReturnBatch
                 </div>
               </div>
               <div class="inline-actions chips-row batch-status-row">
-                <span class="chip"><?php echo count($batch['items']); ?> request<?php echo count($batch['items']) === 1 ? '' : 's'; ?></span>
+                <span class="chip"><?php echo (int) ($batch['total_items'] ?? 0); ?> request<?php echo (int) ($batch['total_items'] ?? 0) === 1 ? '' : 's'; ?></span>
                 <span class="chip"><?php echo (int) ($batch['actionable_items'] ?? 0); ?> ready to release</span>
               <span class="chip"><?php echo (int) ($batch['waiting_stock_items'] ?? 0); ?> waiting for stock</span>
             </div>
