@@ -7,7 +7,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         JOIN books b ON b.id = br.book_id
-        WHERE id = ?
+        WHERE br.id = ?
         LIMIT 1
     ");
     $borrowStmt->bind_param('i', $borrowId);
