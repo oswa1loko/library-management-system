@@ -197,6 +197,13 @@
     return null;
   }
 
+  function isFullMemberNotificationsPage() {
+    return (
+      window.location.pathname.indexOf('/student/notifications.php') !== -1 ||
+      window.location.pathname.indexOf('/faculty/notifications.php') !== -1
+    );
+  }
+
   function buildMemberNotificationOpenUrl(baseUrl, destinationUrl, notificationId, borrowId) {
     var url = new window.URL(baseUrl, window.location.origin);
     url.searchParams.set('redirect', destinationUrl);
@@ -536,7 +543,7 @@
 
   function ensureStudentHeaderNotificationShortcut() {
     var config = getMemberNotificationConfig();
-    if (!config) {
+    if (!config || isFullMemberNotificationsPage()) {
       return;
     }
 
@@ -572,7 +579,7 @@
 
   function ensureStudentMobileNotificationShortcut() {
     var config = getMemberNotificationConfig();
-    if (!config) {
+    if (!config || isFullMemberNotificationsPage()) {
       return;
     }
 
