@@ -221,7 +221,6 @@
     panel.innerHTML =
       '<div class="student-notification-panel-head">' +
         '<strong>Notifications</strong>' +
-        '<button type="button" class="button secondary student-notification-mark-all">Mark as read</button>' +
       '</div>' +
       '<div class="student-notification-panel-body">' +
         '<div class="student-notification-empty">Loading notifications...</div>' +
@@ -248,20 +247,6 @@
     });
 
     panel.addEventListener('click', function (event) {
-      var markAllButton = event.target.closest('.student-notification-mark-all');
-      if (markAllButton) {
-        event.preventDefault();
-        event.stopPropagation();
-        markAllStudentNotificationsRead(panel)
-          .catch(function () {
-            var body = panel.querySelector('.student-notification-panel-body');
-            if (body) {
-              body.insertAdjacentHTML('afterbegin', '<div class="student-notification-empty">Unable to mark notifications as read right now.</div>');
-            }
-          });
-        return;
-      }
-
       var notificationItem = event.target.closest('.student-notification-item[data-destination-url]');
       if (!notificationItem) {
         return;
@@ -436,10 +421,6 @@
       badge.textContent = count > 99 ? '99+' : String(count);
       badge.hidden = false;
     });
-
-    document.querySelectorAll('.student-notification-mark-all').forEach(function (button) {
-      button.disabled = count <= 0;
-    });
   }
 
   function loadStudentNotifications(panel) {
@@ -525,41 +506,6 @@
         if (shouldReload) {
           loadStudentNotifications(panel);
         }
-      });
-  }
-
-  function markAllStudentNotificationsRead(panel) {
-    var config = getMemberNotificationConfig();
-    var formData = new window.URLSearchParams();
-    formData.set('action', 'mark_all_read');
-
-    if (!config) {
-      return Promise.reject(new Error('Notifications are not available here.'));
-    }
-
-    return window.fetch(config.feedUrl, {
-      method: 'POST',
-      cache: 'no-store',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: formData.toString()
-    })
-      .then(function (response) {
-        return response.json();
-      })
-      .then(function (payload) {
-        if (!payload || payload.ok !== true) {
-          throw new Error('Unable to mark notifications as read.');
-        }
-
-        panel.querySelectorAll('.student-notification-item[data-notification-unread="true"]').forEach(function (item) {
-          setNotificationItemReadState(item);
-        });
-        updateStudentNotificationBadges(payload.unread_count || 0);
-        loadStudentNotifications(panel);
       });
   }
 
