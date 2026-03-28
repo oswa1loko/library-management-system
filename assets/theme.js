@@ -148,7 +148,12 @@
   function toggleTheme() {
     var currentTheme = root.getAttribute('data-theme') || 'dark';
     var nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+    var panel = document.querySelector('.student-notification-panel');
+    var shouldKeepNotificationPanelOpen = !!(panel && panel.dataset.panelOpen === 'true');
     setTheme(nextTheme);
+    if (shouldKeepNotificationPanelOpen && panel) {
+      panel.hidden = false;
+    }
   }
 
   function escapeHtml(value) {
@@ -225,6 +230,7 @@
     panel = document.createElement('div');
     panel.className = 'student-notification-panel';
     panel.hidden = true;
+    panel.dataset.panelOpen = 'false';
     panel.innerHTML =
       '<div class="student-notification-panel-head">' +
         '<strong>Notifications</strong>' +
@@ -246,11 +252,13 @@
       }
 
       panel.hidden = true;
+      panel.dataset.panelOpen = 'false';
     });
 
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape') {
         panel.hidden = true;
+        panel.dataset.panelOpen = 'false';
       }
     });
 
@@ -527,6 +535,7 @@
       event.preventDefault();
       var shouldOpen = panel.hidden;
       panel.hidden = !panel.hidden;
+      panel.dataset.panelOpen = shouldOpen ? 'true' : 'false';
       if (shouldOpen) {
         loadStudentNotifications(panel);
       }
