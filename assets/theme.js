@@ -165,6 +165,8 @@
     return url + separator + '_=' + Date.now();
   }
 
+  var memberNotificationLoadSequence = 0;
+
   function getMemberNotificationConfig() {
     if (window.location.pathname.indexOf('/admin/') !== -1) {
       return {
@@ -364,6 +366,8 @@
   function loadStudentNotifications(panel) {
     var config = getMemberNotificationConfig();
     var body = panel.querySelector('.student-notification-panel-body');
+    var requestId = String(++memberNotificationLoadSequence);
+    panel.dataset.notificationRequestId = requestId;
     if (body) {
       body.innerHTML = '<div class="student-notification-empty">Loading notifications...</div>';
     }
@@ -390,10 +394,18 @@
           throw new Error('Unable to load notifications.');
         }
 
+        if (panel.dataset.notificationRequestId !== requestId) {
+          return;
+        }
+
         renderStudentNotifications(panel, payload);
         updateStudentNotificationBadges(payload.unread_count || 0);
       })
       .catch(function () {
+        if (panel.dataset.notificationRequestId !== requestId) {
+          return;
+        }
+
         if (body) {
           body.innerHTML = '<div class="student-notification-empty">Unable to load notifications right now.</div>';
         }
