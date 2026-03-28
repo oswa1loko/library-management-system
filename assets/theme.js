@@ -155,11 +155,13 @@
       return;
     }
 
-    window.requestAnimationFrame(function () {
+    window.setTimeout(function () {
       var activePanel = ensureStudentNotificationPanel();
-      activePanel.hidden = false;
-      activePanel.dataset.panelOpen = 'true';
-    });
+      setStudentNotificationPanelOpen(activePanel, true);
+      window.requestAnimationFrame(function () {
+        setStudentNotificationPanelOpen(activePanel, true);
+      });
+    }, 0);
   }
 
   function escapeHtml(value) {
@@ -181,7 +183,8 @@
   function getMemberNotificationConfig() {
     if (window.location.pathname.indexOf('/admin/') !== -1) {
       return {
-        feedUrl: '/librarymanage/admin/notifications_feed.php'
+        feedUrl: '/librarymanage/admin/notifications_feed.php',
+        openUrl: '/librarymanage/admin/notification_open.php'
       };
     }
 
@@ -257,14 +260,12 @@
         return;
       }
 
-      panel.hidden = true;
-      panel.dataset.panelOpen = 'false';
+      setStudentNotificationPanelOpen(panel, false);
     });
 
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape') {
-        panel.hidden = true;
-        panel.dataset.panelOpen = 'false';
+        setStudentNotificationPanelOpen(panel, false);
       }
     });
 
@@ -280,6 +281,15 @@
     });
 
     return panel;
+  }
+
+  function setStudentNotificationPanelOpen(panel, open) {
+    if (!panel) {
+      return;
+    }
+
+    panel.hidden = !open;
+    panel.dataset.panelOpen = open ? 'true' : 'false';
   }
 
   function isRecentNotificationItem(item) {
@@ -540,8 +550,7 @@
     shortcut.addEventListener('click', function (event) {
       event.preventDefault();
       var shouldOpen = panel.hidden;
-      panel.hidden = !panel.hidden;
-      panel.dataset.panelOpen = shouldOpen ? 'true' : 'false';
+      setStudentNotificationPanelOpen(panel, shouldOpen);
       if (shouldOpen) {
         loadStudentNotifications(panel);
       }

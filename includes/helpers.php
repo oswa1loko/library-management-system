@@ -1710,16 +1710,6 @@ function sync_overdue_penalties(mysqli $conn): array
     ");
     $updated = max(0, (int) $conn->affected_rows);
 
-    if ($inserted > 0) {
-        create_notification(
-            $conn,
-            'admin',
-            'Overdue Penalties Updated',
-            $inserted . ' new overdue penalty record(s) were created by auto-sync.',
-            'warning'
-        );
-    }
-
     return ['inserted' => $inserted, 'updated' => $updated];
 }
 
@@ -1964,6 +1954,26 @@ function create_notification(mysqli $conn, string $role, string $title, string $
     $stmt->bind_param('sisss', $role, $userId, $title, $body, $severity);
     $stmt->execute();
     $stmt->close();
+}
+
+function admin_notification_inbox_excluded_titles(): array
+{
+    return [
+        'Overdue Penalties Updated',
+        'Due Soon Email Reminders Sent',
+        'Overdue Email Notices Sent',
+    ];
+}
+
+function admin_notification_inbox_where_sql(string $alias = ''): string
+{
+    $prefix = $alias !== '' ? trim($alias) . '.' : '';
+    $excluded = array_map(
+        static fn(string $title): string => "'" . str_replace("'", "''", $title) . "'",
+        admin_notification_inbox_excluded_titles()
+    );
+
+    return $prefix . "role = 'admin' AND " . $prefix . 'title NOT IN (' . implode(', ', $excluded) . ')';
 }
 
 function notification_destination_for_viewer(string $viewerRole, array $notification): array
@@ -2293,16 +2303,6 @@ function send_due_soon_reminders(mysqli $conn): array
 
     $updateStmt->close();
 
-    if ($result['sent'] > 0) {
-        create_notification(
-            $conn,
-            'admin',
-            'Due Soon Email Reminders Sent',
-            $result['sent'] . ' due-soon reminder email(s) were sent for books due tomorrow.',
-            'info'
-        );
-    }
-
     update_email_reminder_debug_snapshot('due_soon', $result);
 
     return $result;
@@ -2525,16 +2525,6 @@ function send_overdue_notices(mysqli $conn): array
     $updateStmt->close();
     if ($penaltyStmt) {
         $penaltyStmt->close();
-    }
-
-    if ($result['sent'] > 0) {
-        create_notification(
-            $conn,
-            'admin',
-            'Overdue Email Notices Sent',
-            $result['sent'] . ' one-time overdue email notice(s) were sent.',
-            'warning'
-        );
     }
 
     update_email_reminder_debug_snapshot('overdue', $result);

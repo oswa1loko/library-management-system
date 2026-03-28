@@ -13,7 +13,11 @@ $mailHealth = library_mail_health_snapshot(false);
 if (isset($_POST['mark_read'])) {
     $id = (int) ($_POST['id'] ?? 0);
     if ($id > 0) {
-        $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND role = 'admin'");
+        $stmt = $conn->prepare("
+            UPDATE notifications
+            SET is_read = 1
+            WHERE id = ? AND " . admin_notification_inbox_where_sql() . "
+        ");
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $changed = $stmt->affected_rows === 1;
@@ -26,7 +30,11 @@ if (isset($_POST['mark_read'])) {
 }
 
 if (isset($_POST['mark_all_read'])) {
-    $conn->query("UPDATE notifications SET is_read = 1 WHERE role = 'admin' AND is_read = 0");
+    $conn->query("
+        UPDATE notifications
+        SET is_read = 1
+        WHERE " . admin_notification_inbox_where_sql() . " AND is_read = 0
+    ");
     $message = 'All admin notifications marked as read.';
     audit_log($conn, 'admin.notification.read_all');
 }
@@ -65,7 +73,7 @@ $liveStats = $conn->query("
 $notifications = $conn->query("
     SELECT id, title, body, severity, is_read, created_at
     FROM notifications
-    WHERE role = 'admin'
+    WHERE " . admin_notification_inbox_where_sql() . "
     ORDER BY id DESC
     LIMIT 60
 ");
@@ -244,23 +252,42 @@ $notifications = $conn->query("
           <div class="empty-state">No notifications yet.</div>
         <?php endif; ?>
         <?php while ($row = $notifications->fetch_assoc()): ?>
-          <div class="activity-item">
-            <strong>
-              <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
-              <?php echo h($row['title']); ?>
-              <?php if ((int) $row['is_read'] === 0): ?><span class="chip">Unread</span><?php endif; ?>
-            </strong>
-            <div class="meta"><?php echo h($row['body']); ?></div>
-            <div class="inline-actions meta-top">
-              <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
-              <?php if ((int) $row['is_read'] === 0): ?>
-                <form method="post" class="inline-form">
-                  <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>">
-                  <button type="submit" name="mark_read" value="1">Mark Read</button>
-                </form>
-              <?php endif; ?>
+          <?php
+            $destination = notification_destination_for_viewer('admin', $row);
+            $notificationId = (int) ($row['id'] ?? 0);
+            $isUnread = (int) ($row['is_read'] ?? 0) === 0;
+            $destinationUrl = trim((string) ($destination['url'] ?? ''));
+            $destinationLabel = trim((string) ($destination['label'] ?? 'Open notification'));
+            $openHref = $destinationUrl !== ''
+              ? app_url('admin/notification_open.php?notification_id=' . $notificationId . '&redirect=' . urlencode($destinationUrl))
+              : '';
+          ?>
+          <?php if ($openHref !== ''): ?>
+            <a class="activity-item activity-item-link<?php echo $isUnread ? ' is-unread' : ''; ?>" href="<?php echo h($openHref); ?>">
+              <strong>
+                <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
+                <?php echo h($row['title']); ?>
+                <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
+              </strong>
+              <div class="meta"><?php echo h($row['body']); ?></div>
+              <div class="inline-actions meta-top">
+                <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
+                <span><?php echo h($destinationLabel); ?></span>
+              </div>
+            </a>
+          <?php else: ?>
+            <div class="activity-item">
+              <strong>
+                <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
+                <?php echo h($row['title']); ?>
+                <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
+              </strong>
+              <div class="meta"><?php echo h($row['body']); ?></div>
+              <div class="inline-actions meta-top">
+                <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
+              </div>
             </div>
-          </div>
+          <?php endif; ?>
         <?php endwhile; ?>
       </div>
     </div>

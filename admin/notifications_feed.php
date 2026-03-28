@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $markStmt = $conn->prepare("
             UPDATE notifications
             SET is_read = 1
-            WHERE id = ? AND role = 'admin'
+            WHERE id = ? AND " . admin_notification_inbox_where_sql() . "
             LIMIT 1
         ");
         $markStmt->bind_param('i', $notificationId);
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $checkStmt = $conn->prepare("
                 SELECT id
                 FROM notifications
-                WHERE id = ? AND role = 'admin'
+                WHERE id = ? AND " . admin_notification_inbox_where_sql() . "
                 LIMIT 1
             ");
             $checkStmt->bind_param('i', $notificationId);
@@ -38,7 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $checkStmt->close();
         }
 
-        $countResult = $conn->query("SELECT COUNT(*) AS total FROM notifications WHERE role = 'admin' AND is_read = 0");
+        $countResult = $conn->query("
+            SELECT COUNT(*) AS total
+            FROM notifications
+            WHERE " . admin_notification_inbox_where_sql() . " AND is_read = 0
+        ");
         $remainingUnread = (int) ($countResult->fetch_assoc()['total'] ?? 0);
 
         echo json_encode([
@@ -49,7 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'mark_all_read') {
-        $conn->query("UPDATE notifications SET is_read = 1 WHERE role = 'admin' AND is_read = 0");
+        $conn->query("
+            UPDATE notifications
+            SET is_read = 1
+            WHERE " . admin_notification_inbox_where_sql() . " AND is_read = 0
+        ");
         echo json_encode([
             'ok' => true,
             'unread_count' => 0,
@@ -66,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $notifications = $conn->query("
     SELECT id, title, body, severity, is_read, created_at
     FROM notifications
-    WHERE role = 'admin'
+    WHERE " . admin_notification_inbox_where_sql() . "
     ORDER BY id DESC
     LIMIT 20
 ");
@@ -88,7 +96,11 @@ while ($notifications instanceof mysqli_result && ($row = $notifications->fetch_
     ];
 }
 
-$countResult = $conn->query("SELECT COUNT(*) AS total FROM notifications WHERE role = 'admin' AND is_read = 0");
+$countResult = $conn->query("
+    SELECT COUNT(*) AS total
+    FROM notifications
+    WHERE " . admin_notification_inbox_where_sql() . " AND is_read = 0
+");
 $unreadCount = (int) ($countResult->fetch_assoc()['total'] ?? 0);
 
 echo json_encode([
