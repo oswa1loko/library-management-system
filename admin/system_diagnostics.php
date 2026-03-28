@@ -1,0 +1,207 @@
+<?php
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+
+require_role('admin');
+
+$message = '';
+$messageType = 'success';
+$emailReminderDebug = is_array($_SESSION['email_reminder_debug'] ?? null) ? $_SESSION['email_reminder_debug'] : [];
+$mailHealth = library_mail_health_snapshot(false);
+
+if (isset($_POST['run_email_reminder_check'])) {
+    $dueSoonResult = send_due_soon_reminders($conn);
+    $overdueResult = send_overdue_notices($conn);
+    $emailReminderDebug = is_array($_SESSION['email_reminder_debug'] ?? null) ? $_SESSION['email_reminder_debug'] : [];
+    $message = 'Reminder check finished. Due soon sent: ' . (int) ($dueSoonResult['sent'] ?? 0)
+        . ', overdue sent: ' . (int) ($overdueResult['sent'] ?? 0) . '.';
+    $messageType = ((int) ($dueSoonResult['failed'] ?? 0) > 0 || (int) ($overdueResult['failed'] ?? 0) > 0) ? 'error' : 'success';
+}
+
+if (isset($_POST['run_mail_health_check'])) {
+    $mailHealth = library_mail_health_snapshot(true);
+    $probe = is_array($mailHealth['probe'] ?? null) ? $mailHealth['probe'] : [];
+    if ((bool) ($probe['success'] ?? false)) {
+        $message = 'Mail health check passed. Test email sent to ' . (string) ($probe['recipient'] ?? '') . '.';
+        $messageType = 'success';
+    } else {
+        $message = 'Mail health check failed: ' . (string) ($probe['error'] ?? 'Unknown mail error') . '.';
+        $messageType = 'error';
+    }
+} else {
+    $mailHealth = library_mail_health_snapshot(false);
+}
+
+$liveStats = $conn->query("
+    SELECT
+      COALESCE(SUM(CASE WHEN status IN ('borrowed', 'return_requested') AND due_date < CURDATE() THEN 1 ELSE 0 END), 0) AS overdue_borrows,
+      (SELECT COALESCE(SUM(status = 'pending'), 0) FROM payments) AS pending_payments,
+      (SELECT COALESCE(SUM(status = 'new'), 0) FROM complaints) AS new_complaints
+    FROM borrows
+")->fetch_assoc();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin System Diagnostics</title>
+<?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
+<?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
+<?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
+<script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
+<link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
+</head>
+<body>
+<div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-system-diagnostics" data-sidebar-default="expanded" data-sidebar-lock="expanded">
+  <?php
+  $sidebarPage = 'diagnostics';
+  require __DIR__ . '/partials/sidebar.php';
+  ?>
+
+  <div class="member-main">
+    <?php
+    $pageTitle = 'System Diagnostics';
+    $pageSubtitle = 'Mail health, reminder checks, and live system monitoring';
+    require __DIR__ . '/partials/topbar.php';
+    ?>
+
+    <div class="stack">
+    <?php if ($message !== ''): ?>
+      <div class="notice <?php echo $messageType === 'error' ? 'error' : 'success'; ?>"><?php echo h($message); ?></div>
+    <?php endif; ?>
+
+    <div class="panel">
+      <p class="muted eyebrow-compact stack-copy">Mail Health</p>
+      <div class="toolbar toolbar-top">
+        <div class="grow">
+          <h3 class="heading-card">Sender and transport status</h3>
+        </div>
+        <form method="post" class="inline-form">
+          <button type="submit" name="run_mail_health_check" value="1">Run Mail Health Check</button>
+        </form>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <strong><?php echo h(strtoupper((string) ($mailHealth['mode'] ?? 'unknown'))); ?></strong>
+          <span class="muted">Mailer mode</span>
+        </div>
+        <div class="stat-card">
+          <strong><?php echo !empty($mailHealth['smtp_configured']) ? 'Configured' : 'Incomplete'; ?></strong>
+          <span class="muted">SMTP setup</span>
+        </div>
+        <div class="stat-card">
+          <strong><?php echo !empty($mailHealth['phpmailer_available']) ? 'Available' : 'Missing'; ?></strong>
+          <span class="muted">PHPMailer</span>
+        </div>
+      </div>
+      <div class="activity-feed">
+        <div class="activity-item">
+          <strong>Current sender identity</strong>
+          <div class="meta">From name: <?php echo h((string) ($mailHealth['from_name'] ?? '-')); ?></div>
+          <div class="meta">From address: <?php echo h((string) ($mailHealth['from_address'] ?? '-')); ?></div>
+          <div class="meta">Signature: <?php echo h((string) ($mailHealth['signature'] ?? '-')); ?></div>
+        </div>
+        <div class="activity-item">
+          <strong>SMTP transport</strong>
+          <div class="meta">Host: <?php echo h((string) ($mailHealth['smtp_host'] ?? '-')); ?></div>
+          <div class="meta">Port: <?php echo (int) ($mailHealth['smtp_port'] ?? 0); ?></div>
+          <div class="meta">Security: <?php echo h((string) ($mailHealth['smtp_secure'] ?? '-')); ?></div>
+          <div class="meta">Username: <?php echo h((string) ($mailHealth['smtp_username_masked'] ?? '-')); ?></div>
+        </div>
+        <?php $mailIssues = is_array($mailHealth['issues'] ?? null) ? $mailHealth['issues'] : []; ?>
+        <?php if (!empty($mailIssues)): ?>
+          <div class="activity-item">
+            <strong>Detected issues</strong>
+            <?php foreach ($mailIssues as $issue): ?>
+              <div class="meta"><?php echo h((string) $issue); ?></div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+        <?php $probe = is_array($mailHealth['probe'] ?? null) ? $mailHealth['probe'] : []; ?>
+        <?php if (!empty($probe)): ?>
+          <div class="activity-item">
+            <strong>Latest probe result</strong>
+            <div class="meta">Recipient: <?php echo h((string) ($probe['recipient'] ?? '-')); ?></div>
+            <div class="meta">Status: <?php echo !empty($probe['success']) ? 'Sent' : 'Failed'; ?></div>
+            <?php if (!empty($probe['error'])): ?>
+              <div class="meta">Error: <?php echo h((string) $probe['error']); ?></div>
+            <?php endif; ?>
+            <div class="inline-actions meta-top">
+              <span class="muted"><?php echo h(format_display_datetime((string) ($probe['checked_at'] ?? ''))); ?></span>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="muted eyebrow-compact stack-copy">Email Diagnostics</p>
+      <div class="toolbar toolbar-top">
+        <div class="grow">
+          <h3 class="heading-card">Latest reminder sync snapshot</h3>
+        </div>
+        <form method="post" class="inline-form">
+          <button type="submit" name="run_email_reminder_check" value="1">Run Email Reminder Check</button>
+        </form>
+      </div>
+      <?php if (!empty($emailReminderDebug)): ?>
+      <div class="activity-feed">
+        <?php foreach (['due_soon' => 'Due Soon', 'overdue' => 'Overdue'] as $bucketKey => $bucketLabel): ?>
+          <?php $bucket = is_array($emailReminderDebug[$bucketKey] ?? null) ? $emailReminderDebug[$bucketKey] : null; ?>
+          <?php if (!$bucket): ?>
+            <?php continue; ?>
+          <?php endif; ?>
+          <div class="activity-item">
+            <strong>
+              <span class="status-dot <?php echo (int) ($bucket['failed'] ?? 0) > 0 ? 'unpaid' : ((int) ($bucket['sent'] ?? 0) > 0 ? 'approved' : 'due'); ?>"></span>
+              <?php echo h($bucketLabel); ?> reminder run
+            </strong>
+            <div class="meta">
+              Checked: <?php echo (int) ($bucket['checked'] ?? 0); ?>,
+              sent: <?php echo (int) ($bucket['sent'] ?? 0); ?>,
+              failed: <?php echo (int) ($bucket['failed'] ?? 0); ?>,
+              skipped: <?php echo (int) ($bucket['skipped'] ?? 0); ?>
+            </div>
+            <?php $errors = is_array($bucket['errors'] ?? null) ? $bucket['errors'] : []; ?>
+            <?php if (!empty($errors)): ?>
+              <?php foreach ($errors as $error): ?>
+                <div class="meta">Borrow #<?php echo (int) ($error['borrow_id'] ?? 0); ?> to <?php echo h((string) ($error['email'] ?? '-')); ?>: <?php echo h((string) ($error['message'] ?? 'Unknown error')); ?></div>
+              <?php endforeach; ?>
+            <?php endif; ?>
+            <div class="inline-actions meta-top">
+              <span class="muted"><?php echo h(format_display_datetime((string) ($bucket['captured_at'] ?? ''))); ?></span>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <?php else: ?>
+      <div class="empty-state">Run a manual reminder check here to see due-soon and overdue email results without slowing down every page request.</div>
+      <?php endif; ?>
+    </div>
+
+    <div class="panel">
+      <p class="muted eyebrow-compact stack-copy">Live Alerts</p>
+      <h3 class="heading-card">Current system attention points</h3>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <strong><?php echo (int) ($liveStats['overdue_borrows'] ?? 0); ?></strong>
+          <span class="muted">Overdue borrows</span>
+        </div>
+        <div class="stat-card">
+          <strong><?php echo (int) ($liveStats['pending_payments'] ?? 0); ?></strong>
+          <span class="muted">Pending payments</span>
+        </div>
+        <div class="stat-card">
+          <strong><?php echo (int) ($liveStats['new_complaints'] ?? 0); ?></strong>
+          <span class="muted">New complaints</span>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+<script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+</body>
+</html>
