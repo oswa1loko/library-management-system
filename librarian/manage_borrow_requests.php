@@ -253,12 +253,21 @@ $pageQuery = $_GET;
           if (count($batchTitles) > 3) {
               $batchTitlePreview .= ' +' . (count($batchTitles) - 3) . ' more';
           }
+          $totalCopies = array_sum(array_map(static fn(array $item): int => (int) ($item['copy_count'] ?? 0), $batch['items']));
+          $batchStateClass = (int) ($batch['actionable_items'] ?? 0) > 0 ? 'is-actionable' : 'is-blocked';
+          $batchStateLabel = (int) ($batch['actionable_items'] ?? 0) > 0 ? 'Ready To Release' : 'Waiting For Stock';
           ?>
-          <div class="panel librarian-batch-card librarian-batch-summary-card">
+          <div class="panel librarian-batch-card librarian-batch-summary-card <?php echo h($batchStateClass); ?>">
             <div class="librarian-batch-head">
               <div>
                 <strong class="label-block"><?php echo h($batch['fullname']); ?></strong>
                 <span class="muted"><?php echo h($batch['username']); ?> | <?php echo h(role_label($batch['role'])); ?> | <?php echo h(format_batch_reference($batch['request_batch'], 'Request Ref')); ?></span>
+                <div class="librarian-batch-status-line">
+                  <span class="badge librarian-batch-status-badge <?php echo h($batchStateClass); ?>">
+                    <span class="status-dot <?php echo (int) ($batch['actionable_items'] ?? 0) > 0 ? 'approved' : 'waiting_stock'; ?>"></span>
+                    <?php echo h($batchStateLabel); ?>
+                  </span>
+                </div>
                 <p class="librarian-batch-preview">
                   <span class="muted">Books requested:</span>
                   <?php echo h($batchTitlePreview); ?>
@@ -269,13 +278,13 @@ $pageQuery = $_GET;
               </div>
             </div>
             <div class="inline-actions chips-row batch-status-row">
-              <span class="chip"><?php echo $pendingCount > 0 ? array_sum(array_map(static fn(array $item): int => (int) ($item['copy_count'] ?? 0), $batch['items'])) : 0; ?> copie<?php echo array_sum(array_map(static fn(array $item): int => (int) ($item['copy_count'] ?? 0), $batch['items'])) === 1 ? '' : 's'; ?></span>
+              <span class="chip"><?php echo $totalCopies; ?> copie<?php echo $totalCopies === 1 ? '' : 's'; ?></span>
               <span class="chip"><?php echo (int) ($batch['actionable_copies'] ?? 0); ?> ready to release</span>
               <span class="chip"><?php echo (int) ($batch['waiting_stock_copies'] ?? 0); ?> waiting for stock</span>
             </div>
             <div class="stack librarian-batch-list flow-top-md">
               <?php foreach ($batch['items'] as $item): ?>
-                <div class="empty-state librarian-batch-item">
+                <div class="empty-state librarian-batch-item<?php echo !empty($item['waiting_for_stock']) ? ' is-blocked' : ' is-actionable'; ?>">
                   <div>
                     <strong class="label-block meta-top-sm"><?php echo h($item['title']); ?></strong>
                     <span class="muted"><?php echo h($item['author']); ?> | <?php echo (int) ($item['copy_count'] ?? 0); ?> copie<?php echo (int) ($item['copy_count'] ?? 0) === 1 ? '' : 's'; ?> requested<?php echo !empty($item['waiting_for_stock']) ? ' | Waiting for enough stock' : ' | Ready to release'; ?></span>
@@ -296,13 +305,17 @@ $pageQuery = $_GET;
               <?php endforeach; ?>
             </div>
             <?php if ((int) ($batch['actionable_items'] ?? 0) > 1): ?>
-              <form method="post" class="inline-form flow-top-md" data-confirm="Approve all available requests in this batch now?">
-                <input type="hidden" name="request_batch" value="<?php echo h($batch['request_batch']); ?>">
-                <button type="submit" name="approve_batch" value="1">Approve <?php echo (int) $batch['actionable_items']; ?> and Release</button>
-              </form>
-              <p class="muted meta-top-sm">Bulk approval releases all book groups in this batch that have enough stock for their requested copies.</p>
+              <div class="librarian-batch-primary-action flow-top-md">
+                <form method="post" class="inline-form" data-confirm="Approve all available requests in this batch now?">
+                  <input type="hidden" name="request_batch" value="<?php echo h($batch['request_batch']); ?>">
+                  <button type="submit" name="approve_batch" value="1">Approve <?php echo (int) $batch['actionable_items']; ?> and Release</button>
+                </form>
+                <p class="muted meta-top-sm">Bulk approval releases all book groups in this batch that have enough stock for their requested copies.</p>
+              </div>
             <?php elseif ((int) ($batch['actionable_items'] ?? 0) === 0 && (int) ($batch['waiting_stock_items'] ?? 0) > 0): ?>
-              <p class="muted meta-top-sm">This batch is still pending, but every remaining book group is waiting for enough stock.</p>
+              <div class="librarian-batch-primary-action is-blocked flow-top-md">
+                <p class="muted meta-top-sm">This batch is still pending, but every remaining book group is waiting for enough stock.</p>
+              </div>
             <?php endif; ?>
           </div>
         <?php endforeach; ?>

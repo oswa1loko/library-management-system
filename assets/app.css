@@ -4868,12 +4868,31 @@ button.catalog-search-suggestion{
   border-radius:24px;
   text-decoration:none;
   color:inherit;
+  border:1px solid rgba(255,255,255,0.09);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+    rgba(255,255,255,0.022);
   transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 
 .librarian-batch-summary-card:hover{
   text-decoration:none;
   transform:translateY(-2px);
+}
+
+.librarian-batch-summary-card.is-actionable{
+  border-color:rgba(113,227,184,0.2);
+  box-shadow:0 18px 34px rgba(4,18,34,0.2), inset 0 1px 0 rgba(113,227,184,0.08);
+}
+
+.librarian-batch-summary-card.is-return-ready{
+  border-color:rgba(255,214,102,0.18);
+  box-shadow:0 18px 34px rgba(4,18,34,0.2), inset 0 1px 0 rgba(255,214,102,0.06);
+}
+
+.librarian-batch-summary-card.is-blocked{
+  border-color:rgba(255,255,255,0.06);
+  opacity:.96;
 }
 
 .librarian-batch-head,
@@ -4906,6 +4925,40 @@ button.catalog-search-suggestion{
   line-height:1.45;
 }
 
+.librarian-batch-status-line{
+  margin-top:10px;
+}
+
+.librarian-batch-status-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:34px;
+  padding:6px 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.04);
+  font-weight:700;
+}
+
+.librarian-batch-status-badge.is-actionable{
+  border-color:rgba(113,227,184,0.18);
+  background:rgba(113,227,184,0.08);
+  color:#d8ffee;
+}
+
+.librarian-batch-status-badge.is-return-ready{
+  border-color:rgba(255,214,102,0.2);
+  background:rgba(255,214,102,0.09);
+  color:#fff2c4;
+}
+
+.librarian-batch-status-badge.is-blocked{
+  border-color:rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.03);
+  color:rgba(232,240,252,0.88);
+}
+
 .librarian-batch-list{
   gap:10px;
 }
@@ -4917,8 +4970,51 @@ button.catalog-search-suggestion{
   background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));
 }
 
+.librarian-batch-item.is-actionable{
+  border-color:rgba(113,227,184,0.16);
+  background:
+    linear-gradient(180deg, rgba(113,227,184,0.08), rgba(255,255,255,0.02)),
+    rgba(255,255,255,0.024);
+}
+
+.librarian-batch-item.is-return-ready{
+  border-color:rgba(255,214,102,0.18);
+  background:
+    linear-gradient(180deg, rgba(255,214,102,0.08), rgba(255,255,255,0.02)),
+    rgba(255,255,255,0.024);
+}
+
+.librarian-batch-item.is-blocked{
+  border-color:rgba(255,255,255,0.05);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.012)),
+    rgba(255,255,255,0.016);
+}
+
+.librarian-batch-item .inline-form button{
+  min-height:42px;
+  padding-inline:16px;
+  font-weight:800;
+}
+
 .librarian-batch-card .flow-top-md{
   margin-top:14px;
+}
+
+.librarian-batch-primary-action{
+  margin-top:auto;
+  padding:14px 16px 0;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+
+.librarian-batch-primary-action .inline-form button{
+  width:100%;
+  min-height:46px;
+  font-weight:800;
+}
+
+.librarian-batch-primary-action.is-blocked{
+  border-top-color:rgba(255,255,255,0.05);
 }
 
 .manage-books-records-head{
@@ -8313,6 +8409,61 @@ body.modal-open{
 :root[data-theme="light"] .librarian-dashboard-activity .activity-item{
   background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,247,255,0.95));
   border-color:rgba(47,109,255,0.1);
+}
+
+:root[data-theme="light"] .librarian-batch-summary-card{
+  border-color:rgba(35,72,127,0.1);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,249,255,0.94)),
+    rgba(255,255,255,0.96);
+  box-shadow:0 14px 22px rgba(34,63,112,0.06);
+}
+
+:root[data-theme="light"] .librarian-batch-summary-card.is-actionable{
+  border-color:rgba(38,164,118,0.22);
+}
+
+:root[data-theme="light"] .librarian-batch-summary-card.is-return-ready{
+  border-color:rgba(210,166,38,0.24);
+}
+
+:root[data-theme="light"] .librarian-batch-status-badge{
+  border-color:rgba(35,72,127,0.1);
+  background:rgba(237,243,252,0.88);
+  color:#314766;
+}
+
+:root[data-theme="light"] .librarian-batch-status-badge.is-actionable{
+  background:rgba(38,164,118,0.1);
+  border-color:rgba(38,164,118,0.18);
+  color:#166a4a;
+}
+
+:root[data-theme="light"] .librarian-batch-status-badge.is-return-ready{
+  background:rgba(210,166,38,0.12);
+  border-color:rgba(210,166,38,0.2);
+  color:#7b5c10;
+}
+
+:root[data-theme="light"] .librarian-batch-item{
+  border-color:rgba(35,72,127,0.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,249,255,0.92)),
+    rgba(255,255,255,0.95);
+}
+
+:root[data-theme="light"] .librarian-batch-item.is-actionable{
+  border-color:rgba(38,164,118,0.16);
+  background:
+    linear-gradient(180deg, rgba(38,164,118,0.06), rgba(255,255,255,0.96)),
+    rgba(255,255,255,0.95);
+}
+
+:root[data-theme="light"] .librarian-batch-item.is-return-ready{
+  border-color:rgba(210,166,38,0.18);
+  background:
+    linear-gradient(180deg, rgba(210,166,38,0.07), rgba(255,255,255,0.96)),
+    rgba(255,255,255,0.95);
 }
 
 :root:not([data-theme="light"]) .manage-users-summary .chip{

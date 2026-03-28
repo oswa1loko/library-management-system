@@ -239,11 +239,21 @@ $pageQuery = $_GET;
             <div class="empty-state">No pending return batches right now.</div>
           <?php endif; ?>
           <?php foreach ($visiblePendingReturnBatches as $batch): ?>
-            <div class="panel librarian-batch-card librarian-batch-summary-card">
+            <?php
+              $batchStateClass = (int) ($batch['requested_items'] ?? 0) > 0 ? 'is-return-ready' : 'is-blocked';
+              $batchStateLabel = (int) ($batch['requested_items'] ?? 0) > 0 ? 'Ready For Physical Check' : 'No Pending Returns';
+            ?>
+            <div class="panel librarian-batch-card librarian-batch-summary-card <?php echo h($batchStateClass); ?>">
               <div class="librarian-batch-head">
                 <div>
                   <strong class="label-block"><?php echo h($batch['fullname']); ?></strong>
                   <span class="muted"><?php echo h($batch['username']); ?> | <?php echo h(role_label($batch['role'])); ?> | <?php echo h(format_batch_reference($batch['return_batch'], 'Return Ref')); ?></span>
+                  <div class="librarian-batch-status-line">
+                    <span class="badge librarian-batch-status-badge <?php echo h($batchStateClass); ?>">
+                      <span class="status-dot <?php echo (int) ($batch['requested_items'] ?? 0) > 0 ? 'due' : 'waiting_stock'; ?>"></span>
+                      <?php echo h($batchStateLabel); ?>
+                    </span>
+                  </div>
                   <?php if (!empty($batch['book_labels'])): ?>
                     <p class="librarian-batch-preview">
                       <span class="muted">Books requested:</span>
@@ -262,7 +272,7 @@ $pageQuery = $_GET;
               </div>
               <div class="stack librarian-batch-list flow-top-md">
                 <?php foreach ($batch['items'] as $item): ?>
-                  <div class="empty-state librarian-batch-item">
+                  <div class="empty-state librarian-batch-item is-return-ready">
                     <div>
                       <strong class="label-block meta-top-sm"><?php echo h($item['title']); ?></strong>
                       <span class="muted">
@@ -278,6 +288,9 @@ $pageQuery = $_GET;
                     </form>
                   </div>
                 <?php endforeach; ?>
+              </div>
+              <div class="librarian-batch-primary-action flow-top-md is-return-ready">
+                <p class="muted meta-top-sm">Confirm items only after the physical books have been received and checked.</p>
               </div>
             </div>
           <?php endforeach; ?>
