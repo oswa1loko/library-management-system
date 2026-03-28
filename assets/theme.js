@@ -160,6 +160,11 @@
       .replace(/'/g, '&#39;');
   }
 
+  function withNoCache(url) {
+    var separator = url.indexOf('?') === -1 ? '?' : '&';
+    return url + separator + '_=' + Date.now();
+  }
+
   function getMemberNotificationConfig() {
     if (window.location.pathname.indexOf('/admin/') !== -1) {
       return {
@@ -296,6 +301,19 @@
     }).join('');
   }
 
+  function setNotificationItemReadState(notificationItem) {
+    if (!notificationItem) {
+      return;
+    }
+
+    notificationItem.setAttribute('data-notification-unread', 'false');
+    var chip = notificationItem.querySelector('.student-notification-title .chip');
+    if (chip) {
+      chip.textContent = 'Read';
+      chip.classList.add('student-notification-read');
+    }
+  }
+
   function openStudentNotificationDestination(panel, notificationItem) {
     if (!notificationItem) {
       return;
@@ -313,6 +331,7 @@
     };
 
     if (isUnread && notificationId > 0) {
+      setNotificationItemReadState(notificationItem);
       markStudentNotificationRead(panel, notificationId, { reload: false })
         .catch(function () {
           // Navigate even if the read update fails so the click still feels reliable.
@@ -356,7 +375,8 @@
       return;
     }
 
-    window.fetch(config.feedUrl, {
+    window.fetch(withNoCache(config.feedUrl), {
+      cache: 'no-store',
       credentials: 'same-origin',
       headers: {
         'X-Requested-With': 'XMLHttpRequest'
@@ -394,6 +414,7 @@
     return window.fetch(config.feedUrl, {
       method: 'POST',
       keepalive: true,
+      cache: 'no-store',
       credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -427,6 +448,7 @@
 
     return window.fetch(config.feedUrl, {
       method: 'POST',
+      cache: 'no-store',
       credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -442,6 +464,9 @@
           throw new Error('Unable to mark notifications as read.');
         }
 
+        panel.querySelectorAll('.student-notification-item[data-notification-unread="true"]').forEach(function (item) {
+          setNotificationItemReadState(item);
+        });
         updateStudentNotificationBadges(payload.unread_count || 0);
         loadStudentNotifications(panel);
       });

@@ -6,6 +6,9 @@ require_once __DIR__ . '/../includes/helpers.php';
 require_role('faculty');
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $dueSoonBooks = get_member_due_soon_books($conn, $userId, 5);
