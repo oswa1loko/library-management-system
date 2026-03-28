@@ -12,12 +12,31 @@ $notice = '';
 $proofPath = '';
 $proofTitle = 'Payment Proof Viewer';
 $paymentOwnerLabel = '';
+$paymentAmount = null;
+$paymentStatus = '';
+$paymentSubmittedAt = '';
+$viewerBackUrl = app_url('index.php');
+$viewerBackLabel = 'Back Home';
+
+if (roles_match($viewerRole, 'admin')) {
+    $viewerBackUrl = app_url('admin/payments_records.php');
+    $viewerBackLabel = 'Back to Payments';
+} elseif (roles_match($viewerRole, 'librarian')) {
+    $viewerBackUrl = app_url('librarian/dashboard.php');
+    $viewerBackLabel = 'Back to Dashboard';
+} elseif (roles_match($viewerRole, 'student')) {
+    $viewerBackUrl = app_url('student/payment_upload.php');
+    $viewerBackLabel = 'Back to Payments';
+} elseif (roles_match($viewerRole, 'faculty')) {
+    $viewerBackUrl = app_url('faculty/payment_upload.php');
+    $viewerBackLabel = 'Back to Payments';
+}
 
 if ($paymentId <= 0) {
     $notice = 'Payment proof reference is missing.';
 } else {
     $stmt = $conn->prepare("
-        SELECT p.id, p.user_id, p.proof_path, u.fullname, u.username
+        SELECT p.id, p.user_id, p.proof_path, p.amount, p.status, p.created_at, u.fullname, u.username
         FROM payments p
         JOIN users u ON u.id = p.user_id
         WHERE p.id = ?
@@ -41,6 +60,9 @@ if ($paymentId <= 0) {
         } else {
             $proofPath = trim((string) ($payment['proof_path'] ?? ''));
             $proofTitle = 'Payment Proof #' . (int) ($payment['id'] ?? 0);
+            $paymentAmount = isset($payment['amount']) ? (float) $payment['amount'] : null;
+            $paymentStatus = trim((string) ($payment['status'] ?? ''));
+            $paymentSubmittedAt = trim((string) ($payment['created_at'] ?? ''));
             $paymentOwnerLabel = trim((string) ($payment['fullname'] ?? '')) !== ''
                 ? (string) $payment['fullname']
                 : (string) ($payment['username'] ?? '');
@@ -82,36 +104,77 @@ $proofUrl = $proofPath !== '' ? app_url($proofPath) : '';
 <script src="<?php echo h(app_url('assets/theme.js?v=' . urlencode($themeVersion))); ?>"></script>
 <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css?v=' . urlencode($assetVersion))); ?>">
 </head>
-<body>
+<body class="payment-proof-screen">
 <div class="site-shell member-shell">
   <div class="member-main">
-    <div class="topbar">
-      <div>
-        <h1>Payment Proof Viewer</h1>
-        <p>
-          <?php echo h($proofTitle); ?>
-          <?php if ($paymentOwnerLabel !== ''): ?>
-            | Submitted by <?php echo h($paymentOwnerLabel); ?>
-          <?php endif; ?>
-        </p>
+    <div class="stack payment-proof-shell">
+      <div class="panel payment-proof-header">
+        <div>
+          <p class="muted eyebrow-compact">Payment Review</p>
+          <h1 class="payment-proof-title">Payment Proof Viewer</h1>
+          <p class="muted payment-proof-subtitle">
+            <?php echo h($proofTitle); ?>
+            <?php if ($paymentOwnerLabel !== ''): ?>
+              | Submitted by <?php echo h($paymentOwnerLabel); ?>
+            <?php endif; ?>
+          </p>
+        </div>
+        <div class="inline-actions">
+          <a class="button secondary" href="<?php echo h($viewerBackUrl); ?>"><?php echo h($viewerBackLabel); ?></a>
+          <a class="button secondary" href="javascript:window.close()">Close</a>
+        </div>
       </div>
-      <div class="inline-actions">
-        <a class="button secondary" href="javascript:window.close()">Close</a>
-      </div>
-    </div>
 
-    <div class="stack">
+      <div class="panel payment-proof-overview">
+        <div class="payment-proof-meta-card">
+          <span class="code-pill">Payment</span>
+          <strong>#<?php echo (int) $paymentId; ?></strong>
+          <span class="muted">Reference number for this submission.</span>
+        </div>
+        <div class="payment-proof-meta-card">
+          <span class="code-pill">Submitted By</span>
+          <strong><?php echo h($paymentOwnerLabel !== '' ? $paymentOwnerLabel : 'Unknown member'); ?></strong>
+          <span class="muted">Member linked to this uploaded payment proof.</span>
+        </div>
+        <div class="payment-proof-meta-card">
+          <span class="code-pill">Amount</span>
+          <strong><?php echo h($paymentAmount !== null ? format_currency($paymentAmount) : '-'); ?></strong>
+          <span class="muted">Recorded payment amount for this proof.</span>
+        </div>
+        <div class="payment-proof-meta-card">
+          <span class="code-pill">Status</span>
+          <strong><?php echo h($paymentStatus !== '' ? ucfirst($paymentStatus) : 'Unknown'); ?></strong>
+          <span class="muted"><?php echo h($paymentSubmittedAt !== '' ? format_display_datetime($paymentSubmittedAt) : '-'); ?></span>
+        </div>
+      </div>
+
       <?php if ($notice !== ''): ?>
         <div class="notice error"><?php echo h($notice); ?></div>
       <?php elseif ($isPdf): ?>
-        <div class="panel">
-          <object data="<?php echo h($proofUrl); ?>" type="application/pdf" style="width:100%;min-height:80vh;border:0;">
+        <div class="panel payment-proof-viewer-shell">
+          <div class="payment-proof-viewer-actions">
+            <span class="muted">PDF preview</span>
+            <div class="inline-actions">
+              <a class="button secondary" href="<?php echo h($proofUrl); ?>" target="_blank" rel="noopener">Open Full File</a>
+              <a class="button secondary" href="<?php echo h($proofUrl); ?>" download>Download</a>
+            </div>
+          </div>
+          <object class="payment-proof-frame" data="<?php echo h($proofUrl); ?>" type="application/pdf">
             <p class="muted">This browser could not preview the PDF. <a href="<?php echo h($proofUrl); ?>" target="_blank" rel="noopener">Open the proof in a new tab</a>.</p>
           </object>
         </div>
       <?php elseif ($isImage): ?>
-        <div class="panel" style="text-align:center;">
-          <img src="<?php echo h($proofUrl); ?>" alt="<?php echo h($proofTitle); ?>" style="max-width:100%;height:auto;border-radius:18px;">
+        <div class="panel payment-proof-viewer-shell">
+          <div class="payment-proof-viewer-actions">
+            <span class="muted">Image preview</span>
+            <div class="inline-actions">
+              <a class="button secondary" href="<?php echo h($proofUrl); ?>" target="_blank" rel="noopener">Open Full Image</a>
+              <a class="button secondary" href="<?php echo h($proofUrl); ?>" download>Download</a>
+            </div>
+          </div>
+          <div class="payment-proof-image-stage">
+            <img class="payment-proof-image" src="<?php echo h($proofUrl); ?>" alt="<?php echo h($proofTitle); ?>">
+          </div>
         </div>
       <?php else: ?>
         <div class="panel">
