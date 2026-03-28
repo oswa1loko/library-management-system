@@ -1095,10 +1095,13 @@
       @media (min-width: 1180px) {
         .team-showcase {
           grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
-          align-items: start;
+          align-items: stretch;
         }
 
         .team-showcase .team-intro-card {
+          display: flex;
+          height: 100%;
+          flex-direction: column;
           padding: 30px;
         }
 
@@ -1120,6 +1123,10 @@
 
         .team-showcase .team-member-body {
           padding: 28px !important;
+        }
+
+        .team-showcase .team-summary-card {
+          margin-top: auto;
         }
       }
 
