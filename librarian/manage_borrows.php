@@ -16,14 +16,16 @@ $today = date('Y-m-d');
 function approve_pending_borrow(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT user_id, book_id, borrow_days, status
-        FROM borrows
+        SELECT br.user_id, br.book_id, br.borrow_days, br.status, u.role, b.title
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        JOIN books b ON b.id = br.book_id
         WHERE id = ?
         LIMIT 1
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus);
+    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $userRole, $bookTitle);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -66,6 +68,8 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         'borrow_id' => $borrowId,
         'book_id' => $bookId,
         'user_id' => $userId,
+        'user_role' => (string) $userRole,
+        'book_title' => (string) $bookTitle,
         'approved_at' => $approvedAt,
         'borrow_date' => $borrowDate,
         'due_at' => $dueAt,
@@ -241,6 +245,19 @@ if (isset($_POST['approve_borrow'])) {
         $conn->commit();
         $emailQueued = enqueue_borrow_approval_email_job($conn, $borrowId);
         $emailDispatch = $emailQueued ? process_pending_email_jobs($conn, 3) : ['sent' => 0, 'failed' => 0];
+        $memberRole = (string) ($result['user_role'] ?? '');
+        $memberUserId = (int) ($result['user_id'] ?? 0);
+        $bookTitle = trim((string) ($result['book_title'] ?? ''));
+        if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
+            create_notification(
+                $conn,
+                $memberRole,
+                'Borrow Request Approved',
+                'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
+                'info',
+                $memberUserId
+            );
+        }
         audit_log($conn, 'librarian.borrow.approve', [
             'borrow_id' => $borrowId,
             'book_id' => (int) $result['book_id'],
@@ -318,7 +335,21 @@ if (isset($_POST['approve_batch'])) {
                     if ($emailQueued) {
                         $emailQueuedCount++;
                     } else {
-                        $emailFailedCount++;
+                    $emailFailedCount++;
+                }
+
+                    $memberRole = (string) ($result['user_role'] ?? '');
+                    $memberUserId = (int) ($result['user_id'] ?? 0);
+                    $bookTitle = trim((string) ($result['book_title'] ?? ''));
+                    if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
+                        create_notification(
+                            $conn,
+                            $memberRole,
+                            'Borrow Request Approved',
+                            'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
+                            'info',
+                            $memberUserId
+                        );
                     }
 
                     audit_log($conn, 'librarian.borrow.approve', [
