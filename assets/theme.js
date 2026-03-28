@@ -182,17 +182,31 @@
 
     if (window.location.pathname.indexOf('/student/') !== -1) {
       return {
-        feedUrl: '/librarymanage/student/notifications_feed.php'
+        feedUrl: '/librarymanage/student/notifications_feed.php',
+        openUrl: '/librarymanage/student/notification_open.php'
       };
     }
 
     if (window.location.pathname.indexOf('/faculty/') !== -1) {
       return {
-        feedUrl: '/librarymanage/faculty/notifications_feed.php'
+        feedUrl: '/librarymanage/faculty/notifications_feed.php',
+        openUrl: '/librarymanage/faculty/notification_open.php'
       };
     }
 
     return null;
+  }
+
+  function buildMemberNotificationOpenUrl(baseUrl, destinationUrl, notificationId, borrowId) {
+    var url = new window.URL(baseUrl, window.location.origin);
+    url.searchParams.set('redirect', destinationUrl);
+    if (Number(notificationId || 0) > 0) {
+      url.searchParams.set('notification_id', String(Number(notificationId || 0)));
+    }
+    if (Number(borrowId || 0) > 0) {
+      url.searchParams.set('borrow_id', String(Number(borrowId || 0)));
+    }
+    return url.toString();
   }
 
   function ensureStudentNotificationPanel() {
@@ -287,6 +301,7 @@
         '<div class="student-notification-item' + (isLinked ? ' is-linked' : '') + '"' +
           (isLinked ? ' data-destination-url="' + escapeHtml(destinationUrl) + '"' : '') +
           (Number(item.id || 0) > 0 ? ' data-notification-id="' + Number(item.id || 0) + '"' : '') +
+          (Number(item.borrow_id || 0) > 0 ? ' data-notification-borrow-id="' + Number(item.borrow_id || 0) + '"' : '') +
           ' data-notification-unread="' + (item.is_read ? 'false' : 'true') + '">' +
           '<div class="student-notification-title">' +
             '<span class="status-dot ' + severityClass + '"></span>' +
@@ -327,10 +342,18 @@
     }
 
     var notificationId = Number(notificationItem.getAttribute('data-notification-id') || 0);
+    var borrowId = Number(notificationItem.getAttribute('data-notification-borrow-id') || 0);
     var isUnread = notificationItem.getAttribute('data-notification-unread') === 'true';
+    var config = getMemberNotificationConfig();
     var navigate = function () {
       window.location.assign(destinationUrl);
     };
+
+    if (isUnread && config && config.openUrl && (notificationId > 0 || borrowId > 0)) {
+      setNotificationItemReadState(notificationItem);
+      window.location.assign(buildMemberNotificationOpenUrl(config.openUrl, destinationUrl, notificationId, borrowId));
+      return;
+    }
 
     if (isUnread && notificationId > 0) {
       setNotificationItemReadState(notificationItem);

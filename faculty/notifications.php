@@ -240,7 +240,7 @@ $notificationFeedUrl = app_url('faculty/notifications_feed.php');
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  var endpoint = <?php echo json_encode($notificationFeedUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+  var openEndpoint = <?php echo json_encode(app_url('faculty/notification_open.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
   document.querySelectorAll('[data-notification-link]').forEach(function (link) {
     link.addEventListener('click', function (event) {
@@ -256,33 +256,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
       event.preventDefault();
 
-      var payload = new URLSearchParams();
+      var redirectUrl = new URL(openEndpoint, window.location.origin);
+      redirectUrl.searchParams.set('redirect', destinationUrl);
       if (isNotificationUnread && notificationId > 0) {
-        payload.set('action', 'mark_read');
-        payload.set('id', String(notificationId));
+        redirectUrl.searchParams.set('notification_id', String(notificationId));
       } else if (isAlertUnread && borrowId > 0) {
-        payload.set('action', 'mark_alert_read');
-        payload.set('borrow_id', String(borrowId));
+        redirectUrl.searchParams.set('borrow_id', String(borrowId));
       } else {
         window.location.assign(destinationUrl);
         return;
       }
 
-      fetch(endpoint, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: payload.toString()
-      })
-        .catch(function () {
-          return null;
-        })
-        .finally(function () {
-          window.location.assign(destinationUrl);
-        });
+      window.location.assign(redirectUrl.toString());
     });
   });
 });
