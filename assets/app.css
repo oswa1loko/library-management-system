@@ -5525,21 +5525,34 @@ button.catalog-search-suggestion{
 
 .student-notification-panel{
   position:fixed;
-  top:74px;
-  right:18px;
+  top:78px;
+  right:16px;
   width:min(380px, calc(100vw - 24px));
   max-height:min(70vh, 620px);
   overflow:hidden;
   z-index:260;
-  border:1px solid rgba(255,255,255,0.1);
+  border:1px solid rgba(138,198,244,0.16);
   border-radius:20px;
   background:
     linear-gradient(180deg, rgba(10, 25, 44, 0.96), rgba(8, 20, 35, 0.98)),
     rgba(8, 20, 35, 0.98);
-  box-shadow:0 28px 56px rgba(0,0,0,0.36);
+  box-shadow:0 20px 34px rgba(2,10,20,0.3), 0 10px 20px rgba(0,0,0,0.18);
   backdrop-filter:blur(18px);
   transform-origin:top right;
   animation:soft-scale-in .22s var(--ease-standard) both;
+}
+
+.student-notification-panel::before{
+  content:"";
+  position:absolute;
+  top:-9px;
+  right:28px;
+  width:18px;
+  height:18px;
+  border-top:1px solid rgba(138,198,244,0.16);
+  border-left:1px solid rgba(138,198,244,0.16);
+  background:linear-gradient(180deg, rgba(12, 30, 52, 0.98), rgba(10, 24, 40, 0.98));
+  transform:rotate(45deg);
 }
 
 @media (max-width: 768px) {
@@ -5549,6 +5562,10 @@ button.catalog-search-suggestion{
     left:10px;
     width:auto;
     max-height:calc(100dvh - 82px);
+  }
+
+  .student-notification-panel::before{
+    display:none;
   }
 
   .student-notification-panel-body{
@@ -5566,9 +5583,11 @@ button.catalog-search-suggestion{
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  padding:14px 16px;
-  border-bottom:1px solid rgba(255,255,255,0.08);
-  background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+  padding:15px 16px 14px;
+  border-bottom:1px solid rgba(138,198,244,0.12);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)),
+    linear-gradient(90deg, rgba(120,184,234,0.08), transparent 55%);
 }
 
 .student-notification-mark-all{
@@ -5588,9 +5607,10 @@ button.catalog-search-suggestion{
   gap:10px;
   max-height:calc(70vh - 62px);
   overflow:auto;
-  padding:14px 16px 16px;
+  padding:12px 16px 16px;
   scrollbar-width:thin;
   scrollbar-color:rgba(143,211,255,0.26) transparent;
+  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0));
 }
 
 .student-notification-panel-body::-webkit-scrollbar{
@@ -5608,9 +5628,11 @@ button.catalog-search-suggestion{
   display:grid;
   gap:8px;
   padding:12px 14px;
-  border:1px solid rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.07);
   border-radius:16px;
-  background:rgba(255,255,255,0.03);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02)),
+    rgba(255,255,255,0.024);
   transition:transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, opacity .18s ease;
 }
 
@@ -5620,11 +5642,11 @@ button.catalog-search-suggestion{
 
 .student-notification-item:hover{
   transform:translateY(-1px);
-  border-color:rgba(143,211,255,0.18);
+  border-color:rgba(143,211,255,0.16);
   background:
     linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025)),
     rgba(255,255,255,0.04);
-  box-shadow:0 14px 22px rgba(0,0,0,0.14);
+  box-shadow:0 10px 18px rgba(0,0,0,0.12);
 }
 
 .student-notification-title{
@@ -5673,14 +5695,22 @@ button.catalog-search-suggestion{
   background:
     linear-gradient(180deg, rgba(255,255,255,0.99), rgba(242,247,255,0.97)),
     #ffffff;
-  box-shadow:0 24px 48px rgba(34,63,112,0.16);
+  box-shadow:0 18px 30px rgba(34,63,112,0.14), 0 8px 18px rgba(34,63,112,0.08);
   backdrop-filter:none;
+}
+
+:root[data-theme="light"] .student-notification-panel::before{
+  border-top-color:rgba(35,72,127,0.14);
+  border-left-color:rgba(35,72,127,0.14);
+  background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(242,247,255,0.97));
 }
 
 :root[data-theme="light"] .student-notification-panel-head{
   border-bottom-color:rgba(35,72,127,0.1);
   color:var(--text);
-  background:linear-gradient(180deg, rgba(255,255,255,0.94), rgba(243,247,255,0.9));
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.94), rgba(243,247,255,0.9)),
+    linear-gradient(90deg, rgba(74,138,232,0.08), transparent 55%);
 }
 
 :root[data-theme="light"] .student-notification-item{
