@@ -123,17 +123,17 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
       <div class="panel member-dashboard-focus">
         <p class="muted eyebrow-compact stack-copy">Attention</p>
         <h3 class="stack-copy-md">What to check next</h3>
-        <div class="stack">
-          <div class="empty-state">Books not yet returned: <strong><?php echo (int) ($dashboardSummary['active_borrows'] ?? 0); ?></strong></div>
-          <div class="empty-state">Pending payment reviews: <strong><?php echo (int) ($dashboardSummary['pending_payments'] ?? 0); ?></strong></div>
-          <div class="empty-state">Overdue returns need attention to avoid added penalties.</div>
+        <div class="stack member-dashboard-alert-list">
+          <div class="empty-state member-dashboard-alert-item">Books not yet returned: <strong class="member-dashboard-alert-count"><?php echo (int) ($dashboardSummary['active_borrows'] ?? 0); ?></strong></div>
+          <div class="empty-state member-dashboard-alert-item">Pending payment reviews: <strong class="member-dashboard-alert-count"><?php echo (int) ($dashboardSummary['pending_payments'] ?? 0); ?></strong></div>
+          <div class="empty-state member-dashboard-alert-item">Overdue returns need attention to avoid added penalties.</div>
         </div>
       </div>
       <div class="panel member-dashboard-shortcuts">
         <p class="muted eyebrow-compact stack-copy">Quick Actions</p>
         <h3 class="stack-copy-md">Go directly where needed</h3>
         <div class="inline-actions member-dashboard-shortcuts-row">
-          <a class="button" href="borrow_return.php">Check My Borrows</a>
+          <a class="button member-dashboard-shortcut-primary" href="borrow_return.php">Check My Borrows</a>
           <a class="button secondary" href="notifications.php">Notifications<?php echo $studentUnreadNotifications > 0 ? ' (' . $studentUnreadNotifications . ')' : ''; ?></a>
           <a class="button secondary" href="payment_upload.php">See Penalties</a>
           <a class="button secondary" href="books.php">Browse Books</a>

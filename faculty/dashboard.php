@@ -140,17 +140,17 @@ $catalogHighlights = get_member_catalog_highlights($conn, 4);
       <div class="panel member-dashboard-focus">
         <p class="muted eyebrow-compact stack-copy">Attention</p>
         <h3 class="stack-copy-md">Priority checks</h3>
-        <div class="stack">
-          <div class="empty-state">Active borrowed books: <strong><?php echo (int) ($dashboardSummary['active_borrows'] ?? 0); ?></strong></div>
-          <div class="empty-state">Pending payment reviews: <strong><?php echo (int) ($dashboardSummary['pending_payments'] ?? 0); ?></strong></div>
-          <div class="empty-state">Return overdue items early to avoid higher balances.</div>
+        <div class="stack member-dashboard-alert-list">
+          <div class="empty-state member-dashboard-alert-item">Active borrowed books: <strong class="member-dashboard-alert-count"><?php echo (int) ($dashboardSummary['active_borrows'] ?? 0); ?></strong></div>
+          <div class="empty-state member-dashboard-alert-item">Pending payment reviews: <strong class="member-dashboard-alert-count"><?php echo (int) ($dashboardSummary['pending_payments'] ?? 0); ?></strong></div>
+          <div class="empty-state member-dashboard-alert-item">Return overdue items early to avoid higher balances.</div>
         </div>
       </div>
       <div class="panel member-dashboard-shortcuts">
         <p class="muted eyebrow-compact stack-copy">Quick Actions</p>
         <h3 class="stack-copy-md">Open common tasks</h3>
         <div class="inline-actions member-dashboard-shortcuts-row">
-          <a class="button" href="borrow_return.php">Open My Borrows</a>
+          <a class="button member-dashboard-shortcut-primary" href="borrow_return.php">Open My Borrows</a>
           <a class="button secondary" href="payment_upload.php">Open Payments</a>
           <a class="button secondary" href="books.php">View Catalog</a>
         </div>

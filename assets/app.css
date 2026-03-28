@@ -6367,6 +6367,23 @@ button.catalog-search-suggestion{
   align-items:center;
 }
 
+.member-dashboard-alert-list{
+  gap:10px;
+}
+
+.member-dashboard-alert-item{
+  justify-content:space-between;
+  gap:12px;
+  font-size:14px;
+  line-height:1.6;
+}
+
+.member-dashboard-alert-count{
+  flex-shrink:0;
+  font-size:1rem;
+  color:var(--text);
+}
+
 .member-dashboard-catalog-list{
   gap:10px;
 }
@@ -9335,6 +9352,26 @@ body.ebook-reader-screen {
     border-radius: 16px;
   }
 
+  .member-dashboard-grid{
+    gap:12px;
+  }
+
+  .member-dashboard-alert-list{
+    gap:8px;
+  }
+
+  .member-dashboard-alert-item{
+    align-items:flex-start;
+    padding:14px 14px 14px 16px;
+    border:1px solid rgba(255,255,255,0.06);
+    background:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.025));
+    box-shadow:0 10px 20px rgba(0,0,0,0.12);
+  }
+
+  .member-dashboard-alert-count{
+    margin-left:8px;
+  }
+
   .member-dashboard-shortcuts-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -9346,6 +9383,17 @@ body.ebook-reader-screen {
     width: 100%;
     min-height: 46px;
     justify-content: center;
+    border-radius:14px;
+  }
+
+  .member-dashboard-shortcuts-row .button.secondary,
+  .member-dashboard-shortcuts-row a.button.secondary{
+    background:rgba(255,255,255,0.04);
+    box-shadow:0 8px 16px rgba(0,0,0,0.08);
+  }
+
+  .member-dashboard-shortcut-primary{
+    box-shadow:0 14px 26px rgba(71,180,255,0.24);
   }
 
   .toolbar-top {
