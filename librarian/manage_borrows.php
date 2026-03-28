@@ -240,6 +240,7 @@ if (isset($_POST['approve_borrow'])) {
 
         $conn->commit();
         $emailQueued = enqueue_borrow_approval_email_job($conn, $borrowId);
+        $emailDispatch = $emailQueued ? process_pending_email_jobs($conn, 3) : ['sent' => 0, 'failed' => 0];
         audit_log($conn, 'librarian.borrow.approve', [
             'borrow_id' => $borrowId,
             'book_id' => (int) $result['book_id'],
@@ -247,11 +248,18 @@ if (isset($_POST['approve_borrow'])) {
             'borrow_date' => (string) $result['borrow_date'],
             'due_date' => (string) $result['due_date'],
             'approval_email_queued' => $emailQueued,
+            'approval_email_sent' => (int) ($emailDispatch['sent'] ?? 0) > 0,
+            'approval_email_failed' => (int) ($emailDispatch['failed'] ?? 0) > 0,
         ]);
 
         $msg = 'Borrow request approved and book released.';
         if (!$emailQueued) {
             $msg .= ' The approval email could not be queued.';
+            $msgType = 'warning';
+        } elseif ((int) ($emailDispatch['sent'] ?? 0) > 0) {
+            $msg .= ' The approval email was sent immediately.';
+        } elseif ((int) ($emailDispatch['failed'] ?? 0) > 0) {
+            $msg .= ' The approval email could not be sent right now.';
             $msgType = 'warning';
         }
     } catch (Throwable $e) {
@@ -324,15 +332,23 @@ if (isset($_POST['approve_batch'])) {
                     ]);
                 }
 
+                $emailDispatch = $emailQueuedCount > 0
+                    ? process_pending_email_jobs($conn, max(5, min(20, $emailQueuedCount + 2)))
+                    : ['sent' => 0, 'failed' => 0];
+
                 $msg = count($approved) . ' request' . (count($approved) === 1 ? '' : 's') . ' approved from this batch.';
                 if ($skipped > 0) {
                     $msg .= ' ' . $skipped . ' item' . ($skipped === 1 ? ' was' : 's were') . ' left pending because stock was no longer available.';
                 }
-                if ($emailQueuedCount > 0) {
-                    $msg .= ' ' . $emailQueuedCount . ' approval email' . ($emailQueuedCount === 1 ? ' was' : 's were') . ' queued.';
+                if ((int) ($emailDispatch['sent'] ?? 0) > 0) {
+                    $msg .= ' ' . (int) $emailDispatch['sent'] . ' approval email' . ((int) $emailDispatch['sent'] === 1 ? ' was' : 's were') . ' sent immediately.';
                 }
                 if ($emailFailedCount > 0) {
                     $msg .= ' ' . $emailFailedCount . ' email notification' . ($emailFailedCount === 1 ? ' could' : 's could') . ' not be queued.';
+                    $msgType = 'warning';
+                }
+                if ((int) ($emailDispatch['failed'] ?? 0) > 0) {
+                    $msg .= ' ' . (int) $emailDispatch['failed'] . ' queued email job' . ((int) $emailDispatch['failed'] === 1 ? ' could' : 's could') . ' not be sent right now.';
                     $msgType = 'warning';
                 }
             } catch (Throwable $e) {
