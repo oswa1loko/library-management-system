@@ -167,85 +167,6 @@
 
   var memberNotificationLoadSequence = 0;
 
-  function getMemberNotificationStorageKey() {
-    var config = getMemberNotificationConfig();
-    if (!config || !config.feedUrl) {
-      return '';
-    }
-
-    return 'librarymanage-notification-read-overrides:' + config.feedUrl;
-  }
-
-  function getMemberNotificationReadOverrides() {
-    var key = getMemberNotificationStorageKey();
-    if (!key || !window.sessionStorage) {
-      return { notifications: {}, alerts: {} };
-    }
-
-    try {
-      var raw = window.sessionStorage.getItem(key);
-      var parsed = raw ? JSON.parse(raw) : null;
-      return {
-        notifications: parsed && parsed.notifications ? parsed.notifications : {},
-        alerts: parsed && parsed.alerts ? parsed.alerts : {}
-      };
-    } catch (error) {
-      return { notifications: {}, alerts: {} };
-    }
-  }
-
-  function setMemberNotificationReadOverrides(overrides) {
-    var key = getMemberNotificationStorageKey();
-    if (!key || !window.sessionStorage) {
-      return;
-    }
-
-    try {
-      window.sessionStorage.setItem(key, JSON.stringify({
-        notifications: overrides && overrides.notifications ? overrides.notifications : {},
-        alerts: overrides && overrides.alerts ? overrides.alerts : {}
-      }));
-    } catch (error) {
-      // Ignore storage failures and rely on backend state only.
-    }
-  }
-
-  function rememberNotificationReadOverride(notificationId, borrowId) {
-    var overrides = getMemberNotificationReadOverrides();
-    var nextOverrides = {
-      notifications: Object.assign({}, overrides.notifications),
-      alerts: Object.assign({}, overrides.alerts)
-    };
-
-    if (Number(notificationId || 0) > 0) {
-      nextOverrides.notifications[String(Number(notificationId || 0))] = true;
-    }
-
-    if (Number(borrowId || 0) > 0) {
-      nextOverrides.alerts[String(Number(borrowId || 0))] = true;
-    }
-
-    setMemberNotificationReadOverrides(nextOverrides);
-  }
-
-  function isNotificationReadByOverride(item) {
-    var overrides = getMemberNotificationReadOverrides();
-    var notificationId = Number(item && item.id ? item.id : 0);
-    var borrowId = Number(item && item.borrow_id ? item.borrow_id : 0);
-
-    return !!(
-      (notificationId > 0 && overrides.notifications[String(notificationId)] === true) ||
-      (borrowId > 0 && overrides.alerts[String(borrowId)] === true)
-    );
-  }
-
-  function countUnreadNotificationItems(items) {
-    return items.reduce(function (total, item) {
-      var isRead = !!item.is_read || isNotificationReadByOverride(item);
-      return total + (isRead ? 0 : 1);
-    }, 0);
-  }
-
   function getMemberNotificationConfig() {
     if (window.location.pathname.indexOf('/admin/') !== -1) {
       return {
@@ -359,16 +280,14 @@
       var destinationUrl = String(item.destination_url || '');
       var destinationLabel = String(item.destination_label || '');
       var isLinked = destinationUrl !== '';
-      var isRead = !!item.is_read || isNotificationReadByOverride(item);
-      var unreadChip = isRead
+      var unreadChip = item.is_read
         ? '<span class="chip student-notification-read">Read</span>'
         : '<span class="chip">Unread</span>';
       return (
         '<div class="student-notification-item' + (isLinked ? ' is-linked' : '') + '"' +
           (isLinked ? ' data-destination-url="' + escapeHtml(destinationUrl) + '"' : '') +
           (Number(item.id || 0) > 0 ? ' data-notification-id="' + Number(item.id || 0) + '"' : '') +
-          (Number(item.borrow_id || 0) > 0 ? ' data-notification-borrow-id="' + Number(item.borrow_id || 0) + '"' : '') +
-          ' data-notification-unread="' + (isRead ? 'false' : 'true') + '">' +
+          ' data-notification-unread="' + (item.is_read ? 'false' : 'true') + '">' +
           '<div class="student-notification-title">' +
             '<span class="status-dot ' + severityClass + '"></span>' +
             '<strong>' + escapeHtml(item.title || 'Notification') + '</strong>' +
@@ -389,26 +308,12 @@
       return;
     }
 
-    rememberNotificationReadOverride(
-      Number(notificationItem.getAttribute('data-notification-id') || 0),
-      Number(notificationItem.getAttribute('data-notification-borrow-id') || 0)
-    );
     notificationItem.setAttribute('data-notification-unread', 'false');
     var chip = notificationItem.querySelector('.student-notification-title .chip');
     if (chip) {
       chip.textContent = 'Read';
       chip.classList.add('student-notification-read');
     }
-  }
-
-  function syncNotificationBadgeCountFromPanel(panel, fallbackCount) {
-    if (!panel) {
-      updateStudentNotificationBadges(fallbackCount || 0);
-      return;
-    }
-
-    var unreadCount = panel.querySelectorAll('.student-notification-item[data-notification-unread="true"]').length;
-    updateStudentNotificationBadges(unreadCount);
   }
 
   function openStudentNotificationDestination(panel, notificationItem) {
@@ -422,7 +327,6 @@
     }
 
     var notificationId = Number(notificationItem.getAttribute('data-notification-id') || 0);
-    var borrowId = Number(notificationItem.getAttribute('data-notification-borrow-id') || 0);
     var isUnread = notificationItem.getAttribute('data-notification-unread') === 'true';
     var navigate = function () {
       window.location.assign(destinationUrl);
@@ -430,19 +334,7 @@
 
     if (isUnread && notificationId > 0) {
       setNotificationItemReadState(notificationItem);
-      syncNotificationBadgeCountFromPanel(panel, 0);
       markStudentNotificationRead(panel, notificationId, { reload: false })
-        .catch(function () {
-          // Navigate even if the read update fails so the click still feels reliable.
-        })
-        .finally(navigate);
-      return;
-    }
-
-    if (isUnread && borrowId > 0) {
-      setNotificationItemReadState(notificationItem);
-      syncNotificationBadgeCountFromPanel(panel, 0);
-      markStudentNotificationAlertRead(panel, borrowId, { reload: false })
         .catch(function () {
           // Navigate even if the read update fails so the click still feels reliable.
         })
@@ -507,7 +399,7 @@
         }
 
         renderStudentNotifications(panel, payload);
-        updateStudentNotificationBadges(countUnreadNotificationItems(items));
+        updateStudentNotificationBadges(payload.unread_count || 0);
       })
       .catch(function () {
         if (panel.dataset.notificationRequestId !== requestId) {
@@ -550,44 +442,7 @@
           throw new Error('Unable to mark notification as read.');
         }
 
-        syncNotificationBadgeCountFromPanel(panel, payload.unread_count || 0);
-        if (shouldReload) {
-          loadStudentNotifications(panel);
-        }
-      });
-  }
-
-  function markStudentNotificationAlertRead(panel, borrowId, options) {
-    var config = getMemberNotificationConfig();
-    var formData = new window.URLSearchParams();
-    var shouldReload = !options || options.reload !== false;
-    formData.set('action', 'mark_alert_read');
-    formData.set('borrow_id', String(Number(borrowId || 0)));
-
-    if (!config) {
-      return Promise.reject(new Error('Notifications are not available here.'));
-    }
-
-    return window.fetch(config.feedUrl, {
-      method: 'POST',
-      keepalive: true,
-      cache: 'no-store',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: formData.toString()
-    })
-      .then(function (response) {
-        return response.json();
-      })
-      .then(function (payload) {
-        if (!payload || payload.ok !== true) {
-          throw new Error('Unable to mark notification as read.');
-        }
-
-        syncNotificationBadgeCountFromPanel(panel, payload.unread_count || 0);
+        updateStudentNotificationBadges(payload.unread_count || 0);
         if (shouldReload) {
           loadStudentNotifications(panel);
         }
@@ -624,7 +479,7 @@
         panel.querySelectorAll('.student-notification-item[data-notification-unread="true"]').forEach(function (item) {
           setNotificationItemReadState(item);
         });
-        syncNotificationBadgeCountFromPanel(panel, payload.unread_count || 0);
+        updateStudentNotificationBadges(payload.unread_count || 0);
         loadStudentNotifications(panel);
       });
   }
