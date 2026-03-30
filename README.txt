@@ -7,16 +7,8 @@ LIBRARYMANAGE - QUICK START
 - Apache = Start
 - MySQL = Start
 
-3) FIRST RUN
-- Open: http://localhost/librarymanage/setup.php
-- This creates/updates the database schema automatically.
-
-4) LOGIN
+3) LOGIN
 - Open: http://localhost/librarymanage/loginpage.php
-
-DEFAULT ADMIN (if seeded in your setup flow)
-- Username: admin
-- Password: admin123
 
 MAIN MODULES
 - Admin: accounts, payments, penalties, complaints, analytics, audit logs, notifications, backup/restore
@@ -42,17 +34,6 @@ TROUBLESHOOTING
 - If routes fail, verify folder name is exactly "librarymanage"
 - If mobile cannot connect, verify Apache is running and URL path includes /librarymanage/
 
-
-✅ Admin
-
-Email: admin@gmail.com
-
-Username: admin
-
-Role: admin
-
-Password: admin123
-
 EMAIL REMINDERS
 - The system now supports due-soon reminder emails 1 day before the due date.
 - Daily runner:
@@ -66,23 +47,3 @@ EMAIL REMINDERS
   LIBRARY_MAIL_FROM_ADDRESS=yourgmail@gmail.com
   LIBRARY_MAIL_FROM_NAME=Library Management System
 - Use a Gmail App Password, not your normal Gmail password.
-
-✅ Student
-
-Email: student1@gmail.com
-
-Username: student1
-
-Role: student
-
-Password: admin123
-
-✅ Librarian
-
-Email: librarian1@gmail.com
-
-Username: librarian1
-
-Role: librarian
-
-Password: admin123

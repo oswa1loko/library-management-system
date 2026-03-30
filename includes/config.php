@@ -188,6 +188,10 @@ function library_should_rewrite_public_output(): bool
 
 function library_rewrite_public_output(string $buffer): string
 {
+    if (function_exists('library_inject_csrf_hidden_fields')) {
+        $buffer = library_inject_csrf_hidden_fields($buffer);
+    }
+
     $host = strtolower(trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '')));
     $host = preg_replace('/:\d+$/', '', $host) ?? $host;
     $isLocal = in_array($host, ['localhost', '127.0.0.1', '::1'], true);
@@ -256,11 +260,6 @@ function table_exists(mysqli $conn, string $table): bool
 function library_should_run_schema_bootstrap(mysqli $conn): bool
 {
     if (PHP_SAPI === 'cli') {
-        return true;
-    }
-
-    $scriptName = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-    if ($scriptName === 'setup.php') {
         return true;
     }
 

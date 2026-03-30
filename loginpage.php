@@ -14,12 +14,6 @@ if (!empty($_SESSION['role']) && !empty($_SESSION['username'])) {
     redirect_to_dashboard();
 }
 
-$showSetupNote = false;
-$check = $conn->query("SHOW TABLES LIKE 'users'");
-if (!$check || $check->num_rows === 0) {
-    $showSetupNote = true;
-}
-
 $error = '';
 $info = '';
 $flash = is_array($_SESSION['loginpage_flash'] ?? null) ? $_SESSION['loginpage_flash'] : null;
@@ -329,9 +323,6 @@ if ($isOtpStep) {
           </form>
         <?php endif; ?>
 
-        <?php if ($showSetupNote): ?>
-          <div class="footer-note">First time setup is missing. Run <a href="setup.php">setup.php</a> once before logging in.</div>
-        <?php endif; ?>
       </div>
 
       <?php if (!$isOtpStep): ?>

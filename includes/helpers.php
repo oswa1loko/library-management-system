@@ -72,6 +72,140 @@ function app_url(string $path = ''): string
     return (app_base_path() !== '' ? app_base_path() : '') . '/' . ltrim($path, '/');
 }
 
+function library_csrf_token(): string
+{
+    $token = (string) ($_SESSION['library_csrf_token'] ?? '');
+    if ($token === '') {
+        $token = bin2hex(random_bytes(32));
+        $_SESSION['library_csrf_token'] = $token;
+    }
+
+    return $token;
+}
+
+function library_verify_csrf_token(?string $token): bool
+{
+    $sessionToken = (string) ($_SESSION['library_csrf_token'] ?? '');
+    $token = trim((string) $token);
+
+    if ($sessionToken === '' || $token === '') {
+        return false;
+    }
+
+    return hash_equals($sessionToken, $token);
+}
+
+function library_get_request_header(string $name): string
+{
+    $target = strtolower(trim($name));
+    if ($target === '') {
+        return '';
+    }
+
+    if (function_exists('getallheaders')) {
+        foreach (getallheaders() as $key => $value) {
+            if (strtolower((string) $key) === $target) {
+                return trim((string) $value);
+            }
+        }
+    }
+
+    $serverKey = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+    return trim((string) ($_SERVER[$serverKey] ?? ''));
+}
+
+function library_should_enforce_csrf(): bool
+{
+    if (PHP_SAPI === 'cli') {
+        return false;
+    }
+
+    if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+        return false;
+    }
+
+    $requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+    $scriptName = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+    if (preg_match('#^/(?:api/v1)(?:/|$)#i', $requestUri) === 1 || preg_match('#/(?:api/v1)(?:/|$)#i', $scriptName) === 1) {
+        return false;
+    }
+
+    return true;
+}
+
+function library_reject_csrf_request(): void
+{
+    http_response_code(419);
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Expired | Library</title>
+    <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css')); ?>">
+    </head>
+    <body>
+    <div class="auth-shell">
+      <div class="card surface-shell-xl">
+        <div class="panel-pad-lg stack">
+          <p class="muted eyebrow">Security Check</p>
+          <h2 class="heading-section">Request expired or invalid</h2>
+          <div class="notice error">This action was blocked because the security token was missing or invalid.</div>
+          <p class="muted text-measure text-measure-wide">Refresh the page and try again. If this keeps happening, sign in again first.</p>
+          <div class="inline-actions">
+            <a class="button" href="<?php echo h(app_url('loginpage.php')); ?>">Open Login</a>
+            <a class="button secondary" href="<?php echo h(app_url('index.php')); ?>">Back Home</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+function library_enforce_csrf_for_post(): void
+{
+    if (!library_should_enforce_csrf()) {
+        return;
+    }
+
+    $token = (string) ($_POST['csrf_token'] ?? library_get_request_header('X-CSRF-Token') ?? '');
+    if (!library_verify_csrf_token($token)) {
+        library_reject_csrf_request();
+    }
+}
+
+function library_inject_csrf_hidden_fields(string $buffer): string
+{
+    if (PHP_SAPI === 'cli' || stripos($buffer, '<form') === false) {
+        return $buffer;
+    }
+
+    $token = library_csrf_token();
+
+    return preg_replace_callback(
+        '#<form\b([^>]*)>#i',
+        static function (array $matches) use ($token): string {
+            $formTag = (string) $matches[0];
+            $attributes = (string) ($matches[1] ?? '');
+
+            if (preg_match('/\bmethod\s*=\s*([\'"]?)post\1/i', $attributes) !== 1) {
+                return $formTag;
+            }
+
+            if (stripos($formTag, 'name="csrf_token"') !== false || stripos($formTag, "name='csrf_token'") !== false) {
+                return $formTag;
+            }
+
+            return $formTag . "\n" . '  <input type="hidden" name="csrf_token" value="' . h($token) . '">';
+        },
+        $buffer
+    ) ?? $buffer;
+}
+
 function app_public_url(string $path = ''): string
 {
     $configured = trim(library_runtime_value('app_public_url'));
@@ -2533,6 +2667,7 @@ function send_overdue_notices(mysqli $conn): array
 }
 
 if (isset($conn) && $conn instanceof mysqli) {
+    library_enforce_csrf_for_post();
     sync_overdue_penalties_if_needed($conn);
     run_due_reminder_sync_if_needed($conn);
 }
