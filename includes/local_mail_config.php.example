@@ -1,0 +1,11 @@
+<?php
+return [
+    'LIBRARY_SMTP_HOST' => 'smtp.gmail.com',
+    'LIBRARY_SMTP_PORT' => '587',
+    'LIBRARY_SMTP_SECURE' => 'tls',
+    'LIBRARY_SMTP_USERNAME' => 'your-email@gmail.com',
+    'LIBRARY_SMTP_PASSWORD' => 'your-app-password',
+    'LIBRARY_MAIL_FROM_ADDRESS' => 'your-email@gmail.com',
+    'LIBRARY_MAIL_FROM_NAME' => 'Library Management System',
+    'LIBRARY_EMAIL_SIGNATURE' => 'Library Services Team',
+];
