@@ -1409,10 +1409,19 @@ function create_library_smtp_mailer(): ?\PHPMailer\PHPMailer\PHPMailer
     $mail->Username = library_runtime_value('LIBRARY_SMTP_USERNAME');
     $mail->Password = library_runtime_value('LIBRARY_SMTP_PASSWORD');
     $mail->SMTPSecure = library_smtp_secure();
+    $mail->SMTPAutoTLS = true;
     $mail->CharSet = 'UTF-8';
     $mail->Timeout = 10;
     $mail->SMTPKeepAlive = true;
-    $mail->setFrom(library_mail_from_address(), library_mail_from_name());
+    $fromAddress = trim(library_mail_from_address());
+    $smtpUsername = trim(library_runtime_value('LIBRARY_SMTP_USERNAME'));
+    if (!is_valid_email_address($fromAddress) && is_valid_email_address($smtpUsername)) {
+        $fromAddress = $smtpUsername;
+    }
+    $mail->setFrom($fromAddress, library_mail_from_name());
+    if (is_valid_email_address($smtpUsername)) {
+        $mail->Sender = $smtpUsername;
+    }
 
     return $mail;
 }
