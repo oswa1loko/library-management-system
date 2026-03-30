@@ -35,14 +35,31 @@ function app_start_session(): void
     }
 
     $cookieParams = session_get_cookie_params();
-    session_set_cookie_params([
-        'lifetime' => 0,
-        'path' => $cookieParams['path'] ?: '/',
-        'domain' => (string) ($cookieParams['domain'] ?? ''),
-        'secure' => $secureCookie,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
+    $cookiePath = (string) ($cookieParams['path'] ?? '/');
+    if ($cookiePath === '') {
+        $cookiePath = '/';
+    }
+
+    $cookieDomain = (string) ($cookieParams['domain'] ?? '');
+
+    if (PHP_VERSION_ID >= 70300) {
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => $cookiePath,
+            'domain' => $cookieDomain,
+            'secure' => $secureCookie,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    } else {
+        session_set_cookie_params(
+            0,
+            $cookiePath . '; samesite=Lax',
+            $cookieDomain,
+            $secureCookie,
+            true
+        );
+    }
 
     session_start();
 }
