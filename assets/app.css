@@ -4325,6 +4325,18 @@ td{
   min-width:0;
 }
 
+.payment-record-inline-actions{
+  margin-top:8px;
+}
+
+.payment-record-inline-actions .inline-form{
+  display:inline-flex;
+}
+
+.payment-record-inline-actions button{
+  min-width:96px;
+}
+
 .payment-record-actions{
   min-width:164px;
   position:sticky;

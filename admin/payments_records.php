@@ -505,6 +505,18 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                           |
                           <?php echo h(book_incident_settlement_label((string) ($payment['incident_settlement_status'] ?? 'pending'))); ?>
                         </span>
+                        <?php if ($payment['status'] === 'pending'): ?>
+                          <div class="inline-actions payment-record-inline-actions">
+                            <form method="post" class="inline-form">
+                              <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
+                              <button type="submit" name="approve" value="1">Approve</button>
+                            </form>
+                            <form method="post" class="inline-form">
+                              <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
+                              <button type="submit" class="danger" name="reject" value="1">Reject</button>
+                            </form>
+                          </div>
+                        <?php endif; ?>
                       </div>
                       <?php
                   } elseif ($linkedPenaltyCount > 1) {
