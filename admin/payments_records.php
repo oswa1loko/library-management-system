@@ -120,10 +120,9 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         if (
             !$incident
             || (string) ($incident['settlement_status'] ?? '') !== 'pending'
-            || (float) ($incident['assessed_fee'] ?? 0) <= 0
-            || round((float) $current['amount'], 2) !== round((float) ($incident['assessed_fee'] ?? 0), 2)
+            || round((float) $current['amount'], 2) <= 0
         ) {
-            header('Location: payments_records.php?notice=' . urlencode('This incident payment no longer matches the current incident fee.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
+            header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
             exit;
         }
     }
@@ -192,14 +191,16 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
                 $resolvedAt = date('Y-m-d H:i:s');
                 $incidentSync = $conn->prepare("
                     UPDATE book_incidents
-                    SET settlement_status = 'paid',
+                    SET assessed_fee = ?,
+                        settlement_status = 'paid',
                         workflow_status = 'closed',
                         resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
                         resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
                     WHERE id = ?
                 ");
                 $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
-                $incidentSync->bind_param('sii', $resolvedAt, $actorUserId, $incidentId);
+                $approvedAmount = round((float) $current['amount'], 2);
+                $incidentSync->bind_param('dsii', $approvedAmount, $resolvedAt, $actorUserId, $incidentId);
                 $incidentSync->execute();
                 $incidentSync->close();
             }

@@ -888,11 +888,9 @@ function review_admin_incident_payment(mysqli $conn, int $incidentId, int $payme
     if ((string) ($current['settlement_status'] ?? '') !== 'pending') {
         return ['ok' => false, 'message' => 'This incident no longer needs payment approval.'];
     }
-    if ((float) ($current['assessed_fee'] ?? 0) <= 0) {
-        return ['ok' => false, 'message' => 'This incident no longer has a payable fee.'];
-    }
-    if (round((float) ($current['amount'] ?? 0), 2) !== round((float) ($current['assessed_fee'] ?? 0), 2)) {
-        return ['ok' => false, 'message' => 'The uploaded payment amount no longer matches the assessed fee.'];
+    $paymentAmount = round((float) ($current['amount'] ?? 0), 2);
+    if ($paymentAmount <= 0) {
+        return ['ok' => false, 'message' => 'This incident payment does not have a valid amount.'];
     }
     if ($normalizedWorkflow === 'closed' && (string) ($current['settlement_status'] ?? '') !== 'pending') {
         return ['ok' => false, 'message' => 'This incident is already closed.'];
@@ -951,13 +949,14 @@ function review_admin_incident_payment(mysqli $conn, int $incidentId, int $payme
         $resolvedAt = date('Y-m-d H:i:s');
         $incidentSync = $conn->prepare("
             UPDATE book_incidents
-            SET settlement_status = 'paid',
+            SET assessed_fee = ?,
+                settlement_status = 'paid',
                 workflow_status = 'closed',
                 resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
                 resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
             WHERE id = ?
         ");
-        $incidentSync->bind_param('sii', $resolvedAt, $actorUserId, $incidentId);
+        $incidentSync->bind_param('dsii', $paymentAmount, $resolvedAt, $actorUserId, $incidentId);
         $incidentSync->execute();
         $incidentSync->close();
 
