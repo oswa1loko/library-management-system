@@ -120,10 +120,10 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         if (
             !$incident
             || (string) ($incident['settlement_status'] ?? '') !== 'pending'
-            || book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? '')) !== 'for_payment'
+            || (float) ($incident['assessed_fee'] ?? 0) <= 0
             || round((float) $current['amount'], 2) !== round((float) ($incident['assessed_fee'] ?? 0), 2)
         ) {
-            header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved safely.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
+            header('Location: payments_records.php?notice=' . urlencode('This incident payment no longer matches the current incident fee.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
             exit;
         }
     }

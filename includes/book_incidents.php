@@ -884,12 +884,18 @@ function review_admin_incident_payment(mysqli $conn, int $incidentId, int $payme
         return ['ok' => false, 'message' => 'Only pending incident payments can be reviewed.'];
     }
 
-    if (
-        (string) ($current['settlement_status'] ?? '') !== 'pending'
-        || book_incident_normalize_workflow_status((string) ($current['workflow_status'] ?? '')) !== 'for_payment'
-        || round((float) ($current['amount'] ?? 0), 2) !== round((float) ($current['assessed_fee'] ?? 0), 2)
-    ) {
-        return ['ok' => false, 'message' => 'This incident payment can no longer be reviewed safely.'];
+    $normalizedWorkflow = book_incident_normalize_workflow_status((string) ($current['workflow_status'] ?? ''));
+    if ((string) ($current['settlement_status'] ?? '') !== 'pending') {
+        return ['ok' => false, 'message' => 'This incident no longer needs payment approval.'];
+    }
+    if ((float) ($current['assessed_fee'] ?? 0) <= 0) {
+        return ['ok' => false, 'message' => 'This incident no longer has a payable fee.'];
+    }
+    if (round((float) ($current['amount'] ?? 0), 2) !== round((float) ($current['assessed_fee'] ?? 0), 2)) {
+        return ['ok' => false, 'message' => 'The uploaded payment amount no longer matches the assessed fee.'];
+    }
+    if ($normalizedWorkflow === 'closed' && (string) ($current['settlement_status'] ?? '') !== 'pending') {
+        return ['ok' => false, 'message' => 'This incident is already closed.'];
     }
 
     $bookTitle = trim((string) ($current['title'] ?? 'your borrowed book'));
