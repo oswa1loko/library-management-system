@@ -112,7 +112,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         if (
             !$incident
             || (string) ($incident['settlement_status'] ?? '') !== 'pending'
-            || !in_array((string) ($incident['workflow_status'] ?? ''), ['awaiting_settlement', 'resolved'], true)
+            || (string) ($incident['workflow_status'] ?? '') !== 'awaiting_settlement'
             || round((float) $current['amount'], 2) !== round((float) ($incident['assessed_fee'] ?? 0), 2)
         ) {
             header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved safely.'));
@@ -493,12 +493,20 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                 <td><?php echo h(format_currency($payment['current_balance'] ?? 0)); ?></td>
                 <td><span class="badge"><span class="status-dot <?php echo h($payment['status']); ?>"></span><?php echo h($payment['status']); ?></span></td>
                 <td><?php if (!empty($payment['proof_path'])): ?><a href="<?php echo h(app_url('proof_view.php?payment_id=' . (int) $payment['id'])); ?>" target="_blank">View</a><?php else: ?><span class="muted">None</span><?php endif; ?></td>
-                <td>
+                <td class="payment-record-reference">
                   <?php
                   $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
                   if ((int) ($payment['incident_id'] ?? 0) > 0) {
-                      echo 'Incident #' . (int) $payment['incident_id'] . ' / ' . h(book_incident_type_label((string) ($payment['incident_type'] ?? '')));
-                      echo ' / ' . h(book_incident_settlement_label((string) ($payment['incident_settlement_status'] ?? 'pending')));
+                      ?>
+                      <div class="payment-record-reference-copy">
+                        <strong class="label-block">Incident #<?php echo (int) $payment['incident_id']; ?></strong>
+                        <span class="muted">
+                          <?php echo h(book_incident_type_label((string) ($payment['incident_type'] ?? ''))); ?>
+                          |
+                          <?php echo h(book_incident_settlement_label((string) ($payment['incident_settlement_status'] ?? 'pending'))); ?>
+                        </span>
+                      </div>
+                      <?php
                   } elseif ($linkedPenaltyCount > 1) {
                       echo h((string) ($payment['payment_batch'] ?: ('Payment #' . (int) $payment['id'])));
                       echo ' / ' . $linkedPenaltyCount . ' penalties';
@@ -509,9 +517,9 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                   }
                   ?>
                 </td>
-                <td>
+                <td class="payment-record-actions">
                   <?php if ($payment['status'] === 'pending'): ?>
-                    <div class="inline-actions">
+                    <div class="inline-actions payment-record-action-stack">
                       <form method="post" class="inline-form">
                         <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
                         <button type="submit" name="approve" value="1">Approve</button>

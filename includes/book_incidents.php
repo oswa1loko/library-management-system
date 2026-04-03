@@ -218,6 +218,10 @@ function book_incident_payment_stage_label(array $incident): string
         return 'Awaiting Payment';
     }
 
+    if ($workflowStatus === 'resolved' && $settlementStatus === 'pending' && $assessedFee > 0) {
+        return 'Needs Settlement Review';
+    }
+
     return 'Not Yet Ready';
 }
 
@@ -230,6 +234,7 @@ function book_incident_payment_stage_dot_class(array $incident): string
         'Payment Submitted' => 'warning',
         'Payment Rejected' => 'overdue',
         'Awaiting Payment' => 'pending',
+        'Needs Settlement Review' => 'due',
         'Not Yet Ready' => 'due',
     ];
 
@@ -658,12 +663,21 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
         return ['ok' => false, 'message' => 'Choose the final inventory action before resolving the incident.'];
     }
 
-    if ($workflowStatus === 'resolved' && $assessedFee <= 0 && $settlementStatus === 'pending') {
+    if ($settlementStatus === 'waived') {
+        $workflowStatus = 'resolved';
+    } elseif ($assessedFee > 0) {
+        $settlementStatus = 'pending';
+        if ($workflowStatus === 'resolved') {
+            return ['ok' => false, 'message' => 'Incidents with assessed fees must stay in Awaiting Settlement until payment is approved or waived.'];
+        }
+        if ($workflowStatus === 'under_review') {
+            return ['ok' => false, 'message' => 'Set the incident to Awaiting Settlement after you assign a payable fee.'];
+        }
+        $workflowStatus = 'awaiting_settlement';
+    } elseif ($workflowStatus === 'awaiting_settlement' && $assessedFee <= 0) {
+        return ['ok' => false, 'message' => 'Set a fee first or resolve the incident as waived if no payment is needed.'];
+    } elseif ($workflowStatus === 'resolved' && $assessedFee <= 0 && $settlementStatus === 'pending') {
         $settlementStatus = 'waived';
-    }
-
-    if ($workflowStatus === 'awaiting_settlement' && $resolutionAction === 'none') {
-        return ['ok' => false, 'message' => 'Choose how the book inventory will be handled before sending the case to settlement.'];
     }
 
     $reviewedAt = date('Y-m-d H:i:s');

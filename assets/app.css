@@ -4311,6 +4311,35 @@ td{
   min-width:82px;
 }
 
+.payment-record-reference{
+  min-width:170px;
+}
+
+.payment-record-reference-copy{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+
+.payment-record-actions{
+  min-width:164px;
+}
+
+.payment-record-action-stack{
+  display:grid;
+  gap:8px;
+  align-items:stretch;
+}
+
+.payment-record-action-stack .inline-form{
+  display:block;
+}
+
+.payment-record-action-stack .inline-form button{
+  width:100%;
+  min-width:120px;
+}
+
 .librarian-desk-tabs-shell{
   display:grid;
   gap:18px;

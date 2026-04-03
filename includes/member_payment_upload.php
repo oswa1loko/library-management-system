@@ -89,7 +89,7 @@ if (isset($_POST['pay_incident'])) {
             $workflowStatus = (string) ($incidentRow['workflow_status'] ?? '');
             $incidentTitle = (string) ($incidentRow['title'] ?? '');
 
-            if (!in_array($workflowStatus, ['awaiting_settlement', 'resolved'], true)) {
+            if ($workflowStatus !== 'awaiting_settlement') {
                 $msg = 'This incident is not yet ready for payment.';
                 $msgType = 'error';
             } elseif ($settlementStatus !== 'pending') {
@@ -343,7 +343,7 @@ $incidentOverview = $conn->prepare("
       COALESCE(SUM(CASE WHEN settlement_status = 'pending' THEN assessed_fee ELSE 0 END), 0) AS incident_balance
     FROM book_incidents
     WHERE user_id = ?
-      AND workflow_status IN ('awaiting_settlement', 'resolved')
+      AND workflow_status = 'awaiting_settlement'
 ");
 $incidentOverview->bind_param('i', $userId);
 $incidentOverview->execute();
@@ -475,7 +475,7 @@ while ($incidentRow = $incidentOptionRows->fetch_assoc()) {
     $latestPaymentStatus = (string) ($incidentRow['latest_payment_status'] ?? '');
 
     $blockReason = '';
-    if (!in_array($workflowStatus, ['awaiting_settlement', 'resolved'], true)) {
+    if ($workflowStatus !== 'awaiting_settlement') {
         $blockReason = 'Waiting for librarian review';
     } elseif ($settlementStatus !== 'pending') {
         $blockReason = 'Already settled or no payment required';
