@@ -219,7 +219,7 @@ $incidents = get_member_incidents($conn, $userId);
             <h3 class="heading-top-md">My Lost and Damaged Reports</h3>
           </div>
         </div>
-        <p class="muted copy-bottom">Each record below shows the current workflow stage, fee, settlement state, and final inventory action.</p>
+        <p class="muted copy-bottom">Each record below shows the current case status, payment status, fee, and final inventory action.</p>
         <div class="stack">
           <?php if ($incidents === []): ?>
             <div class="empty-state">No incident reports yet.</div>
@@ -239,21 +239,16 @@ $incidents = get_member_incidents($conn, $userId);
                     <span class="chip"><?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
                     <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
                     <span class="chip"><?php echo h(book_incident_payment_stage_label($incident)); ?></span>
-                    <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'open'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
                   </div>
                 </div>
                 <div class="stack flow-gap-sm">
                   <span class="badge">
                     <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['workflow_status'] ?? 'open'))); ?>"></span>
-                    <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
-                  </span>
-                  <span class="badge">
-                    <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['settlement_status'] ?? 'pending'))); ?>"></span>
-                    <?php echo h(book_incident_settlement_label((string) ($incident['settlement_status'] ?? 'pending'))); ?>
+                    Case: <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
                   </span>
                   <span class="badge">
                     <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
-                    <?php echo h(book_incident_payment_stage_label($incident)); ?>
+                    Payment: <?php echo h(book_incident_payment_stage_label($incident)); ?>
                   </span>
                 </div>
               </div>

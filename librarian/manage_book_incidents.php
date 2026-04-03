@@ -15,7 +15,6 @@ if (isset($_POST['update_incident'])) {
     $result = update_librarian_book_incident($conn, (int) ($_POST['incident_id'] ?? 0), (int) ($_SESSION['user_id'] ?? 0), [
         'workflow_status' => (string) ($_POST['workflow_status'] ?? ''),
         'resolution_action' => (string) ($_POST['resolution_action'] ?? ''),
-        'settlement_status' => (string) ($_POST['settlement_status'] ?? ''),
         'severity' => (string) ($_POST['severity'] ?? ''),
         'assessed_fee' => (string) ($_POST['assessed_fee'] ?? '0'),
         'resolution_notes' => (string) ($_POST['resolution_notes'] ?? ''),
@@ -163,21 +162,16 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
                 <span class="chip">Severity: <?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
                 <span class="chip">Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?></span>
                 <span class="chip"><?php echo h(book_incident_payment_stage_label($incident)); ?></span>
-                <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'open'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
               </div>
             </div>
             <div class="stack flow-gap-sm">
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['workflow_status'] ?? 'open'))); ?>"></span>
-                <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
-              </span>
-              <span class="badge">
-                <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['settlement_status'] ?? 'pending'))); ?>"></span>
-                <?php echo h(book_incident_settlement_label((string) ($incident['settlement_status'] ?? 'pending'))); ?>
+                Case: <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
               </span>
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
-                <?php echo h(book_incident_payment_stage_label($incident)); ?>
+                Payment: <?php echo h(book_incident_payment_stage_label($incident)); ?>
               </span>
             </div>
           </div>
@@ -233,8 +227,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           Type: <?php echo h(book_incident_type_label((string) ($selectedIncident['incident_type'] ?? ''))); ?><br>
           Severity: <?php echo h(book_incident_severity_label((string) ($selectedIncident['severity'] ?? ''))); ?><br>
           Reported: <?php echo h(format_display_datetime((string) ($selectedIncident['reported_at'] ?? ''))); ?><br>
-          Payment stage: <?php echo h(book_incident_payment_stage_label($selectedIncident)); ?><br>
-          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'open'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
+          Payment stage: <?php echo h(book_incident_payment_stage_label($selectedIncident)); ?>
         </div>
         <div class="empty-state">
           <strong class="label-block-gap">Member description</strong>
@@ -258,14 +251,6 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
             <select id="resolution_action_selected" name="resolution_action" <?php echo $isLocked ? 'disabled' : ''; ?>>
               <?php foreach (book_incident_resolution_form_options((string) ($selectedIncident['resolution_action'] ?? '')) as $value => $label): ?>
                 <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['resolution_action'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div>
-            <label for="settlement_status_selected">Settlement state</label>
-            <select id="settlement_status_selected" name="settlement_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
-              <?php foreach (book_incident_admin_settlement_form_options((string) ($selectedIncident['settlement_status'] ?? '')) as $value => $label): ?>
-                <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['settlement_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -294,7 +279,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
             <span class="muted">This case is already closed.</span>
           <?php else: ?>
             <button type="submit" name="update_incident" value="1">Save Incident Update</button>
-            <span class="muted">Use `Open` while reviewing. If there is a fee, the system will keep the case in `For Payment` until admin approval.</span>
+            <span class="muted">Use `Open` while reviewing. Add a fee to move the case into `For Payment`, or close it with no fee to waive payment automatically.</span>
           <?php endif; ?>
         </div>
       </form>

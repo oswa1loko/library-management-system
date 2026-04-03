@@ -84,22 +84,11 @@ if (isset($_POST['pay_incident'])) {
             $msgType = 'error';
         } else {
             $expectedAmount = round((float) ($incidentRow['assessed_fee'] ?? 0), 2);
-            $latestPaymentStatus = (string) ($incidentRow['latest_payment_status'] ?? '');
-            $settlementStatus = (string) ($incidentRow['settlement_status'] ?? '');
-            $workflowStatus = (string) ($incidentRow['workflow_status'] ?? '');
             $incidentTitle = (string) ($incidentRow['title'] ?? '');
 
-            if (!in_array($workflowStatus, ['for_payment', 'awaiting_settlement'], true)) {
-                $msg = 'This incident is not yet ready for payment.';
-                $msgType = 'error';
-            } elseif ($settlementStatus !== 'pending') {
-                $msg = 'This incident no longer needs a payment submission.';
-                $msgType = 'error';
-            } elseif ($expectedAmount <= 0) {
-                $msg = 'This incident does not have a payable amount.';
-                $msgType = 'error';
-            } elseif ($latestPaymentStatus === 'pending') {
-                $msg = 'A payment for this incident is already pending admin review.';
+            $blockReason = book_incident_payment_block_reason($incidentRow);
+            if ($blockReason !== '') {
+                $msg = $blockReason . '.';
                 $msgType = 'error';
             } elseif (round($amount, 2) !== $expectedAmount) {
                 $msg = 'Payment amount must match the full assessed incident fee.';
@@ -470,20 +459,7 @@ while ($incidentRow = $incidentOptionRows->fetch_assoc()) {
     $incidentAmount = round((float) ($incidentRow['assessed_fee'] ?? 0), 2);
     $incidentTitle = (string) ($incidentRow['title'] ?? '');
     $incidentType = (string) ($incidentRow['incident_type'] ?? '');
-    $workflowStatus = (string) ($incidentRow['workflow_status'] ?? '');
-    $settlementStatus = (string) ($incidentRow['settlement_status'] ?? '');
-    $latestPaymentStatus = (string) ($incidentRow['latest_payment_status'] ?? '');
-
-    $blockReason = '';
-    if (!in_array($workflowStatus, ['for_payment', 'awaiting_settlement'], true)) {
-        $blockReason = 'Waiting for librarian review';
-    } elseif ($settlementStatus !== 'pending') {
-        $blockReason = 'Already settled or no payment required';
-    } elseif ($incidentAmount <= 0) {
-        $blockReason = 'No assessed fee';
-    } elseif ($latestPaymentStatus === 'pending') {
-        $blockReason = 'Payment already pending admin review';
-    }
+    $blockReason = book_incident_payment_block_reason($incidentRow);
 
     if ($blockReason === '') {
         $payableIncidentOptions[] = [

@@ -50,6 +50,11 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         exit;
     }
 
+    if ((int) ($current['incident_id'] ?? 0) > 0) {
+        header('Location: book_incidents_records.php?incident=' . (int) $current['incident_id'] . '&notice=' . urlencode('Review incident payments from the Book Incidents page.') . '&notice_type=info');
+        exit;
+    }
+
     $linkedPenaltyIds = [];
     $linkedPenaltyStmt = $conn->prepare("SELECT penalty_id FROM payment_penalty_links WHERE payment_id = ? ORDER BY penalty_id ASC");
     $linkedPenaltyStmt->bind_param('i', $id);
@@ -242,7 +247,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     exit;
 }
 
-$summary = $conn->query("
+$summarySql = "
     SELECT
       COUNT(*) AS total_records,
       SUM(status = 'pending') AS pending_records,
@@ -252,7 +257,24 @@ $summary = $conn->query("
       COALESCE(SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END), 0) AS approved_amount,
       COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_amount
     FROM payments
-")->fetch_assoc();
+    WHERE 1=1
+";
+
+$summaryTypes = '';
+$summaryParams = [];
+if ($paymentScope === 'penalties') {
+    $summarySql .= " AND (incident_id IS NULL OR incident_id = 0)";
+} elseif ($paymentScope === 'incidents') {
+    $summarySql .= " AND incident_id > 0";
+}
+
+$summaryStmt = $conn->prepare($summarySql);
+if ($summaryTypes !== '') {
+    $summaryStmt->bind_param($summaryTypes, ...$summaryParams);
+}
+$summaryStmt->execute();
+$summary = $summaryStmt->get_result()->fetch_assoc() ?: [];
+$summaryStmt->close();
 
 $countSql = "
     SELECT COUNT(*) AS total
@@ -404,7 +426,7 @@ $summaryLabels = match ($paymentScope) {
         'pending_amount' => 'Pending Incident Fees',
         'pending_amount_copy' => 'Incident fee value currently waiting for approval.',
         'queue_title' => 'Incident submissions and actions',
-        'queue_copy' => 'Filter incident payment records, then approve or reject each lost or damaged fee submission directly from the table.',
+        'queue_copy' => 'Filter incident payment records here, then open the linked incident record to approve or reject the uploaded proof.',
         'submitted_chip' => 'Incident submitted',
         'pending_chip' => 'Incident pending',
     ],
@@ -599,18 +621,6 @@ $summaryLabels = match ($paymentScope) {
                           <?php echo h(book_incident_settlement_label((string) ($payment['incident_settlement_status'] ?? 'pending'))); ?>
                         </span>
                       </div>
-                      <?php if ((string) ($payment['status'] ?? '') === 'pending'): ?>
-                        <div class="payment-record-inline-actions flow-top-sm">
-                          <form method="post" class="inline-form">
-                            <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                            <button type="submit" name="approve" value="1">Approve</button>
-                          </form>
-                          <form method="post" class="inline-form">
-                            <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                            <button type="submit" class="danger" name="reject" value="1">Reject</button>
-                          </form>
-                        </div>
-                      <?php endif; ?>
                       <?php
                   } elseif ($linkedPenaltyCount > 1) {
                       echo h((string) ($payment['payment_batch'] ?: ('Payment #' . (int) $payment['id'])));
@@ -623,7 +633,9 @@ $summaryLabels = match ($paymentScope) {
                   ?>
                 </td>
                 <td class="payment-record-actions payment-record-action-stack">
-                  <?php if ((string) ($payment['status'] ?? '') === 'pending'): ?>
+                  <?php if ((int) ($payment['incident_id'] ?? 0) > 0): ?>
+                    <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php?incident=' . (int) ($payment['incident_id'] ?? 0))); ?>">Open Incident</a>
+                  <?php elseif ((string) ($payment['status'] ?? '') === 'pending'): ?>
                     <form method="post" class="inline-form">
                       <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
                       <button type="submit" name="approve" value="1">Approve</button>

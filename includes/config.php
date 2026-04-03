@@ -400,9 +400,9 @@ function ensure_library_schema(mysqli $conn): void
             incident_type ENUM('lost','damaged') NOT NULL,
             severity ENUM('minor','major','severe') DEFAULT NULL,
             description TEXT NOT NULL,
-            workflow_status ENUM('reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'reported',
+            workflow_status ENUM('open','for_payment','closed','reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'open',
             resolution_action ENUM('none','return_to_shelf','send_for_repair','write_off_lost','write_off_damaged') NOT NULL DEFAULT 'none',
-            settlement_status ENUM('pending','not_required','paid','replacement_submitted','waived') NOT NULL DEFAULT 'pending',
+            settlement_status ENUM('pending','paid','waived','not_required','replacement_submitted') NOT NULL DEFAULT 'pending',
             assessed_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
             resolution_notes TEXT DEFAULT NULL,
             reported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -899,7 +899,7 @@ function ensure_library_schema(mysqli $conn): void
     }
 
     if (!column_exists($conn, 'book_incidents', 'workflow_status')) {
-        $conn->query("ALTER TABLE book_incidents ADD COLUMN workflow_status ENUM('reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'reported' AFTER description");
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN workflow_status ENUM('open','for_payment','closed','reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'open' AFTER description");
     }
 
     if (!column_exists($conn, 'book_incidents', 'resolution_action')) {
@@ -907,8 +907,11 @@ function ensure_library_schema(mysqli $conn): void
     }
 
     if (!column_exists($conn, 'book_incidents', 'settlement_status')) {
-        $conn->query("ALTER TABLE book_incidents ADD COLUMN settlement_status ENUM('pending','not_required','paid','replacement_submitted','waived') NOT NULL DEFAULT 'pending' AFTER resolution_action");
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN settlement_status ENUM('pending','paid','waived','not_required','replacement_submitted') NOT NULL DEFAULT 'pending' AFTER resolution_action");
     }
+
+    $conn->query("ALTER TABLE book_incidents MODIFY COLUMN workflow_status ENUM('open','for_payment','closed','reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'open'");
+    $conn->query("ALTER TABLE book_incidents MODIFY COLUMN settlement_status ENUM('pending','paid','waived','not_required','replacement_submitted') NOT NULL DEFAULT 'pending'");
 
     if (!column_exists($conn, 'book_incidents', 'assessed_fee')) {
         $conn->query("ALTER TABLE book_incidents ADD COLUMN assessed_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER settlement_status");
