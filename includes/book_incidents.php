@@ -345,6 +345,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     $reportedAt = date('Y-m-d H:i:s');
     $normalizedRole = canonical_role($userRole);
     $bookId = (int) ($borrow['book_id'] ?? 0);
+    $severityValue = null;
     $insertStmt = $conn->prepare("
         INSERT INTO book_incidents (
             borrow_id,
@@ -366,7 +367,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
         $bookId,
         $normalizedRole,
         $incidentType,
-        null,
+        $severityValue,
         $description,
         $reportedAt
     );
