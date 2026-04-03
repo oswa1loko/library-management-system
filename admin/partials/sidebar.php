@@ -20,9 +20,13 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
       <span class="member-sidebar-label">Accounts</span>
     </a>
-    <a class="member-sidebar-link <?php echo $sidebarPage === 'payments' ? 'is-active' : ''; ?>" href="/librarymanage/admin/payments_records.php" data-tooltip="Payments">
+    <a class="member-sidebar-link <?php echo in_array($sidebarPage, ['payments', 'penalty_payments'], true) ? 'is-active' : ''; ?>" href="/librarymanage/admin/payments_records.php?scope=penalties" data-tooltip="Overdue Penalty Payments">
       <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
-      <span class="member-sidebar-label">Payments</span>
+      <span class="member-sidebar-label">Penalty Payments</span>
+    </a>
+    <a class="member-sidebar-link <?php echo in_array($sidebarPage, ['payments', 'incident_payments'], true) ? 'is-active' : ''; ?>" href="/librarymanage/admin/payments_records.php?scope=incidents" data-tooltip="Incident Payments">
+      <span class="dashboard-icon icon-payments" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Incident Payments</span>
     </a>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'penalties' ? 'is-active' : ''; ?>" href="/librarymanage/admin/penalties_records.php" data-tooltip="Penalties">
       <span class="dashboard-icon icon-penalties" aria-hidden="true"></span>

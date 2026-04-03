@@ -5,12 +5,13 @@ require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('admin');
 
-function payments_filter_query(string $search, string $statusFilter, string $roleFilter): string
+function payments_filter_query(string $search, string $statusFilter, string $roleFilter, string $paymentScope): string
 {
     $query = http_build_query(array_filter([
         'search' => $search,
         'status' => $statusFilter,
         'role' => $roleFilter,
+        'scope' => $paymentScope !== 'all' ? $paymentScope : '',
     ], static fn($value) => $value !== ''));
 
     return $query !== '' ? '?' . $query : '';
@@ -19,9 +20,15 @@ function payments_filter_query(string $search, string $statusFilter, string $rol
 $search = trim($_GET['search'] ?? '');
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
+$paymentScope = trim($_GET['scope'] ?? 'all');
 $selectedPaymentId = (int) ($_GET['payment_id'] ?? ($_POST['id'] ?? 0));
 $rolesAllowed = ['student', 'faculty'];
 $statusOptions = payment_statuses();
+$paymentScopes = ['all', 'penalties', 'incidents'];
+$isValidPaymentScope = in_array($paymentScope, $paymentScopes, true);
+if (!$isValidPaymentScope) {
+    $paymentScope = 'all';
+}
 $isValidStatusFilter = $statusFilter !== '' && in_array($statusFilter, $statusOptions, true);
 $isValidRoleFilter = $roleFilter !== '' && in_array($roleFilter, $rolesAllowed, true);
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -39,7 +46,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     $fetch->close();
 
     if (!$current || $current['status'] !== 'pending') {
-        header('Location: payments_records.php?notice=' . urlencode('Only pending payments can be reviewed.'));
+        header('Location: payments_records.php?notice=' . urlencode('Only pending payments can be reviewed.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
         exit;
     }
 
@@ -92,7 +99,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         }
 
         if ($validPenaltyCount !== count($linkedPenaltyIds) || round((float) $current['amount'], 2) !== round($expectedAmount, 2)) {
-            header('Location: payments_records.php?notice=' . urlencode('This payment can no longer be approved safely.'));
+            header('Location: payments_records.php?notice=' . urlencode('This payment can no longer be approved safely.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
             exit;
         }
     }
@@ -116,7 +123,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             || (string) ($incident['workflow_status'] ?? '') !== 'awaiting_settlement'
             || round((float) $current['amount'], 2) !== round((float) ($incident['assessed_fee'] ?? 0), 2)
         ) {
-            header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved safely.'));
+            header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved safely.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
             exit;
         }
     }
@@ -159,7 +166,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             }
         } catch (Throwable $exception) {
             $conn->rollback();
-            header('Location: payments_records.php?notice=' . urlencode('Unable to reject this payment right now.'));
+            header('Location: payments_records.php?notice=' . urlencode('Unable to reject this payment right now.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
             exit;
         }
     } else {
@@ -225,12 +232,12 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             $conn->commit();
         } catch (Throwable $exception) {
             $conn->rollback();
-            header('Location: payments_records.php?notice=' . urlencode('Unable to approve this payment right now.'));
+            header('Location: payments_records.php?notice=' . urlencode('Unable to approve this payment right now.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
             exit;
         }
     }
 
-    header('Location: payments_records.php');
+    header('Location: payments_records.php' . ($paymentScope !== 'all' ? '?scope=' . urlencode($paymentScope) : ''));
     exit;
 }
 
@@ -272,6 +279,11 @@ if ($search !== '') {
     $params[] = $term;
     $params[] = $term;
     $params[] = $term;
+}
+if ($paymentScope === 'penalties') {
+    $countSql .= " AND (pay.incident_id IS NULL OR pay.incident_id = 0)";
+} elseif ($paymentScope === 'incidents') {
+    $countSql .= " AND pay.incident_id > 0";
 }
 
 $countStmt = $conn->prepare($countSql);
@@ -321,6 +333,11 @@ if ($isValidRoleFilter) {
 if ($search !== '') {
     $sql .= " AND (CAST(pay.id AS CHAR) LIKE ? OR u.username LIKE ? OR u.email LIKE ?)";
 }
+if ($paymentScope === 'penalties') {
+    $sql .= " AND (pay.incident_id IS NULL OR pay.incident_id = 0)";
+} elseif ($paymentScope === 'incidents') {
+    $sql .= " AND pay.incident_id > 0";
+}
 $sql .= " GROUP BY pay.id ORDER BY pay.id DESC LIMIT ? OFFSET ?";
 
 $queryTypes = $types . 'ii';
@@ -336,7 +353,7 @@ $payments = [];
 while ($paymentsResult && ($paymentRow = $paymentsResult->fetch_assoc())) {
     $payments[] = $paymentRow;
 }
-$filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
+$filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter, $paymentScope);
 $selectedPayment = null;
 foreach ($payments as $paymentRow) {
     if ((int) ($paymentRow['id'] ?? 0) === $selectedPaymentId) {
@@ -354,10 +371,23 @@ if ($statusFilter !== '') {
 if ($roleFilter !== '') {
     $modalQuery['role'] = $roleFilter;
 }
+if ($paymentScope !== 'all') {
+    $modalQuery['scope'] = $paymentScope;
+}
 if ($page > 1) {
     $modalQuery['page'] = $page;
 }
 $paymentsBaseHref = 'payments_records.php' . ($modalQuery !== [] ? '?' . http_build_query($modalQuery) : '');
+$scopeTitle = match ($paymentScope) {
+    'penalties' => 'Overdue Penalty Payments',
+    'incidents' => 'Incident Payments',
+    default => 'Payment Records',
+};
+$scopeSubtitle = match ($paymentScope) {
+    'penalties' => 'Review overdue penalty payment submissions only',
+    'incidents' => 'Review lost and damaged incident payment submissions only',
+    default => 'Review full payment proof submissions',
+};
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -374,14 +404,14 @@ $paymentsBaseHref = 'payments_records.php' . ($modalQuery !== [] ? '?' . http_bu
 <body>
 <div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-payments" data-sidebar-default="expanded" data-sidebar-lock="expanded">
   <?php
-  $sidebarPage = 'payments';
+  $sidebarPage = $paymentScope === 'penalties' ? 'penalty_payments' : ($paymentScope === 'incidents' ? 'incident_payments' : 'payments');
   require __DIR__ . '/partials/sidebar.php';
   ?>
 
   <div class="member-main">
   <?php
-  $pageTitle = 'Payment Records';
-  $pageSubtitle = 'Review full payment proof submissions';
+  $pageTitle = $scopeTitle;
+  $pageSubtitle = $scopeSubtitle;
   require __DIR__ . '/partials/topbar.php';
   ?>
 
