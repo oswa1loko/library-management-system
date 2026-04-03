@@ -785,12 +785,33 @@ function get_admin_incidents(mysqli $conn, string $settlementFilter = ''): array
             b.title,
             b.author,
             (
+                SELECT pay.id
+                FROM payments pay
+                WHERE pay.incident_id = bi.id
+                ORDER BY pay.id DESC
+                LIMIT 1
+            ) AS latest_payment_id,
+            (
                 SELECT pay.status
                 FROM payments pay
                 WHERE pay.incident_id = bi.id
                 ORDER BY pay.id DESC
                 LIMIT 1
-            ) AS latest_payment_status
+            ) AS latest_payment_status,
+            (
+                SELECT pay.proof_path
+                FROM payments pay
+                WHERE pay.incident_id = bi.id
+                ORDER BY pay.id DESC
+                LIMIT 1
+            ) AS latest_payment_proof_path,
+            (
+                SELECT pay.amount
+                FROM payments pay
+                WHERE pay.incident_id = bi.id
+                ORDER BY pay.id DESC
+                LIMIT 1
+            ) AS latest_payment_amount
         FROM book_incidents bi
         JOIN users u ON u.id = bi.user_id
         JOIN books b ON b.id = bi.book_id
@@ -815,6 +836,148 @@ function get_admin_incidents(mysqli $conn, string $settlementFilter = ''): array
     $stmt->close();
 
     return $rows;
+}
+
+function review_admin_incident_payment(mysqli $conn, int $incidentId, int $paymentId, int $actorUserId, string $decision): array
+{
+    $decision = $decision === 'reject' ? 'reject' : 'approve';
+
+    if ($incidentId <= 0 || $paymentId <= 0) {
+        return ['ok' => false, 'message' => 'Payment review data is incomplete.'];
+    }
+
+    $fetch = $conn->prepare("
+        SELECT
+            pay.id,
+            pay.user_id,
+            pay.amount,
+            pay.proof_path,
+            pay.status,
+            pay.incident_id,
+            bi.assessed_fee,
+            bi.settlement_status,
+            bi.workflow_status,
+            bi.book_id,
+            bi.resolution_notes,
+            b.title,
+            u.role AS member_role
+        FROM payments pay
+        JOIN book_incidents bi ON bi.id = pay.incident_id
+        JOIN books b ON b.id = bi.book_id
+        JOIN users u ON u.id = pay.user_id
+        WHERE pay.id = ?
+          AND pay.incident_id = ?
+        LIMIT 1
+    ");
+    $fetch->bind_param('ii', $paymentId, $incidentId);
+    $fetch->execute();
+    $current = $fetch->get_result()->fetch_assoc();
+    $fetch->close();
+
+    if (!$current) {
+        return ['ok' => false, 'message' => 'The selected incident payment was not found.'];
+    }
+
+    if ((string) ($current['status'] ?? '') !== 'pending') {
+        return ['ok' => false, 'message' => 'Only pending incident payments can be reviewed.'];
+    }
+
+    if (
+        (string) ($current['settlement_status'] ?? '') !== 'pending'
+        || (string) ($current['workflow_status'] ?? '') !== 'awaiting_settlement'
+        || round((float) ($current['amount'] ?? 0), 2) !== round((float) ($current['assessed_fee'] ?? 0), 2)
+    ) {
+        return ['ok' => false, 'message' => 'This incident payment can no longer be reviewed safely.'];
+    }
+
+    $bookTitle = trim((string) ($current['title'] ?? 'your borrowed book'));
+    $memberRole = canonical_role((string) ($current['member_role'] ?? ''));
+
+    if ($decision === 'reject') {
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare("UPDATE payments SET status = 'rejected', proof_path = NULL WHERE id = ? AND status = 'pending'");
+            $stmt->bind_param('i', $paymentId);
+            $stmt->execute();
+            $changed = $stmt->affected_rows === 1;
+            $stmt->close();
+
+            if ($changed) {
+                audit_log($conn, 'book_incident.payment_rejected', [
+                    'incident_id' => $incidentId,
+                    'payment_id' => $paymentId,
+                ]);
+
+                if (in_array($memberRole, ['student', 'faculty'], true)) {
+                    create_notification(
+                        $conn,
+                        $memberRole,
+                        'Incident Payment Rejected',
+                        'Your payment proof for ' . ($bookTitle !== '' ? $bookTitle : 'your book incident') . ' was rejected. Please upload a new proof.',
+                        'critical',
+                        (int) $current['user_id']
+                    );
+                }
+            }
+
+            $conn->commit();
+            if (!empty($current['proof_path'])) {
+                remove_relative_file((string) $current['proof_path']);
+            }
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            return ['ok' => false, 'message' => 'Unable to reject this incident payment right now.'];
+        }
+
+        return ['ok' => true, 'message' => 'Incident payment rejected successfully.'];
+    }
+
+    $conn->begin_transaction();
+    try {
+        $stmt = $conn->prepare("UPDATE payments SET status = 'approved' WHERE id = ? AND status = 'pending'");
+        $stmt->bind_param('i', $paymentId);
+        $stmt->execute();
+        $changed = $stmt->affected_rows === 1;
+        $stmt->close();
+
+        $resolvedAt = date('Y-m-d H:i:s');
+        $incidentSync = $conn->prepare("
+            UPDATE book_incidents
+            SET settlement_status = 'paid',
+                workflow_status = 'resolved',
+                resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
+                resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
+            WHERE id = ?
+        ");
+        $incidentSync->bind_param('sii', $resolvedAt, $actorUserId, $incidentId);
+        $incidentSync->execute();
+        $incidentSync->close();
+
+        if ($changed) {
+            audit_log($conn, 'book_incident.payment_approved', [
+                'incident_id' => $incidentId,
+                'payment_id' => $paymentId,
+            ]);
+
+            if (in_array($memberRole, ['student', 'faculty'], true)) {
+                create_notification(
+                    $conn,
+                    $memberRole,
+                    'Incident Payment Approved',
+                    'Your payment proof for ' . ($bookTitle !== '' ? $bookTitle : 'your book incident') . ' was approved.',
+                    'info',
+                    (int) $current['user_id']
+                );
+            }
+        }
+
+        $conn->commit();
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        return ['ok' => false, 'message' => 'Unable to approve this incident payment right now.'];
+    }
+
+    return ['ok' => true, 'message' => 'Incident payment approved successfully.'];
 }
 
 function update_admin_incident_settlement(mysqli $conn, int $incidentId, int $actorUserId, array $data): array

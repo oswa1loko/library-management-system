@@ -7,8 +7,37 @@ require_once __DIR__ . '/../includes/book_incidents.php';
 require_role('admin');
 
 $noticeItems = [];
+$flash = trim((string) ($_GET['notice'] ?? ''));
+$flashType = trim((string) ($_GET['notice_type'] ?? ''));
 $settlementFilter = trim((string) ($_GET['settlement'] ?? ''));
 $selectedIncidentId = (int) ($_GET['incident'] ?? ($_POST['incident_id'] ?? 0));
+
+if ($flash !== '') {
+    $noticeItems[] = [
+        'type' => in_array($flashType, ['success', 'error', 'warning', 'info'], true) ? $flashType : 'info',
+        'message' => $flash,
+    ];
+}
+
+if (isset($_POST['approve_payment']) || isset($_POST['reject_payment'])) {
+    $incidentId = (int) ($_POST['incident_id'] ?? 0);
+    $paymentId = (int) ($_POST['payment_id'] ?? 0);
+    $decision = isset($_POST['reject_payment']) ? 'reject' : 'approve';
+    $result = review_admin_incident_payment($conn, $incidentId, $paymentId, (int) ($_SESSION['user_id'] ?? 0), $decision);
+
+    $redirectQuery = [];
+    if ($settlementFilter !== '') {
+        $redirectQuery['settlement'] = $settlementFilter;
+    }
+    if ($incidentId > 0) {
+        $redirectQuery['incident'] = $incidentId;
+    }
+    $redirectQuery['notice'] = $result['message'] ?? '';
+    $redirectQuery['notice_type'] = !empty($result['ok']) ? 'success' : 'error';
+
+    header('Location: book_incidents_records.php?' . http_build_query($redirectQuery));
+    exit;
+}
 
 $summary = book_incident_summary($conn);
 $incidents = get_admin_incidents($conn, $settlementFilter);
@@ -62,7 +91,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div>
           <p class="muted eyebrow-compact">Overview</p>
           <h3 class="heading-card">System-wide incident records</h3>
-          <p class="muted">Admin handles the final settlement after the librarian finishes the review and inventory decision.</p>
+          <p class="muted">Admin now reviews the student's uploaded incident payment proof directly from this page after the librarian finishes the review.</p>
         </div>
       </div>
       <div class="stat-grid">
@@ -156,13 +185,33 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
               Notes: <?php echo nl2br(h(trim((string) ($incident['resolution_notes'] ?? '')) !== '' ? (string) $incident['resolution_notes'] : 'No notes yet.')); ?>
             </div>
             <div class="empty-state">
-              <strong class="label-block-gap">Admin role</strong>
-              View the final incident state here. Payment approval happens in the admin `Payments` page.
+              <strong class="label-block-gap">Payment review</strong>
+              Submitted amount: <?php echo h(format_currency($incident['latest_payment_amount'] ?? 0)); ?><br>
+              Proof:
+              <?php if (!empty($incident['latest_payment_proof_path'])): ?>
+                <a href="<?php echo h(app_url('proof_view.php?payment_id=' . (int) ($incident['latest_payment_id'] ?? 0))); ?>" target="_blank">View uploaded proof</a>
+              <?php else: ?>
+                <span class="muted">No proof uploaded yet.</span>
+              <?php endif; ?><br>
+              Latest payment status: <?php echo h(ucfirst((string) ($incident['latest_payment_status'] ?? 'none'))); ?>
             </div>
           </div>
           <div class="inline-actions member-workspace-actions">
             <a class="button" href="<?php echo h($baseUrl . '?' . http_build_query($baseQuery + ['incident' => (int) $incident['id']])); ?>">View Details</a>
-            <span class="muted">Open the incident summary modal, then approve actual payments in `Payments`.</span>
+            <?php if ((string) ($incident['latest_payment_status'] ?? '') === 'pending' && (int) ($incident['latest_payment_id'] ?? 0) > 0): ?>
+              <form method="post" class="inline-form">
+                <input type="hidden" name="incident_id" value="<?php echo (int) $incident['id']; ?>">
+                <input type="hidden" name="payment_id" value="<?php echo (int) $incident['latest_payment_id']; ?>">
+                <button type="submit" name="approve_payment" value="1">Approve Payment</button>
+              </form>
+              <form method="post" class="inline-form">
+                <input type="hidden" name="incident_id" value="<?php echo (int) $incident['id']; ?>">
+                <input type="hidden" name="payment_id" value="<?php echo (int) $incident['latest_payment_id']; ?>">
+                <button type="submit" class="danger" name="reject_payment" value="1">Reject Payment</button>
+              </form>
+            <?php else: ?>
+              <span class="muted">Approve or reject uploaded proofs here once the student submits payment.</span>
+            <?php endif; ?>
           </div>
         </div>
       <?php endforeach; ?>
@@ -178,7 +227,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div>
           <p class="muted eyebrow-compact">Incident Details</p>
           <h3 id="incident-settlement-modal-title" class="heading-card"><?php echo h($selectedIncident['title']); ?></h3>
-          <p class="muted">This is a monitoring view only. Approve the student's payment proof from the admin `Payments` page.</p>
+          <p class="muted">Review the final incident state, inspect the uploaded proof, and approve the payment from this incident workspace.</p>
         </div>
         <a class="button secondary" href="<?php echo h($baseHref); ?>">Close</a>
       </div>
@@ -200,17 +249,34 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           Payment stage: <?php echo h(book_incident_payment_stage_label($selectedIncident)); ?><br>
           Inventory action: <?php echo h(book_incident_resolution_label((string) ($selectedIncident['resolution_action'] ?? 'none'))); ?><br>
           Assessed fee: <?php echo h(format_currency($selectedIncident['assessed_fee'] ?? 0)); ?><br>
-          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'reported'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?><br>
-          Payment source: `Payments` approval sets `Paid` automatically.
+          Submitted amount: <?php echo h(format_currency($selectedIncident['latest_payment_amount'] ?? 0)); ?><br>
+          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'reported'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
         </div>
         <div class="empty-state">
-          <strong class="label-block-gap">Notes</strong>
+          <strong class="label-block-gap">Notes and proof</strong>
+          <?php if (!empty($selectedIncident['latest_payment_proof_path'])): ?>
+            <a class="button secondary flow-bottom-sm" href="<?php echo h(app_url('proof_view.php?payment_id=' . (int) ($selectedIncident['latest_payment_id'] ?? 0))); ?>" target="_blank">View Uploaded Proof</a><br>
+          <?php else: ?>
+            <span class="muted">No payment proof uploaded yet.</span><br>
+          <?php endif; ?>
           <?php echo nl2br(h(trim((string) ($selectedIncident['resolution_notes'] ?? '')) !== '' ? (string) $selectedIncident['resolution_notes'] : 'No notes yet.')); ?>
         </div>
       </div>
       <div class="inline-actions member-workspace-actions">
-        <a class="button" href="<?php echo h(app_url('admin/payments_records.php')); ?>">Open Payments</a>
-        <span class="muted">Use the admin `Payments` page to approve or reject the student's proof of payment.</span>
+        <?php if ((string) ($selectedIncident['latest_payment_status'] ?? '') === 'pending' && (int) ($selectedIncident['latest_payment_id'] ?? 0) > 0): ?>
+          <form method="post" class="inline-form">
+            <input type="hidden" name="incident_id" value="<?php echo (int) $selectedIncident['id']; ?>">
+            <input type="hidden" name="payment_id" value="<?php echo (int) $selectedIncident['latest_payment_id']; ?>">
+            <button type="submit" name="approve_payment" value="1">Approve Payment</button>
+          </form>
+          <form method="post" class="inline-form">
+            <input type="hidden" name="incident_id" value="<?php echo (int) $selectedIncident['id']; ?>">
+            <input type="hidden" name="payment_id" value="<?php echo (int) $selectedIncident['latest_payment_id']; ?>">
+            <button type="submit" class="danger" name="reject_payment" value="1">Reject Payment</button>
+          </form>
+        <?php else: ?>
+          <span class="muted">This incident will move to `Paid` automatically after approval, or wait for a new upload after rejection.</span>
+        <?php endif; ?>
       </div>
     </div>
   </div>
