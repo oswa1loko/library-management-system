@@ -19,6 +19,7 @@ function payments_filter_query(string $search, string $statusFilter, string $rol
 $search = trim($_GET['search'] ?? '');
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
+$selectedPaymentId = (int) ($_GET['payment_id'] ?? ($_POST['id'] ?? 0));
 $rolesAllowed = ['student', 'faculty'];
 $statusOptions = payment_statuses();
 $isValidStatusFilter = $statusFilter !== '' && in_array($statusFilter, $statusOptions, true);
@@ -330,8 +331,33 @@ $queryParams[] = $offset;
 $paymentsStmt = $conn->prepare($sql);
 $paymentsStmt->bind_param($queryTypes, ...$queryParams);
 $paymentsStmt->execute();
-$payments = $paymentsStmt->get_result();
+$paymentsResult = $paymentsStmt->get_result();
+$payments = [];
+while ($paymentsResult && ($paymentRow = $paymentsResult->fetch_assoc())) {
+    $payments[] = $paymentRow;
+}
 $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
+$selectedPayment = null;
+foreach ($payments as $paymentRow) {
+    if ((int) ($paymentRow['id'] ?? 0) === $selectedPaymentId) {
+        $selectedPayment = $paymentRow;
+        break;
+    }
+}
+$modalQuery = [];
+if ($search !== '') {
+    $modalQuery['search'] = $search;
+}
+if ($statusFilter !== '') {
+    $modalQuery['status'] = $statusFilter;
+}
+if ($roleFilter !== '') {
+    $modalQuery['role'] = $roleFilter;
+}
+if ($page > 1) {
+    $modalQuery['page'] = $page;
+}
+$paymentsBaseHref = 'payments_records.php' . ($modalQuery !== [] ? '?' . http_build_query($modalQuery) : '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -474,10 +500,10 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
             </tr>
           </thead>
           <tbody>
-            <?php if ($payments->num_rows === 0): ?>
+            <?php if ($payments === []): ?>
               <tr><td colspan="10" class="muted">No payment records found.</td></tr>
             <?php endif; ?>
-            <?php while ($payment = $payments->fetch_assoc()): ?>
+            <?php foreach ($payments as $payment): ?>
               <tr>
                 <td><?php echo (int) $payment['id']; ?></td>
                 <td><?php echo h($payment['username']); ?></td>
@@ -505,18 +531,6 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                           |
                           <?php echo h(book_incident_settlement_label((string) ($payment['incident_settlement_status'] ?? 'pending'))); ?>
                         </span>
-                        <?php if ($payment['status'] === 'pending'): ?>
-                          <div class="inline-actions payment-record-inline-actions">
-                            <form method="post" class="inline-form">
-                              <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                              <button type="submit" name="approve" value="1">Approve</button>
-                            </form>
-                            <form method="post" class="inline-form">
-                              <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                              <button type="submit" class="danger" name="reject" value="1">Reject</button>
-                            </form>
-                          </div>
-                        <?php endif; ?>
                       </div>
                       <?php
                   } elseif ($linkedPenaltyCount > 1) {
@@ -530,25 +544,10 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                   ?>
                 </td>
                 <td class="payment-record-actions">
-                  <?php if ($payment['status'] === 'pending'): ?>
-                    <div class="inline-actions payment-record-action-stack">
-                      <form method="post" class="inline-form">
-                        <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                        <button type="submit" name="approve" value="1">Approve</button>
-                      </form>
-                      <form method="post" class="inline-form">
-                        <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                        <button type="submit" class="danger" name="reject" value="1">Reject</button>
-                      </form>
-                    </div>
-                  <?php else: ?>
-                    <span class="review-state review-state-<?php echo h($payment['status']); ?>">
-                      <?php echo $payment['status'] === 'rejected' ? 'Rejected by admin' : 'Reviewed'; ?>
-                    </span>
-                  <?php endif; ?>
+                  <a class="button secondary" href="<?php echo h('payments_records.php?' . http_build_query($modalQuery + ['payment_id' => (int) $payment['id']])); ?>">Review Payment</a>
                 </td>
               </tr>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
           </tbody>
         </table>
       </div>
@@ -565,6 +564,72 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
   </div>
   </div>
 </div>
+<?php if ($selectedPayment): ?>
+  <div class="desk-modal" data-desk-modal>
+    <a class="desk-modal-backdrop" href="<?php echo h($paymentsBaseHref); ?>" aria-label="Close payment review"></a>
+    <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="payment-review-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact">Payment Review</p>
+          <h3 id="payment-review-modal-title" class="heading-card">Payment #<?php echo (int) $selectedPayment['id']; ?></h3>
+          <p class="muted">Review the proof and approve or reject the submission from this focused payment detail view.</p>
+        </div>
+        <a class="button secondary" href="<?php echo h($paymentsBaseHref); ?>">Close</a>
+      </div>
+
+      <div class="grid cards">
+        <div class="empty-state">
+          <strong class="label-block-gap">Payment details</strong>
+          User: <?php echo h((string) ($selectedPayment['username'] ?? '')); ?><br>
+          Role: <?php echo h((string) ($selectedPayment['role'] ?? '')); ?><br>
+          Amount: <?php echo h(format_currency($selectedPayment['amount'] ?? 0)); ?><br>
+          Status: <?php echo h(ucfirst((string) ($selectedPayment['status'] ?? 'pending'))); ?>
+        </div>
+        <div class="empty-state">
+          <strong class="label-block-gap">Reference</strong>
+          <?php if ((int) ($selectedPayment['incident_id'] ?? 0) > 0): ?>
+            Incident #<?php echo (int) $selectedPayment['incident_id']; ?><br>
+            Type: <?php echo h(book_incident_type_label((string) ($selectedPayment['incident_type'] ?? ''))); ?><br>
+            Settlement: <?php echo h(book_incident_settlement_label((string) ($selectedPayment['incident_settlement_status'] ?? 'pending'))); ?>
+          <?php elseif ((int) ($selectedPayment['penalty_id'] ?? 0) > 0): ?>
+            Penalty #<?php echo (int) $selectedPayment['penalty_id']; ?><br>
+            Status: <?php echo h((string) ($selectedPayment['penalty_status'] ?? 'n/a')); ?>
+          <?php else: ?>
+            Not linked
+          <?php endif; ?>
+        </div>
+        <div class="empty-state">
+          <strong class="label-block-gap">Borrowed book</strong>
+          <?php echo h(trim((string) ($selectedPayment['borrowed_book_title'] ?? '')) !== '' ? (string) $selectedPayment['borrowed_book_title'] : 'Not linked'); ?><br>
+          Current balance: <?php echo h(format_currency($selectedPayment['current_balance'] ?? 0)); ?>
+        </div>
+      </div>
+
+      <div class="inline-actions member-workspace-actions flow-top-md">
+        <?php if (!empty($selectedPayment['proof_path'])): ?>
+          <a class="button secondary" href="<?php echo h(app_url('proof_view.php?payment_id=' . (int) $selectedPayment['id'])); ?>" target="_blank">View Proof</a>
+        <?php endif; ?>
+      </div>
+
+      <div class="inline-actions member-workspace-actions flow-top-md">
+        <?php if ((string) ($selectedPayment['status'] ?? '') === 'pending'): ?>
+          <form method="post" class="inline-form">
+            <input type="hidden" name="id" value="<?php echo (int) $selectedPayment['id']; ?>">
+            <button type="submit" name="approve" value="1">Approve Payment</button>
+          </form>
+          <form method="post" class="inline-form">
+            <input type="hidden" name="id" value="<?php echo (int) $selectedPayment['id']; ?>">
+            <button type="submit" class="danger" name="reject" value="1">Reject Payment</button>
+          </form>
+        <?php else: ?>
+          <span class="review-state review-state-<?php echo h((string) ($selectedPayment['status'] ?? 'approved')); ?>">
+            <?php echo (string) ($selectedPayment['status'] ?? '') === 'rejected' ? 'Rejected by admin' : 'Reviewed'; ?>
+          </span>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script>
 (() => {
