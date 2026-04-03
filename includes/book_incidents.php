@@ -20,11 +20,22 @@ function book_incident_severity_options(): array
 function book_incident_workflow_options(): array
 {
     return [
-        'reported' => 'Reported',
-        'under_review' => 'Under Review',
-        'awaiting_settlement' => 'Awaiting Settlement',
-        'resolved' => 'Resolved',
+        'open' => 'Open',
+        'for_payment' => 'For Payment',
+        'closed' => 'Closed',
     ];
+}
+
+function book_incident_normalize_workflow_status(?string $value): string
+{
+    $value = trim((string) $value);
+
+    return match ($value) {
+        'reported', 'under_review', 'open' => 'open',
+        'awaiting_settlement', 'for_payment' => 'for_payment',
+        'resolved', 'rejected', 'closed' => 'closed',
+        default => $value !== '' ? $value : 'open',
+    };
 }
 
 function book_incident_resolution_options(): array
@@ -48,11 +59,9 @@ function book_incident_settlement_options(): array
 
 function book_incident_workflow_label(string $value): string
 {
-    $value = trim($value);
-    $options = book_incident_workflow_options() + [
-        'rejected' => 'Rejected',
-    ];
-    return $options[$value] ?? ucfirst(str_replace('_', ' ', $value));
+    $normalized = book_incident_normalize_workflow_status($value);
+    $options = book_incident_workflow_options();
+    return $options[$normalized] ?? ucfirst(str_replace('_', ' ', trim($value)));
 }
 
 function book_incident_type_label(string $value): string
@@ -140,28 +149,20 @@ function book_incident_admin_settlement_form_options(?string $currentValue = nul
 
 function book_incident_next_actor_label(string $workflowStatus, string $settlementStatus = 'pending'): string
 {
-    $workflowStatus = trim($workflowStatus);
+    $workflowStatus = book_incident_normalize_workflow_status($workflowStatus);
     $settlementStatus = trim($settlementStatus);
 
-    if ($workflowStatus === 'reported') {
+    if ($workflowStatus === 'open') {
         return 'Next: Librarian review';
     }
 
-    if ($workflowStatus === 'under_review') {
-        return 'Next: Librarian decision';
-    }
-
-    if ($workflowStatus === 'awaiting_settlement') {
+    if ($workflowStatus === 'for_payment') {
         return $settlementStatus === 'pending'
-            ? 'Next: Student payment or admin waiver'
+            ? 'Next: Student payment'
             : 'Next: Admin closeout';
     }
 
-    if ($workflowStatus === 'resolved') {
-        return 'Closed';
-    }
-
-    if ($workflowStatus === 'rejected') {
+    if ($workflowStatus === 'closed') {
         return 'Closed';
     }
 
@@ -170,15 +171,12 @@ function book_incident_next_actor_label(string $workflowStatus, string $settleme
 
 function book_incident_status_dot_class(string $value): string
 {
-    $value = trim($value);
+    $value = book_incident_normalize_workflow_status($value);
     $map = [
-        'reported' => 'pending',
-        'under_review' => 'due',
-        'awaiting_settlement' => 'warning',
-        'resolved' => 'approved',
-        'rejected' => 'overdue',
+        'open' => 'pending',
+        'for_payment' => 'warning',
+        'closed' => 'approved',
         'paid' => 'approved',
-        'replacement_submitted' => 'due',
         'waived' => 'approved',
         'pending' => 'pending',
         'not_required' => 'approved',
@@ -190,7 +188,7 @@ function book_incident_status_dot_class(string $value): string
 function book_incident_payment_stage_label(array $incident): string
 {
     $settlementStatus = trim((string) ($incident['settlement_status'] ?? 'pending'));
-    $workflowStatus = trim((string) ($incident['workflow_status'] ?? 'reported'));
+    $workflowStatus = book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? 'open'));
     $latestPaymentStatus = trim((string) ($incident['latest_payment_status'] ?? ''));
     $assessedFee = round((float) ($incident['assessed_fee'] ?? 0), 2);
 
@@ -214,11 +212,11 @@ function book_incident_payment_stage_label(array $incident): string
         return 'Payment Rejected';
     }
 
-    if ($workflowStatus === 'awaiting_settlement') {
+    if ($workflowStatus === 'for_payment') {
         return 'Awaiting Payment';
     }
 
-    if ($workflowStatus === 'resolved' && $settlementStatus === 'pending' && $assessedFee > 0) {
+    if ($workflowStatus === 'closed' && $settlementStatus === 'pending' && $assessedFee > 0) {
         return 'Needs Settlement Review';
     }
 
@@ -246,7 +244,7 @@ function book_incident_summary(mysqli $conn): array
     $query = $conn->query("
         SELECT
             COUNT(*) AS total_incidents,
-            COALESCE(SUM(CASE WHEN workflow_status IN ('reported', 'under_review', 'awaiting_settlement') THEN 1 ELSE 0 END), 0) AS open_incidents,
+            COALESCE(SUM(CASE WHEN workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement') THEN 1 ELSE 0 END), 0) AS open_incidents,
             COALESCE(SUM(CASE WHEN incident_type = 'lost' THEN 1 ELSE 0 END), 0) AS lost_incidents,
             COALESCE(SUM(CASE WHEN incident_type = 'damaged' THEN 1 ELSE 0 END), 0) AS damaged_incidents,
             COALESCE(SUM(CASE WHEN settlement_status = 'pending' AND assessed_fee > 0 THEN assessed_fee ELSE 0 END), 0) AS pending_fees
@@ -261,7 +259,7 @@ function member_book_incident_summary(mysqli $conn, int $userId): array
     $stmt = $conn->prepare("
         SELECT
             COUNT(*) AS total_incidents,
-            COALESCE(SUM(CASE WHEN workflow_status IN ('reported', 'under_review', 'awaiting_settlement') THEN 1 ELSE 0 END), 0) AS active_incidents,
+            COALESCE(SUM(CASE WHEN workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement') THEN 1 ELSE 0 END), 0) AS active_incidents,
             COALESCE(SUM(CASE WHEN settlement_status = 'pending' AND assessed_fee > 0 THEN assessed_fee ELSE 0 END), 0) AS pending_fees
         FROM book_incidents
         WHERE user_id = ?
@@ -290,7 +288,7 @@ function get_member_reportable_borrows(mysqli $conn, int $userId): array
                 SELECT COUNT(*)
                 FROM book_incidents bi
                 WHERE bi.borrow_id = br.id
-                  AND bi.workflow_status IN ('reported', 'under_review', 'awaiting_settlement')
+                  AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
             ) AS open_incident_count
         FROM borrows br
         JOIN books b ON b.id = br.book_id
@@ -391,7 +389,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
         SELECT id
         FROM book_incidents
         WHERE borrow_id = ?
-          AND workflow_status IN ('reported', 'under_review', 'awaiting_settlement')
+          AND workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
         LIMIT 1
     ");
     $duplicateStmt->bind_param('i', $borrowId);
@@ -419,7 +417,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
             workflow_status,
             settlement_status,
             reported_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'reported', 'pending', ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?)
     ");
     $insertStmt->bind_param(
         'iiisssss',
@@ -473,9 +471,13 @@ function get_librarian_incidents(mysqli $conn, string $statusFilter = '', string
     $types = '';
 
     if ($statusFilter !== '' && isset(book_incident_workflow_options()[$statusFilter])) {
-        $conditions[] = 'bi.workflow_status = ?';
-        $params[] = $statusFilter;
-        $types .= 's';
+        if ($statusFilter === 'open') {
+            $conditions[] = "bi.workflow_status IN ('open', 'reported', 'under_review')";
+        } elseif ($statusFilter === 'for_payment') {
+            $conditions[] = "bi.workflow_status IN ('for_payment', 'awaiting_settlement')";
+        } elseif ($statusFilter === 'closed') {
+            $conditions[] = "bi.workflow_status IN ('closed', 'resolved', 'rejected')";
+        }
     }
 
     if ($typeFilter !== '' && isset(book_incident_type_options()[$typeFilter])) {
@@ -518,10 +520,13 @@ function get_librarian_incidents(mysqli $conn, string $statusFilter = '', string
 
     $sql .= " ORDER BY
         CASE bi.workflow_status
+            WHEN 'open' THEN 1
             WHEN 'reported' THEN 1
-            WHEN 'under_review' THEN 2
-            WHEN 'awaiting_settlement' THEN 3
-            WHEN 'resolved' THEN 4
+            WHEN 'under_review' THEN 1
+            WHEN 'for_payment' THEN 2
+            WHEN 'awaiting_settlement' THEN 2
+            WHEN 'closed' THEN 3
+            WHEN 'resolved' THEN 3
             ELSE 5
         END,
         bi.reported_at DESC,
@@ -613,7 +618,7 @@ function apply_book_incident_resolution(mysqli $conn, array $incident, string $r
 
 function update_librarian_book_incident(mysqli $conn, int $incidentId, int $actorUserId, array $data): array
 {
-    $workflowStatus = trim((string) ($data['workflow_status'] ?? ''));
+    $workflowStatus = book_incident_normalize_workflow_status((string) ($data['workflow_status'] ?? ''));
     $resolutionAction = trim((string) ($data['resolution_action'] ?? 'none'));
     $settlementStatus = trim((string) ($data['settlement_status'] ?? 'pending'));
     $severity = trim((string) ($data['severity'] ?? ''));
@@ -654,35 +659,32 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
         return ['ok' => false, 'message' => 'Incident record was not found.'];
     }
 
-    $currentWorkflow = trim((string) ($incident['workflow_status'] ?? ''));
-    if (in_array($currentWorkflow, ['resolved', 'rejected'], true)) {
+    $currentWorkflow = book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? ''));
+    if ($currentWorkflow === 'closed') {
         return ['ok' => false, 'message' => 'This incident is already closed and can no longer be edited by the librarian.'];
     }
 
-    if (in_array($workflowStatus, ['awaiting_settlement', 'resolved'], true) && $resolutionAction === 'none') {
-        return ['ok' => false, 'message' => 'Choose the final inventory action before resolving the incident.'];
+    if (in_array($workflowStatus, ['for_payment', 'closed'], true) && $resolutionAction === 'none') {
+        return ['ok' => false, 'message' => 'Choose the final inventory action before moving the incident forward.'];
     }
 
     if ($settlementStatus === 'waived') {
-        $workflowStatus = 'resolved';
+        $workflowStatus = 'closed';
     } elseif ($assessedFee > 0) {
         $settlementStatus = 'pending';
-        if ($workflowStatus === 'resolved') {
-            return ['ok' => false, 'message' => 'Incidents with assessed fees must stay in Awaiting Settlement until payment is approved or waived.'];
+        if ($workflowStatus === 'closed') {
+            return ['ok' => false, 'message' => 'Incidents with assessed fees must stay in For Payment until payment is approved or waived.'];
         }
-        if ($workflowStatus === 'under_review') {
-            return ['ok' => false, 'message' => 'Set the incident to Awaiting Settlement after you assign a payable fee.'];
-        }
-        $workflowStatus = 'awaiting_settlement';
-    } elseif ($workflowStatus === 'awaiting_settlement' && $assessedFee <= 0) {
-        return ['ok' => false, 'message' => 'Set a fee first or resolve the incident as waived if no payment is needed.'];
-    } elseif ($workflowStatus === 'resolved' && $assessedFee <= 0 && $settlementStatus === 'pending') {
+        $workflowStatus = 'for_payment';
+    } elseif ($workflowStatus === 'for_payment' && $assessedFee <= 0) {
+        return ['ok' => false, 'message' => 'Set a fee first or close the incident as waived if no payment is needed.'];
+    } elseif ($workflowStatus === 'closed' && $assessedFee <= 0 && $settlementStatus === 'pending') {
         $settlementStatus = 'waived';
     }
 
     $reviewedAt = date('Y-m-d H:i:s');
-    $inventoryHandledAt = in_array($workflowStatus, ['awaiting_settlement', 'resolved'], true) ? $reviewedAt : null;
-    $resolvedAt = $workflowStatus === 'resolved' ? $reviewedAt : null;
+    $inventoryHandledAt = in_array($workflowStatus, ['for_payment', 'closed'], true) ? $reviewedAt : null;
+    $resolvedAt = $workflowStatus === 'closed' ? $reviewedAt : null;
 
     $conn->begin_transaction();
 
@@ -752,7 +754,7 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
             $memberRole,
             'Book Incident Updated',
             'Your ' . strtolower(book_incident_type_label((string) $incident['incident_type'])) . ' report for ' . ($bookTitle !== '' ? $bookTitle : 'your borrowed book') . ' is now ' . strtolower(book_incident_workflow_label($workflowStatus)) . '.',
-            $workflowStatus === 'rejected' ? 'warning' : 'info',
+            $workflowStatus === 'closed' ? 'info' : 'warning',
             (int) $incident['user_id']
         );
     }
@@ -761,7 +763,7 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
         'admin',
         'Book Incident Reviewed',
         'Incident #' . $incidentId . ' for ' . ($bookTitle !== '' ? $bookTitle : 'a borrowed book') . ' is now ' . strtolower(book_incident_workflow_label($workflowStatus)) . '.',
-        $workflowStatus === 'resolved' ? 'info' : 'warning'
+        $workflowStatus === 'closed' ? 'info' : 'warning'
     );
     audit_log($conn, 'book_incident.reviewed', [
         'incident_id' => $incidentId,
@@ -884,7 +886,7 @@ function review_admin_incident_payment(mysqli $conn, int $incidentId, int $payme
 
     if (
         (string) ($current['settlement_status'] ?? '') !== 'pending'
-        || (string) ($current['workflow_status'] ?? '') !== 'awaiting_settlement'
+        || book_incident_normalize_workflow_status((string) ($current['workflow_status'] ?? '')) !== 'for_payment'
         || round((float) ($current['amount'] ?? 0), 2) !== round((float) ($current['assessed_fee'] ?? 0), 2)
     ) {
         return ['ok' => false, 'message' => 'This incident payment can no longer be reviewed safely.'];
@@ -944,7 +946,7 @@ function review_admin_incident_payment(mysqli $conn, int $incidentId, int $payme
         $incidentSync = $conn->prepare("
             UPDATE book_incidents
             SET settlement_status = 'paid',
-                workflow_status = 'resolved',
+                workflow_status = 'closed',
                 resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
                 resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
             WHERE id = ?
@@ -1010,13 +1012,13 @@ function update_admin_incident_settlement(mysqli $conn, int $incidentId, int $ac
         return ['ok' => false, 'message' => 'Incident record was not found.'];
     }
 
-    if (!in_array((string) ($incident['workflow_status'] ?? ''), ['awaiting_settlement', 'resolved'], true)) {
+    if (!in_array(book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? '')), ['for_payment', 'closed'], true)) {
         return ['ok' => false, 'message' => 'Admin settlement can only be updated after librarian review.'];
     }
 
     $newWorkflow = (float) ($incident['assessed_fee'] ?? 0) > 0 && $settlementStatus === 'pending'
-        ? 'awaiting_settlement'
-        : 'resolved';
+        ? 'for_payment'
+        : 'closed';
 
     $updateStmt = $conn->prepare("
         UPDATE book_incidents
@@ -1027,11 +1029,11 @@ function update_admin_incident_settlement(mysqli $conn, int $incidentId, int $ac
                 ELSE resolution_notes
             END,
             resolved_at = CASE
-                WHEN ? = 'resolved' AND resolved_at IS NULL THEN ?
+                WHEN ? = 'closed' AND resolved_at IS NULL THEN ?
                 ELSE resolved_at
             END,
             resolved_by = CASE
-                WHEN ? = 'resolved' THEN ?
+                WHEN ? = 'closed' THEN ?
                 ELSE resolved_by
             END
         WHERE id = ?

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/book_incidents.php';
 
 require_role('admin');
 
@@ -119,7 +120,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         if (
             !$incident
             || (string) ($incident['settlement_status'] ?? '') !== 'pending'
-            || (string) ($incident['workflow_status'] ?? '') !== 'awaiting_settlement'
+            || book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? '')) !== 'for_payment'
             || round((float) $current['amount'], 2) !== round((float) ($incident['assessed_fee'] ?? 0), 2)
         ) {
             header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved safely.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
@@ -192,7 +193,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
                 $incidentSync = $conn->prepare("
                     UPDATE book_incidents
                     SET settlement_status = 'paid',
-                        workflow_status = 'resolved',
+                        workflow_status = 'closed',
                         resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
                         resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
                     WHERE id = ?

@@ -68,7 +68,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
   <div class="member-main">
   <?php
   $pageTitle = 'Book Incident Desk';
-  $pageSubtitle = 'Review lost and damaged reports, then connect them to stock and settlement actions';
+  $pageSubtitle = 'Review lost and damaged reports, then move each case through a simpler incident workflow';
   require __DIR__ . '/partials/topbar.php';
   ?>
 
@@ -81,7 +81,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div>
           <p class="muted eyebrow-compact">Overview</p>
           <h3 class="heading-card">Incident review workspace</h3>
-          <p class="muted">Review the report, choose the inventory action, then send the case to settlement or close it.</p>
+          <p class="muted">Review the report, choose the inventory action, then move the case to payment or close it.</p>
         </div>
       </div>
       <div class="stat-grid">
@@ -114,7 +114,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div>
           <p class="muted eyebrow-compact">Filters</p>
           <h3 class="heading-card">Focus the current queue</h3>
-          <p class="muted">Start with `Reported`, move to `Under Review`, then finish with `Awaiting Settlement` or `Resolved`.</p>
+          <p class="muted">Use `Open` while reviewing, move to `For Payment` if there is a fee, then finish with `Closed`.</p>
         </div>
       </div>
       <form method="get" class="toolbar grow admin-record-filters penalties-record-filters">
@@ -148,7 +148,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div class="panel"><div class="empty-state">No incidents matched the current filters.</div></div>
       <?php endif; ?>
       <?php foreach ($incidents as $incident): ?>
-        <?php $isLocked = in_array((string) ($incident['workflow_status'] ?? ''), ['resolved', 'rejected'], true); ?>
+        <?php $isLocked = book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? 'open')) === 'closed'; ?>
         <div class="panel member-return-batch-card">
           <div class="member-return-batch-head">
             <div>
@@ -163,13 +163,13 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
                 <span class="chip">Severity: <?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
                 <span class="chip">Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?></span>
                 <span class="chip"><?php echo h(book_incident_payment_stage_label($incident)); ?></span>
-                <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'reported'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
+                <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'open'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
               </div>
             </div>
             <div class="stack flow-gap-sm">
               <span class="badge">
-                <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['workflow_status'] ?? 'reported'))); ?>"></span>
-                <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'reported'))); ?>
+                <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['workflow_status'] ?? 'open'))); ?>"></span>
+                <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
               </span>
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['settlement_status'] ?? 'pending'))); ?>"></span>
@@ -205,7 +205,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
   </div>
 </div>
 <?php if ($selectedIncident): ?>
-  <?php $isLocked = in_array((string) ($selectedIncident['workflow_status'] ?? ''), ['resolved', 'rejected'], true); ?>
+  <?php $isLocked = book_incident_normalize_workflow_status((string) ($selectedIncident['workflow_status'] ?? 'open')) === 'closed'; ?>
   <div class="desk-modal" data-desk-modal>
     <a class="desk-modal-backdrop" href="<?php echo h($baseHref); ?>" aria-label="Close incident review"></a>
     <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="incident-review-modal-title">
@@ -213,7 +213,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div>
           <p class="muted eyebrow-compact">Incident Review</p>
           <h3 id="incident-review-modal-title" class="heading-card"><?php echo h($selectedIncident['title']); ?></h3>
-          <p class="muted">Review the report, choose the inventory action, then move the case toward settlement or closure.</p>
+          <p class="muted">Review the report, choose the inventory action, then move the case to payment or close it.</p>
         </div>
         <a class="button secondary" href="<?php echo h($baseHref); ?>">Close</a>
       </div>
@@ -234,7 +234,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           Severity: <?php echo h(book_incident_severity_label((string) ($selectedIncident['severity'] ?? ''))); ?><br>
           Reported: <?php echo h(format_display_datetime((string) ($selectedIncident['reported_at'] ?? ''))); ?><br>
           Payment stage: <?php echo h(book_incident_payment_stage_label($selectedIncident)); ?><br>
-          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'reported'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
+          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'open'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
         </div>
         <div class="empty-state">
           <strong class="label-block-gap">Member description</strong>
@@ -291,10 +291,10 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         </div>
         <div class="inline-actions member-workspace-actions">
           <?php if ($isLocked): ?>
-            <span class="muted">This case is already closed. Admin can still update settlement if needed.</span>
+            <span class="muted">This case is already closed.</span>
           <?php else: ?>
             <button type="submit" name="update_incident" value="1">Save Incident Update</button>
-            <span class="muted">Use `Pending` while waiting for payment. `Paid` is applied automatically after admin approves the payment record.</span>
+            <span class="muted">Use `Open` while reviewing. If there is a fee, the system will keep the case in `For Payment` until admin approval.</span>
           <?php endif; ?>
         </div>
       </form>
