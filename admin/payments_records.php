@@ -388,6 +388,66 @@ $scopeSubtitle = match ($paymentScope) {
     'incidents' => 'Review lost and damaged incident payment submissions only',
     default => 'Review full payment proof submissions',
 };
+$summaryHeading = match ($paymentScope) {
+    'penalties' => 'Penalty payment summary',
+    'incidents' => 'Incident payment summary',
+    default => 'Payment review summary',
+};
+$summaryDescription = match ($paymentScope) {
+    'penalties' => 'Track overdue penalty submissions, clear the pending queue, and keep returned-book balances synchronized.',
+    'incidents' => 'Track lost and damaged fee submissions, clear the pending queue, and keep incident settlements synchronized.',
+    default => 'Track incoming full-payment submissions, clear the pending queue, and keep linked balances synchronized with final decisions.',
+};
+$summaryLabels = match ($paymentScope) {
+    'penalties' => [
+        'records' => 'Penalty Records',
+        'records_copy' => 'All submitted overdue penalty payment records.',
+        'pending' => 'Pending Review',
+        'pending_copy' => 'Penalty payments that still need admin review.',
+        'approved' => 'Approved Payments',
+        'approved_copy' => 'Penalty payments already accepted and applied.',
+        'approved_amount' => 'Approved Penalties',
+        'approved_amount_copy' => 'Total approved value for overdue penalty payments.',
+        'pending_amount' => 'Pending Penalties',
+        'pending_amount_copy' => 'Penalty payment value currently waiting for approval.',
+        'queue_title' => 'Penalty submissions and actions',
+        'queue_copy' => 'Filter overdue penalty payment records, then review each submission from its detail view.',
+        'submitted_chip' => 'Penalty submitted',
+        'pending_chip' => 'Penalty pending',
+    ],
+    'incidents' => [
+        'records' => 'Incident Records',
+        'records_copy' => 'All submitted lost and damaged incident payment records.',
+        'pending' => 'Pending Review',
+        'pending_copy' => 'Incident fee payments that still need admin review.',
+        'approved' => 'Approved Payments',
+        'approved_copy' => 'Incident fee payments already accepted and applied.',
+        'approved_amount' => 'Approved Incident Fees',
+        'approved_amount_copy' => 'Total approved value for lost and damaged fee payments.',
+        'pending_amount' => 'Pending Incident Fees',
+        'pending_amount_copy' => 'Incident fee value currently waiting for approval.',
+        'queue_title' => 'Incident submissions and actions',
+        'queue_copy' => 'Filter incident payment records, then review each lost or damaged fee submission from its detail view.',
+        'submitted_chip' => 'Incident submitted',
+        'pending_chip' => 'Incident pending',
+    ],
+    default => [
+        'records' => 'Records',
+        'records_copy' => 'All submitted payment records in the system.',
+        'pending' => 'Pending',
+        'pending_copy' => 'Records that still need admin review.',
+        'approved' => 'Approved',
+        'approved_copy' => 'Payments already accepted and applied.',
+        'approved_amount' => 'Approved Value',
+        'approved_amount_copy' => 'Total value of payments already approved by admin.',
+        'pending_amount' => 'Pending Amount',
+        'pending_amount_copy' => 'Value currently waiting for approval or rejection.',
+        'queue_title' => 'Submission records and actions',
+        'queue_copy' => 'Filter by status or user role, then approve or reject submissions page by page.',
+        'submitted_chip' => 'Submitted amount',
+        'pending_chip' => 'Pending amount',
+    ],
+};
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -429,35 +489,35 @@ $scopeSubtitle = match ($paymentScope) {
         <div class="dashboard-icon icon-payments" aria-hidden="true"></div>
         <div>
           <p class="muted eyebrow-compact">Overview</p>
-          <h3 class="heading-card">Payment review summary</h3>
-          <p class="muted">Track incoming full-payment submissions, clear the pending queue, and keep linked penalty balances synchronized with final decisions.</p>
+          <h3 class="heading-card"><?php echo h($summaryHeading); ?></h3>
+          <p class="muted"><?php echo h($summaryDescription); ?></p>
         </div>
       </div>
       <div class="stat-grid">
         <div class="stat-card">
-          <span class="code-pill">Records</span>
+          <span class="code-pill"><?php echo h($summaryLabels['records']); ?></span>
           <strong><?php echo (int) ($summary['total_records'] ?? 0); ?></strong>
-          <span class="muted">All submitted payment records in the system.</span>
+          <span class="muted"><?php echo h($summaryLabels['records_copy']); ?></span>
         </div>
         <div class="stat-card">
-          <span class="code-pill">Pending</span>
+          <span class="code-pill"><?php echo h($summaryLabels['pending']); ?></span>
           <strong><?php echo (int) ($summary['pending_records'] ?? 0); ?></strong>
-          <span class="muted">Records that still need admin review.</span>
+          <span class="muted"><?php echo h($summaryLabels['pending_copy']); ?></span>
         </div>
         <div class="stat-card">
-          <span class="code-pill">Approved</span>
+          <span class="code-pill"><?php echo h($summaryLabels['approved']); ?></span>
           <strong><?php echo (int) ($summary['approved_records'] ?? 0); ?></strong>
-          <span class="muted">Payments already accepted and applied.</span>
+          <span class="muted"><?php echo h($summaryLabels['approved_copy']); ?></span>
         </div>
         <div class="stat-card">
-          <span class="code-pill">Approved Value</span>
+          <span class="code-pill"><?php echo h($summaryLabels['approved_amount']); ?></span>
           <strong><?php echo h(format_currency($summary['approved_amount'] ?? 0)); ?></strong>
-          <span class="muted">Total value of payments already approved by admin.</span>
+          <span class="muted"><?php echo h($summaryLabels['approved_amount_copy']); ?></span>
         </div>
         <div class="stat-card">
-          <span class="code-pill">Pending Amount</span>
+          <span class="code-pill"><?php echo h($summaryLabels['pending_amount']); ?></span>
           <strong><?php echo h(format_currency($summary['pending_amount'] ?? 0)); ?></strong>
-          <span class="muted">Value currently waiting for approval or rejection.</span>
+          <span class="muted"><?php echo h($summaryLabels['pending_amount_copy']); ?></span>
         </div>
       </div>
     </div>
@@ -469,8 +529,8 @@ $scopeSubtitle = match ($paymentScope) {
             <div class="dashboard-icon icon-ledger" aria-hidden="true"></div>
             <div>
               <p class="muted eyebrow-compact">Payment Queue</p>
-              <h3 class="heading-card">Submission records and actions</h3>
-              <p class="muted">Filter by status or user role, then approve or reject submissions page by page.</p>
+              <h3 class="heading-card"><?php echo h($summaryLabels['queue_title']); ?></h3>
+              <p class="muted"><?php echo h($summaryLabels['queue_copy']); ?></p>
             </div>
           </div>
         </div>
@@ -506,11 +566,11 @@ $scopeSubtitle = match ($paymentScope) {
           <div class="inline-actions">
             <a class="button secondary" href="payments_records.php">Reset</a>
           </div>
-        </form>
+      </form>
       </div>
       <div class="inline-actions chips-row">
-        <span class="chip">Submitted amount: <?php echo h(format_currency($summary['total_amount'] ?? 0)); ?></span>
-        <span class="chip">Pending amount: <?php echo h(format_currency($summary['pending_amount'] ?? 0)); ?></span>
+        <span class="chip"><?php echo h($summaryLabels['submitted_chip']); ?>: <?php echo h(format_currency($summary['total_amount'] ?? 0)); ?></span>
+        <span class="chip"><?php echo h($summaryLabels['pending_chip']); ?>: <?php echo h(format_currency($summary['pending_amount'] ?? 0)); ?></span>
         <span class="chip">Rejected: <?php echo (int) ($summary['rejected_records'] ?? 0); ?></span>
       </div>
       <div class="table-wrap table-wrap-top">
