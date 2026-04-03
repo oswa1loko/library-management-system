@@ -2,8 +2,6 @@
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
-require_once __DIR__ . '/../includes/book_incidents.php';
-
 require_role('admin');
 
 function payments_filter_query(string $search, string $statusFilter, string $roleFilter, string $paymentScope): string
@@ -21,14 +19,9 @@ function payments_filter_query(string $search, string $statusFilter, string $rol
 $search = trim($_GET['search'] ?? '');
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
-$paymentScope = trim($_GET['scope'] ?? 'all');
+$paymentScope = 'penalties';
 $rolesAllowed = ['student', 'faculty'];
 $statusOptions = payment_statuses();
-$paymentScopes = ['all', 'penalties', 'incidents'];
-$isValidPaymentScope = in_array($paymentScope, $paymentScopes, true);
-if (!$isValidPaymentScope) {
-    $paymentScope = 'all';
-}
 $isValidStatusFilter = $statusFilter !== '' && in_array($statusFilter, $statusOptions, true);
 $isValidRoleFilter = $roleFilter !== '' && in_array($roleFilter, $rolesAllowed, true);
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -104,30 +97,6 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         }
     }
 
-    if ($newStatus === 'approved' && (int) ($current['incident_id'] ?? 0) > 0) {
-        $incidentId = (int) $current['incident_id'];
-        $incidentCheck = $conn->prepare("
-            SELECT assessed_fee, settlement_status, workflow_status
-            FROM book_incidents
-            WHERE id = ?
-            LIMIT 1
-        ");
-        $incidentCheck->bind_param('i', $incidentId);
-        $incidentCheck->execute();
-        $incident = $incidentCheck->get_result()->fetch_assoc();
-        $incidentCheck->close();
-
-        if (
-            !$incident
-            || (string) ($incident['settlement_status'] ?? '') !== 'pending'
-            || (float) ($incident['assessed_fee'] ?? 0) <= 0
-            || round((float) $current['amount'], 2) !== round((float) ($incident['assessed_fee'] ?? 0), 2)
-        ) {
-            header('Location: payments_records.php?notice=' . urlencode('This incident payment no longer matches the current incident fee.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
-            exit;
-        }
-    }
-
     if ($newStatus === 'rejected') {
         $conn->begin_transaction();
         try {
@@ -187,23 +156,6 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
                 $sync->close();
             }
 
-            if ((int) ($current['incident_id'] ?? 0) > 0) {
-                $incidentId = (int) $current['incident_id'];
-                $resolvedAt = date('Y-m-d H:i:s');
-                $incidentSync = $conn->prepare("
-                    UPDATE book_incidents
-                    SET settlement_status = 'paid',
-                        workflow_status = 'closed',
-                        resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
-                        resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
-                    WHERE id = ?
-                ");
-                $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
-                $incidentSync->bind_param('sii', $resolvedAt, $actorUserId, $incidentId);
-                $incidentSync->execute();
-                $incidentSync->close();
-            }
-
             if ($changed) {
                 audit_log($conn, 'admin.payment.approve', [
                     'payment_id' => $id,
@@ -237,7 +189,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         }
     }
 
-    header('Location: payments_records.php' . ($paymentScope !== 'all' ? '?scope=' . urlencode($paymentScope) : ''));
+    header('Location: payments_records.php');
     exit;
 }
 
@@ -258,6 +210,7 @@ $countSql = "
     FROM payments pay
     JOIN users u ON u.id = pay.user_id
     WHERE 1=1
+      AND (pay.incident_id IS NULL OR pay.incident_id = 0)
 ";
 $types = '';
 $params = [];
@@ -280,12 +233,6 @@ if ($search !== '') {
     $params[] = $term;
     $params[] = $term;
 }
-if ($paymentScope === 'penalties') {
-    $countSql .= " AND (pay.incident_id IS NULL OR pay.incident_id = 0)";
-} elseif ($paymentScope === 'incidents') {
-    $countSql .= " AND pay.incident_id > 0";
-}
-
 $countStmt = $conn->prepare($countSql);
 if ($types !== '') {
     $countStmt->bind_param($types, ...$params);
@@ -323,6 +270,7 @@ $sql = "
         GROUP BY user_id
     ) balance ON balance.user_id = pay.user_id
     WHERE 1=1
+      AND (pay.incident_id IS NULL OR pay.incident_id = 0)
 ";
 if ($isValidStatusFilter) {
     $sql .= " AND pay.status = ?";
@@ -332,11 +280,6 @@ if ($isValidRoleFilter) {
 }
 if ($search !== '') {
     $sql .= " AND (CAST(pay.id AS CHAR) LIKE ? OR u.username LIKE ? OR u.email LIKE ?)";
-}
-if ($paymentScope === 'penalties') {
-    $sql .= " AND (pay.incident_id IS NULL OR pay.incident_id = 0)";
-} elseif ($paymentScope === 'incidents') {
-    $sql .= " AND pay.incident_id > 0";
 }
 $sql .= " GROUP BY pay.id ORDER BY pay.id DESC LIMIT ? OFFSET ?";
 
@@ -354,76 +297,26 @@ while ($paymentsResult && ($paymentRow = $paymentsResult->fetch_assoc())) {
     $payments[] = $paymentRow;
 }
 $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter, $paymentScope);
-$scopeTitle = match ($paymentScope) {
-    'penalties' => 'Overdue Penalty Payments',
-    'incidents' => 'Incident Payments',
-    default => 'Payment Records',
-};
-$scopeSubtitle = match ($paymentScope) {
-    'penalties' => 'Review overdue penalty payment submissions only',
-    'incidents' => 'Review lost and damaged incident payment submissions only',
-    default => 'Review full payment proof submissions',
-};
-$summaryHeading = match ($paymentScope) {
-    'penalties' => 'Penalty payment summary',
-    'incidents' => 'Incident payment summary',
-    default => 'Payment review summary',
-};
-$summaryDescription = match ($paymentScope) {
-    'penalties' => 'Track overdue penalty submissions, clear the pending queue, and keep returned-book balances synchronized.',
-    'incidents' => 'Track lost and damaged fee submissions, clear the pending queue, and keep incident settlements synchronized.',
-    default => 'Track incoming full-payment submissions, clear the pending queue, and keep linked balances synchronized with final decisions.',
-};
-$summaryLabels = match ($paymentScope) {
-    'penalties' => [
-        'records' => 'Penalty Records',
-        'records_copy' => 'All submitted overdue penalty payment records.',
-        'pending' => 'Pending Review',
-        'pending_copy' => 'Penalty payments that still need admin review.',
-        'approved' => 'Approved Payments',
-        'approved_copy' => 'Penalty payments already accepted and applied.',
-        'approved_amount' => 'Approved Penalties',
-        'approved_amount_copy' => 'Total approved value for overdue penalty payments.',
-        'pending_amount' => 'Pending Penalties',
-        'pending_amount_copy' => 'Penalty payment value currently waiting for approval.',
-        'queue_title' => 'Penalty submissions and actions',
-        'queue_copy' => 'Filter overdue penalty payment records, then approve or reject each submission directly from the table.',
-        'submitted_chip' => 'Penalty submitted',
-        'pending_chip' => 'Penalty pending',
-    ],
-    'incidents' => [
-        'records' => 'Incident Records',
-        'records_copy' => 'All submitted lost and damaged incident payment records.',
-        'pending' => 'Pending Review',
-        'pending_copy' => 'Incident fee payments that still need admin review.',
-        'approved' => 'Approved Payments',
-        'approved_copy' => 'Incident fee payments already accepted and applied.',
-        'approved_amount' => 'Approved Incident Fees',
-        'approved_amount_copy' => 'Total approved value for lost and damaged fee payments.',
-        'pending_amount' => 'Pending Incident Fees',
-        'pending_amount_copy' => 'Incident fee value currently waiting for approval.',
-        'queue_title' => 'Incident submissions and actions',
-        'queue_copy' => 'Filter incident payment records, then approve or reject each lost or damaged fee submission directly from the table.',
-        'submitted_chip' => 'Incident submitted',
-        'pending_chip' => 'Incident pending',
-    ],
-    default => [
-        'records' => 'Records',
-        'records_copy' => 'All submitted payment records in the system.',
-        'pending' => 'Pending',
-        'pending_copy' => 'Records that still need admin review.',
-        'approved' => 'Approved',
-        'approved_copy' => 'Payments already accepted and applied.',
-        'approved_amount' => 'Approved Value',
-        'approved_amount_copy' => 'Total value of payments already approved by admin.',
-        'pending_amount' => 'Pending Amount',
-        'pending_amount_copy' => 'Value currently waiting for approval or rejection.',
-        'queue_title' => 'Submission records and actions',
-        'queue_copy' => 'Filter by status or user role, then approve or reject submissions page by page.',
-        'submitted_chip' => 'Submitted amount',
-        'pending_chip' => 'Pending amount',
-    ],
-};
+$scopeTitle = 'Overdue Penalty Payments';
+$scopeSubtitle = 'Review overdue penalty payment submissions only';
+$summaryHeading = 'Penalty payment summary';
+$summaryDescription = 'Track overdue penalty submissions, clear the pending queue, and keep returned-book balances synchronized.';
+$summaryLabels = [
+    'records' => 'Penalty Records',
+    'records_copy' => 'All submitted overdue penalty payment records.',
+    'pending' => 'Pending Review',
+    'pending_copy' => 'Penalty payments that still need admin review.',
+    'approved' => 'Approved Payments',
+    'approved_copy' => 'Penalty payments already accepted and applied.',
+    'approved_amount' => 'Approved Penalties',
+    'approved_amount_copy' => 'Total approved value for overdue penalty payments.',
+    'pending_amount' => 'Pending Penalties',
+    'pending_amount_copy' => 'Penalty payment value currently waiting for approval.',
+    'queue_title' => 'Penalty submissions and actions',
+    'queue_copy' => 'Filter overdue penalty payment records, then approve or reject each submission directly from the table.',
+    'submitted_chip' => 'Penalty submitted',
+    'pending_chip' => 'Penalty pending',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -440,7 +333,7 @@ $summaryLabels = match ($paymentScope) {
 <body>
 <div class="site-shell admin-shell member-shell js-member-sidebar" data-sidebar-key="admin-payments" data-sidebar-default="expanded" data-sidebar-lock="expanded">
   <?php
-  $sidebarPage = $paymentScope === 'penalties' ? 'penalty_payments' : ($paymentScope === 'incidents' ? 'incident_payments' : 'payments');
+  $sidebarPage = 'penalty_payments';
   require __DIR__ . '/partials/sidebar.php';
   ?>
 
@@ -588,30 +481,7 @@ $summaryLabels = match ($paymentScope) {
                 <td class="payment-record-reference">
                   <?php
                   $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
-                  if ((int) ($payment['incident_id'] ?? 0) > 0) {
-                      ?>
-                      <div class="payment-record-reference-copy">
-                        <strong class="label-block">Incident #<?php echo (int) $payment['incident_id']; ?></strong>
-                        <span class="muted">
-                          <?php echo h(book_incident_type_label((string) ($payment['incident_type'] ?? ''))); ?>
-                          |
-                          <?php echo h(book_incident_settlement_label((string) ($payment['incident_settlement_status'] ?? 'pending'))); ?>
-                        </span>
-                      </div>
-                      <?php if ((string) ($payment['status'] ?? '') === 'pending'): ?>
-                        <div class="payment-record-inline-actions flow-top-sm">
-                          <form method="post" class="inline-form">
-                            <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                            <button type="submit" name="approve" value="1">Approve</button>
-                          </form>
-                          <form method="post" class="inline-form">
-                            <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                            <button type="submit" class="danger" name="reject" value="1">Reject</button>
-                          </form>
-                        </div>
-                      <?php endif; ?>
-                      <?php
-                  } elseif ($linkedPenaltyCount > 1) {
+                  if ($linkedPenaltyCount > 1) {
                       echo h((string) ($payment['payment_batch'] ?: ('Payment #' . (int) $payment['id'])));
                       echo ' / ' . $linkedPenaltyCount . ' penalties';
                   } elseif ((int) ($payment['penalty_id'] ?? 0) > 0) {
