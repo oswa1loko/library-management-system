@@ -40,6 +40,10 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-penalties" aria-hidden="true"></span>
       <span class="member-sidebar-label">Penalties</span>
     </a>
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'book_incidents' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_book_incidents.php" data-tooltip="Book Incidents">
+      <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Book Incidents</span>
+    </a>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'notifications' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/notifications.php" data-tooltip="Notifications">
       <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
       <span class="member-sidebar-label">Notifications</span>

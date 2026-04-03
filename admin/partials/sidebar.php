@@ -28,6 +28,10 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-penalties" aria-hidden="true"></span>
       <span class="member-sidebar-label">Penalties</span>
     </a>
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'book_incidents' ? 'is-active' : ''; ?>" href="/librarymanage/admin/book_incidents_records.php" data-tooltip="Book Incidents">
+      <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Book Incidents</span>
+    </a>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'complaints' ? 'is-active' : ''; ?>" href="/librarymanage/admin/complaints_records.php" data-tooltip="Complaints">
       <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
       <span class="member-sidebar-label">Complaints</span>

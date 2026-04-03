@@ -2132,7 +2132,10 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     $label = '';
 
     if ($viewerRole === 'student') {
-        if ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
+        if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+            $url = '/librarymanage/student/book_incidents.php';
+            $label = 'Open book incidents';
+        } elseif ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
             $url = '/librarymanage/student/borrow_return.php';
             $label = 'Open borrow status';
         } elseif (strpos($titleLower, 'payment') !== false) {
@@ -2143,7 +2146,10 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $label = 'Open notifications';
         }
     } elseif ($viewerRole === 'faculty') {
-        if ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
+        if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+            $url = '/librarymanage/faculty/book_incidents.php';
+            $label = 'Open book incidents';
+        } elseif ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
             $url = '/librarymanage/faculty/borrow_return.php';
             $label = 'Open borrow status';
         } elseif (strpos($titleLower, 'payment') !== false) {
@@ -2154,7 +2160,10 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $label = 'Open notifications';
         }
     } elseif ($viewerRole === 'admin') {
-        if (strpos($titleLower, 'payment') !== false) {
+        if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+            $url = '/librarymanage/admin/book_incidents_records.php';
+            $label = 'Open book incidents';
+        } elseif (strpos($titleLower, 'payment') !== false) {
             $url = '/librarymanage/admin/payments_records.php';
             $label = 'Open payments';
         } elseif (strpos($titleLower, 'complaint') !== false) {
@@ -2171,7 +2180,10 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $label = 'Open notifications';
         }
     } elseif ($viewerRole === 'librarian') {
-        if (
+        if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+            $url = '/librarymanage/librarian/manage_book_incidents.php';
+            $label = 'Open book incidents';
+        } elseif (
             strpos($titleLower, 'borrow') !== false
             || strpos($titleLower, 'return') !== false
             || strpos($bodyLower, 'borrow') !== false

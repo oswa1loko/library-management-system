@@ -396,6 +396,36 @@ function ensure_library_schema(mysqli $conn): void
     ");
 
     $conn->query("
+        CREATE TABLE IF NOT EXISTS book_incidents (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            borrow_id INT NOT NULL,
+            user_id INT NOT NULL,
+            book_id INT NOT NULL,
+            reported_by_role ENUM('student','faculty','librarian','admin') NOT NULL,
+            incident_type ENUM('lost','damaged') NOT NULL,
+            severity ENUM('minor','major','severe') DEFAULT NULL,
+            description TEXT NOT NULL,
+            workflow_status ENUM('reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'reported',
+            resolution_action ENUM('none','return_to_shelf','send_for_repair','write_off_lost','write_off_damaged') NOT NULL DEFAULT 'none',
+            settlement_status ENUM('pending','not_required','paid','replacement_submitted','waived') NOT NULL DEFAULT 'pending',
+            assessed_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
+            resolution_notes TEXT DEFAULT NULL,
+            reported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at DATETIME DEFAULT NULL,
+            reviewed_by INT DEFAULT NULL,
+            resolved_at DATETIME DEFAULT NULL,
+            resolved_by INT DEFAULT NULL,
+            inventory_applied_at DATETIME DEFAULT NULL,
+            borrow_closed_at DATETIME DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_book_incidents_user_status (user_id, workflow_status),
+            INDEX idx_book_incidents_borrow (borrow_id),
+            INDEX idx_book_incidents_book (book_id),
+            INDEX idx_book_incidents_reported_at (reported_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
         CREATE TABLE IF NOT EXISTS complaints (
             id INT AUTO_INCREMENT PRIMARY KEY,
             fullname VARCHAR(100) NOT NULL,
@@ -851,6 +881,82 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!index_exists($conn, 'payment_penalty_links', 'idx_payment_penalty_links_penalty')) {
         $conn->query("CREATE INDEX idx_payment_penalty_links_penalty ON payment_penalty_links (penalty_id)");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'reported_by_role')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN reported_by_role ENUM('student','faculty','librarian','admin') NOT NULL DEFAULT 'student' AFTER book_id");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'incident_type')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN incident_type ENUM('lost','damaged') NOT NULL DEFAULT 'damaged' AFTER reported_by_role");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'severity')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN severity ENUM('minor','major','severe') DEFAULT NULL AFTER incident_type");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'workflow_status')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN workflow_status ENUM('reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'reported' AFTER description");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'resolution_action')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN resolution_action ENUM('none','return_to_shelf','send_for_repair','write_off_lost','write_off_damaged') NOT NULL DEFAULT 'none' AFTER workflow_status");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'settlement_status')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN settlement_status ENUM('pending','not_required','paid','replacement_submitted','waived') NOT NULL DEFAULT 'pending' AFTER resolution_action");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'assessed_fee')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN assessed_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER settlement_status");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'resolution_notes')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN resolution_notes TEXT DEFAULT NULL AFTER assessed_fee");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'reported_at')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN reported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER resolution_notes");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'reviewed_at')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN reviewed_at DATETIME DEFAULT NULL AFTER reported_at");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'reviewed_by')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN reviewed_by INT DEFAULT NULL AFTER reviewed_at");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'resolved_at')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN resolved_at DATETIME DEFAULT NULL AFTER reviewed_by");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'resolved_by')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN resolved_by INT DEFAULT NULL AFTER resolved_at");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'inventory_applied_at')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN inventory_applied_at DATETIME DEFAULT NULL AFTER resolved_by");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'borrow_closed_at')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN borrow_closed_at DATETIME DEFAULT NULL AFTER inventory_applied_at");
+    }
+
+    if (!index_exists($conn, 'book_incidents', 'idx_book_incidents_user_status')) {
+        $conn->query("CREATE INDEX idx_book_incidents_user_status ON book_incidents (user_id, workflow_status)");
+    }
+
+    if (!index_exists($conn, 'book_incidents', 'idx_book_incidents_borrow')) {
+        $conn->query("CREATE INDEX idx_book_incidents_borrow ON book_incidents (borrow_id)");
+    }
+
+    if (!index_exists($conn, 'book_incidents', 'idx_book_incidents_book')) {
+        $conn->query("CREATE INDEX idx_book_incidents_book ON book_incidents (book_id)");
+    }
+
+    if (!index_exists($conn, 'book_incidents', 'idx_book_incidents_reported_at')) {
+        $conn->query("CREATE INDEX idx_book_incidents_reported_at ON book_incidents (reported_at)");
     }
 
     // Skip ebook schema touch-ups here because the current ebooks table is corrupted
