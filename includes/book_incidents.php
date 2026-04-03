@@ -187,6 +187,55 @@ function book_incident_status_dot_class(string $value): string
     return $map[$value] ?? 'pending';
 }
 
+function book_incident_payment_stage_label(array $incident): string
+{
+    $settlementStatus = trim((string) ($incident['settlement_status'] ?? 'pending'));
+    $workflowStatus = trim((string) ($incident['workflow_status'] ?? 'reported'));
+    $latestPaymentStatus = trim((string) ($incident['latest_payment_status'] ?? ''));
+    $assessedFee = round((float) ($incident['assessed_fee'] ?? 0), 2);
+
+    if ($settlementStatus === 'paid') {
+        return 'Paid';
+    }
+
+    if ($settlementStatus === 'waived' || $assessedFee <= 0) {
+        return 'No Payment Needed';
+    }
+
+    if ($latestPaymentStatus === 'pending') {
+        return 'Payment Submitted';
+    }
+
+    if ($latestPaymentStatus === 'approved') {
+        return 'Paid';
+    }
+
+    if ($latestPaymentStatus === 'rejected') {
+        return 'Payment Rejected';
+    }
+
+    if ($workflowStatus === 'awaiting_settlement') {
+        return 'Awaiting Payment';
+    }
+
+    return 'Not Yet Ready';
+}
+
+function book_incident_payment_stage_dot_class(array $incident): string
+{
+    $label = book_incident_payment_stage_label($incident);
+    $map = [
+        'Paid' => 'approved',
+        'No Payment Needed' => 'approved',
+        'Payment Submitted' => 'warning',
+        'Payment Rejected' => 'overdue',
+        'Awaiting Payment' => 'pending',
+        'Not Yet Ready' => 'due',
+    ];
+
+    return $map[$label] ?? 'pending';
+}
+
 function book_incident_summary(mysqli $conn): array
 {
     $query = $conn->query("
@@ -264,6 +313,13 @@ function get_member_incidents(mysqli $conn, int $userId): array
             b.title,
             b.author,
             br.status AS borrow_status,
+            (
+                SELECT pay.status
+                FROM payments pay
+                WHERE pay.incident_id = bi.id
+                ORDER BY pay.id DESC
+                LIMIT 1
+            ) AS latest_payment_status,
             reviewer.fullname AS reviewed_by_name,
             resolver.fullname AS resolved_by_name
         FROM book_incidents bi
@@ -434,6 +490,13 @@ function get_librarian_incidents(mysqli $conn, string $statusFilter = '', string
             br.status AS borrow_status,
             br.borrow_date,
             br.due_date,
+            (
+                SELECT pay.status
+                FROM payments pay
+                WHERE pay.incident_id = bi.id
+                ORDER BY pay.id DESC
+                LIMIT 1
+            ) AS latest_payment_status,
             reviewer.fullname AS reviewed_by_name,
             resolver.fullname AS resolved_by_name
         FROM book_incidents bi
@@ -706,7 +769,14 @@ function get_admin_incidents(mysqli $conn, string $settlementFilter = ''): array
             u.username,
             u.role,
             b.title,
-            b.author
+            b.author,
+            (
+                SELECT pay.status
+                FROM payments pay
+                WHERE pay.incident_id = bi.id
+                ORDER BY pay.id DESC
+                LIMIT 1
+            ) AS latest_payment_status
         FROM book_incidents bi
         JOIN users u ON u.id = bi.user_id
         JOIN books b ON b.id = bi.book_id

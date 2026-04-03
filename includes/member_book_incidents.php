@@ -242,6 +242,7 @@ $incidents = get_member_incidents($conn, $userId);
                     <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
                     <span class="chip"><?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
                     <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
+                    <span class="chip"><?php echo h(book_incident_payment_stage_label($incident)); ?></span>
                     <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'reported'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
                   </div>
                 </div>
@@ -253,6 +254,10 @@ $incidents = get_member_incidents($conn, $userId);
                   <span class="badge">
                     <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['settlement_status'] ?? 'pending'))); ?>"></span>
                     <?php echo h(book_incident_settlement_label((string) ($incident['settlement_status'] ?? 'pending'))); ?>
+                  </span>
+                  <span class="badge">
+                    <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
+                    <?php echo h(book_incident_payment_stage_label($incident)); ?>
                   </span>
                 </div>
               </div>

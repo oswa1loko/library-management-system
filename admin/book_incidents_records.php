@@ -128,6 +128,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
                 <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
                 <span class="chip"><?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?></span>
                 <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
+                <span class="chip"><?php echo h(book_incident_payment_stage_label($incident)); ?></span>
                 <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'reported'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
               </div>
             </div>
@@ -139,6 +140,10 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['settlement_status'] ?? 'pending'))); ?>"></span>
                 <?php echo h(book_incident_settlement_label((string) ($incident['settlement_status'] ?? 'pending'))); ?>
+              </span>
+              <span class="badge">
+                <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
+                <?php echo h(book_incident_payment_stage_label($incident)); ?>
               </span>
             </div>
           </div>
@@ -192,6 +197,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <strong class="label-block-gap">Review outcome</strong>
           Workflow: <?php echo h(book_incident_workflow_label((string) ($selectedIncident['workflow_status'] ?? 'reported'))); ?><br>
           Settlement: <?php echo h(book_incident_settlement_label((string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?><br>
+          Payment stage: <?php echo h(book_incident_payment_stage_label($selectedIncident)); ?><br>
           Inventory action: <?php echo h(book_incident_resolution_label((string) ($selectedIncident['resolution_action'] ?? 'none'))); ?><br>
           Assessed fee: <?php echo h(format_currency($selectedIncident['assessed_fee'] ?? 0)); ?><br>
           Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'reported'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?><br>
