@@ -58,7 +58,7 @@ $incidents = get_admin_incidents($conn, $settlementFilter);
         <div>
           <p class="muted eyebrow-compact">Overview</p>
           <h3 class="heading-card">System-wide incident records</h3>
-          <p class="muted">Admin tracks financial or replacement follow-through after the librarian has already decided the inventory action.</p>
+          <p class="muted">Admin handles the final settlement after the librarian finishes the review and inventory decision.</p>
         </div>
       </div>
       <div class="stat-grid">
@@ -127,6 +127,7 @@ $incidents = get_admin_incidents($conn, $settlementFilter);
                 <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
                 <span class="chip"><?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?></span>
                 <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
+                <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'reported'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
               </div>
             </div>
             <div class="stack flow-gap-sm">

@@ -85,6 +85,36 @@ function book_incident_settlement_label(string $value): string
     return $options[$value] ?? ucfirst(str_replace('_', ' ', trim($value)));
 }
 
+function book_incident_next_actor_label(string $workflowStatus, string $settlementStatus = 'pending'): string
+{
+    $workflowStatus = trim($workflowStatus);
+    $settlementStatus = trim($settlementStatus);
+
+    if ($workflowStatus === 'reported') {
+        return 'Next: Librarian review';
+    }
+
+    if ($workflowStatus === 'under_review') {
+        return 'Next: Librarian decision';
+    }
+
+    if ($workflowStatus === 'awaiting_settlement') {
+        return $settlementStatus === 'pending'
+            ? 'Next: Student payment or admin update'
+            : 'Next: Admin closeout';
+    }
+
+    if ($workflowStatus === 'resolved') {
+        return 'Closed';
+    }
+
+    if ($workflowStatus === 'rejected') {
+        return 'Closed';
+    }
+
+    return 'In progress';
+}
+
 function book_incident_status_dot_class(string $value): string
 {
     $value = trim($value);
@@ -542,6 +572,12 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
             }
         }
 
+        $severityValue = $severity !== '' ? $severity : null;
+        $resolvedBy = $resolvedAt !== null ? $actorUserId : null;
+        $resolvedAtValue = trim((string) ($incident['resolved_at'] ?? '')) !== '' ? (string) $incident['resolved_at'] : $resolvedAt;
+        $resolvedByValue = (int) ($incident['resolved_by'] ?? 0) > 0 ? (int) $incident['resolved_by'] : $resolvedBy;
+        $inventoryAppliedAtValue = trim((string) ($incident['inventory_applied_at'] ?? '')) !== '' ? (string) $incident['inventory_applied_at'] : $inventoryHandledAt;
+        $borrowClosedAtValue = trim((string) ($incident['borrow_closed_at'] ?? '')) !== '' ? (string) $incident['borrow_closed_at'] : $inventoryHandledAt;
         $updateStmt = $conn->prepare("
             UPDATE book_incidents
             SET severity = ?,
@@ -554,22 +590,12 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
                 reviewed_by = ?,
                 resolved_at = ?,
                 resolved_by = ?,
-                inventory_applied_at = CASE
-                    WHEN ? IN ('awaiting_settlement', 'resolved') AND inventory_applied_at IS NULL THEN ?
-                    ELSE inventory_applied_at
-                END,
-                borrow_closed_at = CASE
-                    WHEN ? IN ('awaiting_settlement', 'resolved') AND borrow_closed_at IS NULL THEN ?
-                    ELSE borrow_closed_at
-                END
+                inventory_applied_at = ?,
+                borrow_closed_at = ?
             WHERE id = ?
         ");
-        $severityValue = $severity !== '' ? $severity : null;
-        $resolvedBy = $resolvedAt !== null ? $actorUserId : null;
-        $inventoryAppliedAt = $inventoryHandledAt !== null ? $inventoryHandledAt : null;
-        $borrowClosedAt = $inventoryHandledAt !== null ? $inventoryHandledAt : null;
         $updateStmt->bind_param(
-            'ssssdssisssssi',
+            'ssssdssissssi',
             $severityValue,
             $workflowStatus,
             $resolutionAction,
@@ -578,12 +604,10 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
             $resolutionNotes,
             $reviewedAt,
             $actorUserId,
-            $resolvedAt,
-            $resolvedBy,
-            $workflowStatus,
-            $inventoryAppliedAt,
-            $workflowStatus,
-            $borrowClosedAt,
+            $resolvedAtValue,
+            $resolvedByValue,
+            $inventoryAppliedAtValue,
+            $borrowClosedAtValue,
             $incidentId
         );
         $updateStmt->execute();

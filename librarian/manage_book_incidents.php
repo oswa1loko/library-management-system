@@ -63,7 +63,7 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
         <div>
           <p class="muted eyebrow-compact">Overview</p>
           <h3 class="heading-card">Incident review workspace</h3>
-          <p class="muted">This is where the librarian validates member reports, closes the borrow transaction, and decides the inventory action.</p>
+          <p class="muted">Review the report, choose the inventory action, then send the case to settlement or close it.</p>
         </div>
       </div>
       <div class="stat-grid">
@@ -96,7 +96,7 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
         <div>
           <p class="muted eyebrow-compact">Filters</p>
           <h3 class="heading-card">Focus the current queue</h3>
-          <p class="muted">Start with reported cases first, then move inventory-closed items to settlement for admin.</p>
+          <p class="muted">Start with `Reported`, move to `Under Review`, then finish with `Awaiting Settlement` or `Resolved`.</p>
         </div>
       </div>
       <form method="get" class="toolbar grow admin-record-filters penalties-record-filters">
@@ -144,6 +144,7 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
                 <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
                 <span class="chip">Severity: <?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
                 <span class="chip">Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?></span>
+                <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'reported'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
               </div>
             </div>
             <div class="stack flow-gap-sm">
@@ -223,7 +224,7 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
                 <span class="muted">This case is already closed. Admin can still update settlement if needed.</span>
               <?php else: ?>
                 <button type="submit" name="update_incident" value="1">Save Incident Update</button>
-                <span class="muted">Resolving the case automatically closes the borrow record and applies the selected stock action.</span>
+                <span class="muted">`Awaiting Settlement` sends the case to admin. `Resolved` closes it now.</span>
               <?php endif; ?>
             </div>
           </form>

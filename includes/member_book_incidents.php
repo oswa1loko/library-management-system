@@ -202,8 +202,8 @@ $incidents = get_member_incidents($conn, $userId);
             <div class="dashboard-icon icon-checklist" aria-hidden="true"></div>
             <div>
               <p class="muted eyebrow-compact">Status Guide</p>
-              <h3 class="heading-card">How the workflow moves</h3>
-              <p class="muted">This keeps the student or faculty member, librarian, admin, and inventory record connected.</p>
+              <h3 class="heading-card">Simple Workflow</h3>
+              <p class="muted">The case moves through four simple steps so everyone knows what happens next.</p>
             </div>
           </div>
           <div class="stack">
@@ -213,15 +213,15 @@ $incidents = get_member_incidents($conn, $userId);
             </div>
             <div class="empty-state">
               <strong class="label-block-gap">2. Under review</strong>
-              The librarian checks the borrow record, book title, severity, and inventory action.
+              The librarian checks the book, the borrow record, and the action needed.
             </div>
             <div class="empty-state">
               <strong class="label-block-gap">3. Awaiting settlement</strong>
-              The inventory decision is done and admin now tracks payment, waiver, or replacement status.
+              The fee or replacement is waiting to be settled and tracked.
             </div>
             <div class="empty-state">
               <strong class="label-block-gap">4. Resolved</strong>
-              The case is closed and the final action is already recorded in the system.
+              The case is fully closed in the system.
             </div>
           </div>
         </div>
@@ -254,6 +254,7 @@ $incidents = get_member_incidents($conn, $userId);
                     <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
                     <span class="chip"><?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
                     <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
+                    <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'reported'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
                   </div>
                 </div>
                 <div class="stack flow-gap-sm">
