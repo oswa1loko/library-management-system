@@ -15,7 +15,6 @@ if (isset($_POST['submit_incident'])) {
     $result = create_member_book_incident($conn, $userId, $role, [
         'borrow_id' => (int) ($_POST['borrow_id'] ?? 0),
         'incident_type' => (string) ($_POST['incident_type'] ?? ''),
-        'severity' => (string) ($_POST['severity'] ?? ''),
         'description' => (string) ($_POST['description'] ?? ''),
     ]);
     $msg = (string) ($result['message'] ?? '');
@@ -171,20 +170,9 @@ $incidents = get_member_incidents($conn, $userId);
                   </select>
                 </div>
               </div>
-              <div class="field-grid two-up">
-                <div>
-                  <label for="severity">Damage severity</label>
-                  <select id="severity" name="severity">
-                    <option value="">Use this for damaged books</option>
-                    <?php foreach (book_incident_severity_options() as $value => $label): ?>
-                      <option value="<?php echo h($value); ?>"><?php echo h($label); ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
-                <div class="empty-state">
-                  <strong class="label-block-gap">Workflow note</strong>
-                  Lost and damaged reports go first to the librarian. Admin only updates the final settlement status afterward.
-                </div>
+              <div class="empty-state">
+                <strong class="label-block-gap">Workflow note</strong>
+                Report the issue here first. The librarian will inspect the book and assign the severity during review.
               </div>
               <div>
                 <label for="description">What happened?</label>

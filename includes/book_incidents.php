@@ -276,7 +276,6 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
 {
     $borrowId = (int) ($data['borrow_id'] ?? 0);
     $incidentType = trim((string) ($data['incident_type'] ?? ''));
-    $severity = trim((string) ($data['severity'] ?? ''));
     $description = trim((string) ($data['description'] ?? ''));
 
     if ($borrowId <= 0) {
@@ -285,10 +284,6 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
 
     if (!isset(book_incident_type_options()[$incidentType])) {
         return ['ok' => false, 'message' => 'Select a valid incident type.'];
-    }
-
-    if ($incidentType === 'damaged' && !isset(book_incident_severity_options()[$severity])) {
-        return ['ok' => false, 'message' => 'Select the damage severity.'];
     }
 
     if ($description === '') {
@@ -336,7 +331,6 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     $reportedAt = date('Y-m-d H:i:s');
     $normalizedRole = canonical_role($userRole);
     $bookId = (int) ($borrow['book_id'] ?? 0);
-    $severityValue = $severity !== '' ? $severity : null;
     $insertStmt = $conn->prepare("
         INSERT INTO book_incidents (
             borrow_id,
@@ -358,7 +352,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
         $bookId,
         $normalizedRole,
         $incidentType,
-        $severityValue,
+        null,
         $description,
         $reportedAt
     );
@@ -390,7 +384,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
         'borrow_id' => $borrowId,
         'book_id' => (int) $borrow['book_id'],
         'incident_type' => $incidentType,
-        'severity' => $severity,
+        'severity' => '',
     ]);
 
     return ['ok' => true, 'message' => 'Incident report submitted. The librarian can now review it.'];
