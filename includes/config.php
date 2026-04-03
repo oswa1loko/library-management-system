@@ -105,9 +105,7 @@ function library_ping_or_reconnect(mysqli &$conn): void
     }
 
     $conn = library_open_connection();
-    if (library_should_run_schema_bootstrap($conn)) {
-        ensure_library_schema($conn);
-    }
+    ensure_library_schema($conn);
 }
 
 function library_safe_query(mysqli &$conn, string $sql)
@@ -122,9 +120,7 @@ function library_safe_query(mysqli &$conn, string $sql)
         }
 
         $conn = library_open_connection();
-        if (library_should_run_schema_bootstrap($conn)) {
-            ensure_library_schema($conn);
-        }
+        ensure_library_schema($conn);
         return $conn->query($sql);
     }
 }
@@ -141,9 +137,7 @@ function library_safe_prepare(mysqli &$conn, string $sql): mysqli_stmt
         }
 
         $conn = library_open_connection();
-        if (library_should_run_schema_bootstrap($conn)) {
-            ensure_library_schema($conn);
-        }
+        ensure_library_schema($conn);
         $stmt = $conn->prepare($sql);
     }
 
@@ -973,8 +967,6 @@ function ensure_library_schema(mysqli $conn): void
     }
 }
 
-if (library_should_run_schema_bootstrap($conn)) {
-    ensure_library_schema($conn);
-}
+ensure_library_schema($conn);
 ?>
 
