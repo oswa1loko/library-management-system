@@ -469,8 +469,8 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
               <th>Current Balance</th>
               <th>Status</th>
               <th>Proof</th>
-              <th>Reference</th>
-              <th>Action</th>
+              <th class="payment-record-reference-head">Reference</th>
+              <th class="payment-record-actions-head">Action</th>
             </tr>
           </thead>
           <tbody>
