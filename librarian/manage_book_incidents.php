@@ -162,13 +162,18 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
                 <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
                 <span class="chip">Severity: <?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
                 <span class="chip">Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?></span>
-                <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
+                <span class="chip"><?php echo h(book_incident_payment_stage_label($incident)); ?></span>
+                <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'open'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
               </div>
             </div>
             <div class="stack flow-gap-sm">
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['workflow_status'] ?? 'open'))); ?>"></span>
                 <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
+              </span>
+              <span class="badge">
+                <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['settlement_status'] ?? 'pending'))); ?>"></span>
+                <?php echo h(book_incident_settlement_label((string) ($incident['settlement_status'] ?? 'pending'))); ?>
               </span>
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
@@ -229,7 +234,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           Severity: <?php echo h(book_incident_severity_label((string) ($selectedIncident['severity'] ?? ''))); ?><br>
           Reported: <?php echo h(format_display_datetime((string) ($selectedIncident['reported_at'] ?? ''))); ?><br>
           Payment stage: <?php echo h(book_incident_payment_stage_label($selectedIncident)); ?><br>
-          Fee: <?php echo h(format_currency($selectedIncident['assessed_fee'] ?? 0)); ?>
+          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'open'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
         </div>
         <div class="empty-state">
           <strong class="label-block-gap">Member description</strong>

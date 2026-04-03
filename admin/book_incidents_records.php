@@ -118,8 +118,8 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div class="dashboard-icon icon-checklist" aria-hidden="true"></div>
         <div>
           <p class="muted eyebrow-compact">Filter</p>
-          <h3 class="heading-card">Payment view</h3>
-          <p class="muted">Focus on pending, paid, or waived incident fees without opening a separate payments page.</p>
+          <h3 class="heading-card">Settlement view</h3>
+          <p class="muted">Use this when you want to focus on pending payments, waived fees, or replacement submissions only.</p>
         </div>
       </div>
       <form method="get" class="toolbar grow admin-record-filters penalties-record-filters">
@@ -155,14 +155,20 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
               </span>
               <div class="inline-actions chips-row batch-status-row">
                 <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
+                <span class="chip"><?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?></span>
                 <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
                 <span class="chip"><?php echo h(book_incident_payment_stage_label($incident)); ?></span>
+                <span class="chip"><?php echo h(book_incident_next_actor_label((string) ($incident['workflow_status'] ?? 'open'), (string) ($incident['settlement_status'] ?? 'pending'))); ?></span>
               </div>
             </div>
             <div class="stack flow-gap-sm">
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['workflow_status'] ?? 'open'))); ?>"></span>
                 <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
+              </span>
+              <span class="badge">
+                <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['settlement_status'] ?? 'pending'))); ?>"></span>
+                <?php echo h(book_incident_settlement_label((string) ($incident['settlement_status'] ?? 'pending'))); ?>
               </span>
               <span class="badge">
                 <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
@@ -239,10 +245,12 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div class="empty-state">
           <strong class="label-block-gap">Review outcome</strong>
           Workflow: <?php echo h(book_incident_workflow_label((string) ($selectedIncident['workflow_status'] ?? 'open'))); ?><br>
+          Settlement: <?php echo h(book_incident_settlement_label((string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?><br>
           Payment stage: <?php echo h(book_incident_payment_stage_label($selectedIncident)); ?><br>
           Inventory action: <?php echo h(book_incident_resolution_label((string) ($selectedIncident['resolution_action'] ?? 'none'))); ?><br>
           Assessed fee: <?php echo h(format_currency($selectedIncident['assessed_fee'] ?? 0)); ?><br>
-          Submitted amount: <?php echo h(format_currency($selectedIncident['latest_payment_amount'] ?? 0)); ?>
+          Submitted amount: <?php echo h(format_currency($selectedIncident['latest_payment_amount'] ?? 0)); ?><br>
+          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'open'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
         </div>
         <div class="empty-state">
           <strong class="label-block-gap">Notes and proof</strong>
