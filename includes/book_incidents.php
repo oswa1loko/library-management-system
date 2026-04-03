@@ -24,7 +24,6 @@ function book_incident_workflow_options(): array
         'under_review' => 'Under Review',
         'awaiting_settlement' => 'Awaiting Settlement',
         'resolved' => 'Resolved',
-        'rejected' => 'Rejected',
     ];
 }
 
@@ -33,7 +32,6 @@ function book_incident_resolution_options(): array
     return [
         'none' => 'No inventory action yet',
         'return_to_shelf' => 'Return to shelf',
-        'send_for_repair' => 'Send for repair',
         'write_off_lost' => 'Write off as lost',
         'write_off_damaged' => 'Write off as damaged',
     ];
@@ -43,17 +41,18 @@ function book_incident_settlement_options(): array
 {
     return [
         'pending' => 'Pending',
-        'not_required' => 'Not required',
         'paid' => 'Paid',
-        'replacement_submitted' => 'Replacement submitted',
         'waived' => 'Waived',
     ];
 }
 
 function book_incident_workflow_label(string $value): string
 {
-    $options = book_incident_workflow_options();
-    return $options[$value] ?? ucfirst(str_replace('_', ' ', trim($value)));
+    $value = trim($value);
+    $options = book_incident_workflow_options() + [
+        'rejected' => 'Rejected',
+    ];
+    return $options[$value] ?? ucfirst(str_replace('_', ' ', $value));
 }
 
 function book_incident_type_label(string $value): string
@@ -75,14 +74,54 @@ function book_incident_severity_label(?string $value): string
 
 function book_incident_resolution_label(string $value): string
 {
-    $options = book_incident_resolution_options();
-    return $options[$value] ?? ucfirst(str_replace('_', ' ', trim($value)));
+    $value = trim($value);
+    $options = book_incident_resolution_options() + [
+        'send_for_repair' => 'Send for repair',
+    ];
+    return $options[$value] ?? ucfirst(str_replace('_', ' ', $value));
 }
 
 function book_incident_settlement_label(string $value): string
 {
+    $value = trim($value);
+    $options = book_incident_settlement_options() + [
+        'not_required' => 'Not required',
+        'replacement_submitted' => 'Replacement submitted',
+    ];
+    return $options[$value] ?? ucfirst(str_replace('_', ' ', $value));
+}
+
+function book_incident_workflow_form_options(?string $currentValue = null): array
+{
+    $options = book_incident_workflow_options();
+    $currentValue = trim((string) $currentValue);
+    if ($currentValue !== '' && !isset($options[$currentValue])) {
+        $options[$currentValue] = book_incident_workflow_label($currentValue);
+    }
+
+    return $options;
+}
+
+function book_incident_resolution_form_options(?string $currentValue = null): array
+{
+    $options = book_incident_resolution_options();
+    $currentValue = trim((string) $currentValue);
+    if ($currentValue !== '' && !isset($options[$currentValue])) {
+        $options[$currentValue] = book_incident_resolution_label($currentValue);
+    }
+
+    return $options;
+}
+
+function book_incident_settlement_form_options(?string $currentValue = null): array
+{
     $options = book_incident_settlement_options();
-    return $options[$value] ?? ucfirst(str_replace('_', ' ', trim($value)));
+    $currentValue = trim((string) $currentValue);
+    if ($currentValue !== '' && !isset($options[$currentValue])) {
+        $options[$currentValue] = book_incident_settlement_label($currentValue);
+    }
+
+    return $options;
 }
 
 function book_incident_next_actor_label(string $workflowStatus, string $settlementStatus = 'pending'): string
@@ -508,15 +547,15 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
         return ['ok' => false, 'message' => 'Incident record is missing.'];
     }
 
-    if (!isset(book_incident_workflow_options()[$workflowStatus])) {
+    if (!isset(book_incident_workflow_form_options($workflowStatus)[$workflowStatus])) {
         return ['ok' => false, 'message' => 'Select a valid workflow status.'];
     }
 
-    if (!isset(book_incident_resolution_options()[$resolutionAction])) {
+    if (!isset(book_incident_resolution_form_options($resolutionAction)[$resolutionAction])) {
         return ['ok' => false, 'message' => 'Select a valid resolution action.'];
     }
 
-    if (!isset(book_incident_settlement_options()[$settlementStatus])) {
+    if (!isset(book_incident_settlement_form_options($settlementStatus)[$settlementStatus])) {
         return ['ok' => false, 'message' => 'Select a valid settlement status.'];
     }
 
@@ -548,7 +587,7 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
     }
 
     if ($workflowStatus === 'resolved' && $assessedFee <= 0 && $settlementStatus === 'pending') {
-        $settlementStatus = 'not_required';
+        $settlementStatus = 'waived';
     }
 
     if ($workflowStatus === 'awaiting_settlement' && $resolutionAction === 'none') {
@@ -694,7 +733,7 @@ function update_admin_incident_settlement(mysqli $conn, int $incidentId, int $ac
         return ['ok' => false, 'message' => 'Incident record is missing.'];
     }
 
-    if (!isset(book_incident_settlement_options()[$settlementStatus])) {
+    if (!isset(book_incident_settlement_form_options($settlementStatus)[$settlementStatus])) {
         return ['ok' => false, 'message' => 'Select a valid settlement status.'];
     }
 

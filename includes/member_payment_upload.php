@@ -41,18 +41,17 @@ function upload_payment_proof(array $file, int $userId): array
     return ['path' => 'uploads/proofs/' . $filename, 'error' => ''];
 }
 
-if (isset($_POST['pay'])) {
-    $bookId = (int) ($_POST['payment_group_book_id'] ?? 0);
+if (isset($_POST['pay_incident'])) {
     $incidentId = (int) ($_POST['payment_incident_id'] ?? 0);
-    $amount = (float) ($_POST['amount'] ?? 0);
+    $amount = (float) ($_POST['incident_amount'] ?? 0);
 
-    if ($bookId <= 0 && $incidentId <= 0) {
-        $msg = 'Select a penalty group or book incident first.';
+    if ($incidentId <= 0) {
+        $msg = 'Select a payable incident first.';
         $msgType = 'error';
     } elseif ($amount <= 0) {
-        $msg = 'Enter a valid payment amount.';
+        $msg = 'Enter a valid incident payment amount.';
         $msgType = 'error';
-    } elseif ($incidentId > 0) {
+    } else {
         $incidentCheck = $conn->prepare("
             SELECT
                 bi.id,
@@ -143,6 +142,19 @@ if (isset($_POST['pay'])) {
                 }
             }
         }
+    }
+}
+
+if (isset($_POST['pay_penalty'])) {
+    $bookId = (int) ($_POST['payment_group_book_id'] ?? 0);
+    $amount = (float) ($_POST['penalty_amount'] ?? 0);
+
+    if ($bookId <= 0) {
+        $msg = 'Select a grouped penalty first.';
+        $msgType = 'error';
+    } elseif ($amount <= 0) {
+        $msg = 'Enter a valid grouped penalty amount.';
+        $msgType = 'error';
     } else {
         $groupCheck = $conn->prepare("
             SELECT
@@ -612,16 +624,16 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
         <div class="card-head">
           <div class="dashboard-icon icon-payments" aria-hidden="true"></div>
           <div>
-            <span class="chip">Payments</span>
-            <h3 class="heading-top-md">Upload Proof of Payment</h3>
+            <span class="chip">Penalty Payments</span>
+            <h3 class="heading-top-md">Pay Grouped Penalties</h3>
           </div>
         </div>
         <form method="post" enctype="multipart/form-data" class="stack chips-row member-workspace-form">
           <div>
             <label for="payment_group_book_id">Penalty Group</label>
             <div class="ui-select-shell">
-              <select id="payment_group_book_id" name="payment_group_book_id" class="ui-select" required <?php echo $canSubmitPayment ? '' : 'disabled'; ?>>
-                <?php if ($canSubmitPayment): ?>
+              <select id="payment_group_book_id" name="payment_group_book_id" class="ui-select" required <?php echo count($payablePenaltyOptions) > 0 ? '' : 'disabled'; ?>>
+                <?php if (count($payablePenaltyOptions) > 0): ?>
                   <option value="" disabled selected>Select a grouped penalty</option>
                   <?php foreach ($payablePenaltyOptions as $option): ?>
                     <option value="<?php echo (int) $option['book_id']; ?>">
@@ -636,11 +648,38 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
             </div>
           </div>
           <div>
+            <label for="penalty_amount">Amount</label>
+            <input id="penalty_amount" type="number" step="0.01" name="penalty_amount" placeholder="Enter grouped penalty amount" <?php echo count($payablePenaltyOptions) > 0 ? 'required' : 'disabled'; ?>>
+          </div>
+          <div>
+            <label for="penalty_proof">Proof of payment</label>
+            <input id="penalty_proof" type="file" name="proof" <?php echo count($payablePenaltyOptions) > 0 ? 'required' : 'disabled'; ?>>
+          </div>
+          <div class="inline-actions member-workspace-actions">
+            <button type="submit" name="pay_penalty" value="1" <?php echo count($payablePenaltyOptions) > 0 ? '' : 'disabled'; ?>>Submit Penalty Payment</button>
+            <span class="muted">Accepted files: JPG, JPEG, PNG, PDF up to 5MB.</span>
+          </div>
+          <?php if (count($payablePenaltyOptions) === 0): ?>
+            <div class="notice warning">No grouped penalties are currently eligible for payment.</div>
+          <?php endif; ?>
+        </form>
+      </div>
+
+      <div class="panel member-workspace-main">
+        <div class="card-head">
+          <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
+          <div>
+            <span class="chip">Incident Payments</span>
+            <h3 class="heading-top-md">Pay Lost or Damaged Fees</h3>
+          </div>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="stack chips-row member-workspace-form">
+          <div>
             <label for="payment_incident_id">Book Incident</label>
             <div class="ui-select-shell">
-              <select id="payment_incident_id" name="payment_incident_id" class="ui-select" <?php echo $canSubmitPayment ? '' : 'disabled'; ?>>
+              <select id="payment_incident_id" name="payment_incident_id" class="ui-select" required <?php echo count($payableIncidentOptions) > 0 ? '' : 'disabled'; ?>>
                 <?php if (count($payableIncidentOptions) > 0): ?>
-                  <option value="" selected>Select a payable incident if needed</option>
+                  <option value="" disabled selected>Select a payable incident</option>
                   <?php foreach ($payableIncidentOptions as $option): ?>
                     <option value="<?php echo (int) $option['incident_id']; ?>">
                       Incident #<?php echo (int) $option['incident_id']; ?> - <?php echo h($option['title']); ?> - <?php echo h(book_incident_type_label((string) $option['incident_type'])); ?> - <?php echo h(format_currency($option['amount'])); ?>
@@ -654,19 +693,19 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
             </div>
           </div>
           <div>
-            <label for="amount">Amount</label>
-            <input id="amount" type="number" step="0.01" name="amount" placeholder="Enter amount" <?php echo $canSubmitPayment ? 'required' : 'disabled'; ?>>
+            <label for="incident_amount">Amount</label>
+            <input id="incident_amount" type="number" step="0.01" name="incident_amount" placeholder="Enter incident fee amount" <?php echo count($payableIncidentOptions) > 0 ? 'required' : 'disabled'; ?>>
           </div>
           <div>
-            <label for="proof">Proof of payment</label>
-            <input id="proof" type="file" name="proof" <?php echo $canSubmitPayment ? 'required' : 'disabled'; ?>>
+            <label for="incident_proof">Proof of payment</label>
+            <input id="incident_proof" type="file" name="proof" <?php echo count($payableIncidentOptions) > 0 ? 'required' : 'disabled'; ?>>
           </div>
           <div class="inline-actions member-workspace-actions">
-            <button type="submit" name="pay" value="1" <?php echo $canSubmitPayment ? '' : 'disabled'; ?>>Submit Payment</button>
-            <span class="muted">Accepted files: JPG, JPEG, PNG, PDF up to 5MB.</span>
+            <button type="submit" name="pay_incident" value="1" <?php echo count($payableIncidentOptions) > 0 ? '' : 'disabled'; ?>>Submit Incident Payment</button>
+            <span class="muted">Use this only for librarian-assessed lost or damaged fees.</span>
           </div>
-          <?php if (!$canSubmitPayment): ?>
-            <div class="notice warning">No penalties are currently eligible for payment. Return confirmation is required before payment upload.</div>
+          <?php if (count($payableIncidentOptions) === 0): ?>
+            <div class="notice warning">No incident fees are currently eligible for payment.</div>
           <?php endif; ?>
         </form>
       </div>
@@ -681,10 +720,10 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
         </div>
         <div class="stack">
           <div class="empty-state">Payment proof files are stored locally in <code>uploads/proofs</code>.</div>
-          <div class="empty-state">Payments are only allowed after the linked borrow record is marked as returned.</div>
-          <div class="empty-state">Pending submissions still need admin approval before penalties are fully settled.</div>
-          <div class="empty-state">Multiple penalty copies of the same book are grouped into one payment submission.</div>
-          <div class="empty-state">For lost or damaged books, wait until the librarian sets the assessed fee in Book Incidents before paying here.</div>
+          <div class="empty-state">Grouped penalties only open after the linked borrow record is marked as returned.</div>
+          <div class="empty-state">Incident payments only open after the librarian sets the assessed fee in Book Incidents.</div>
+          <div class="empty-state">Pending submissions still need admin approval before balances are fully settled.</div>
+          <div class="empty-state">Grouped penalties and incident fees use separate forms to avoid payment mix-ups.</div>
         </div>
       </div>
     </div>

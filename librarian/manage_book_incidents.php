@@ -178,7 +178,7 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
               <div>
                 <label for="workflow_status_<?php echo (int) $incident['id']; ?>">Workflow status</label>
                 <select id="workflow_status_<?php echo (int) $incident['id']; ?>" name="workflow_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
-                  <?php foreach (book_incident_workflow_options() as $value => $label): ?>
+                  <?php foreach (book_incident_workflow_form_options((string) ($incident['workflow_status'] ?? '')) as $value => $label): ?>
                     <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['workflow_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
                   <?php endforeach; ?>
                 </select>
@@ -186,7 +186,7 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
               <div>
                 <label for="resolution_action_<?php echo (int) $incident['id']; ?>">Inventory action</label>
                 <select id="resolution_action_<?php echo (int) $incident['id']; ?>" name="resolution_action" <?php echo $isLocked ? 'disabled' : ''; ?>>
-                  <?php foreach (book_incident_resolution_options() as $value => $label): ?>
+                  <?php foreach (book_incident_resolution_form_options((string) ($incident['resolution_action'] ?? '')) as $value => $label): ?>
                     <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['resolution_action'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
                   <?php endforeach; ?>
                 </select>
@@ -194,7 +194,7 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
               <div>
                 <label for="settlement_status_<?php echo (int) $incident['id']; ?>">Settlement state</label>
                 <select id="settlement_status_<?php echo (int) $incident['id']; ?>" name="settlement_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
-                  <?php foreach (book_incident_settlement_options() as $value => $label): ?>
+                  <?php foreach (book_incident_settlement_form_options((string) ($incident['settlement_status'] ?? '')) as $value => $label): ?>
                     <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['settlement_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
                   <?php endforeach; ?>
                 </select>

@@ -161,7 +161,7 @@ $incidents = get_admin_incidents($conn, $settlementFilter);
               <div>
                 <label for="settlement_status_<?php echo (int) $incident['id']; ?>">Settlement status</label>
                 <select id="settlement_status_<?php echo (int) $incident['id']; ?>" name="settlement_status" <?php echo $canEditSettlement ? '' : 'disabled'; ?>>
-                  <?php foreach (book_incident_settlement_options() as $value => $label): ?>
+                  <?php foreach (book_incident_settlement_form_options((string) ($incident['settlement_status'] ?? '')) as $value => $label): ?>
                     <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['settlement_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
                   <?php endforeach; ?>
                 </select>

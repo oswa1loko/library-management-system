@@ -121,94 +121,111 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     }
 
     if ($newStatus === 'rejected') {
-        $stmt = $conn->prepare("UPDATE payments SET status = 'rejected', proof_path = NULL WHERE id = ? AND status = 'pending'");
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $changed = $stmt->affected_rows === 1;
-        $stmt->close();
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare("UPDATE payments SET status = 'rejected', proof_path = NULL WHERE id = ? AND status = 'pending'");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $changed = $stmt->affected_rows === 1;
+            $stmt->close();
 
-        if (!empty($current['proof_path'])) {
-            remove_relative_file($current['proof_path']);
-        }
-
-        if ($changed) {
-            audit_log($conn, 'admin.payment.reject', [
-                'payment_id' => $id,
-                'penalty_id' => (int) ($current['penalty_id'] ?? 0),
-                'incident_id' => (int) ($current['incident_id'] ?? 0),
-            ]);
-            $targetRoleStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
-            $targetRoleStmt->bind_param('i', $current['user_id']);
-            $targetRoleStmt->execute();
-            $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
-            $targetRoleStmt->close();
-            if (in_array($targetRole, ['student', 'faculty'], true)) {
-                create_notification(
-                    $conn,
-                    $targetRole,
-                    'Payment Rejected',
-                    'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
-                    'critical',
-                    (int) $current['user_id']
-                );
+            if ($changed) {
+                audit_log($conn, 'admin.payment.reject', [
+                    'payment_id' => $id,
+                    'penalty_id' => (int) ($current['penalty_id'] ?? 0),
+                    'incident_id' => (int) ($current['incident_id'] ?? 0),
+                ]);
+                $targetRoleStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+                $targetRoleStmt->bind_param('i', $current['user_id']);
+                $targetRoleStmt->execute();
+                $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
+                $targetRoleStmt->close();
+                if (in_array($targetRole, ['student', 'faculty'], true)) {
+                    create_notification(
+                        $conn,
+                        $targetRole,
+                        'Payment Rejected',
+                        'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
+                        'critical',
+                        (int) $current['user_id']
+                    );
+                }
             }
+
+            $conn->commit();
+            if (!empty($current['proof_path'])) {
+                remove_relative_file($current['proof_path']);
+            }
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            header('Location: payments_records.php?notice=' . urlencode('Unable to reject this payment right now.'));
+            exit;
         }
     } else {
-        $stmt = $conn->prepare("UPDATE payments SET status = 'approved' WHERE id = ? AND status = 'pending'");
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $changed = $stmt->affected_rows === 1;
-        $stmt->close();
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare("UPDATE payments SET status = 'approved' WHERE id = ? AND status = 'pending'");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $changed = $stmt->affected_rows === 1;
+            $stmt->close();
 
-        if ($linkedPenaltyIds !== []) {
-            $placeholders = implode(',', array_fill(0, count($linkedPenaltyIds), '?'));
-            $types = str_repeat('i', count($linkedPenaltyIds));
-            $sync = $conn->prepare("UPDATE penalties SET status = 'paid' WHERE id IN ($placeholders)");
-            $sync->bind_param($types, ...$linkedPenaltyIds);
-            $sync->execute();
-            $sync->close();
-        }
-
-        if ((int) ($current['incident_id'] ?? 0) > 0) {
-            $incidentId = (int) $current['incident_id'];
-            $resolvedAt = date('Y-m-d H:i:s');
-            $incidentSync = $conn->prepare("
-                UPDATE book_incidents
-                SET settlement_status = 'paid',
-                    workflow_status = 'resolved',
-                    resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
-                    resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
-                WHERE id = ?
-            ");
-            $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
-            $incidentSync->bind_param('sii', $resolvedAt, $actorUserId, $incidentId);
-            $incidentSync->execute();
-            $incidentSync->close();
-        }
-
-        if ($changed) {
-            audit_log($conn, 'admin.payment.approve', [
-                'payment_id' => $id,
-                'penalty_id' => (int) ($current['penalty_id'] ?? 0),
-                'incident_id' => (int) ($current['incident_id'] ?? 0),
-                'payment_batch' => (string) ($current['payment_batch'] ?? ''),
-                'linked_penalty_ids' => $linkedPenaltyIds,
-            ]);
-            $targetRoleStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
-            $targetRoleStmt->bind_param('i', $current['user_id']);
-            $targetRoleStmt->execute();
-            $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
-            $targetRoleStmt->close();
-            if (in_array($targetRole, ['student', 'faculty'], true)) {
-                create_notification(
-                    $conn,
-                    $targetRole,
-                    'Payment Approved',
-                    'Payment #' . $id . ' was approved by admin.',
-                    'info',
-                    (int) $current['user_id']
-                );
+            if ($linkedPenaltyIds !== []) {
+                $placeholders = implode(',', array_fill(0, count($linkedPenaltyIds), '?'));
+                $types = str_repeat('i', count($linkedPenaltyIds));
+                $sync = $conn->prepare("UPDATE penalties SET status = 'paid' WHERE id IN ($placeholders)");
+                $sync->bind_param($types, ...$linkedPenaltyIds);
+                $sync->execute();
+                $sync->close();
             }
+
+            if ((int) ($current['incident_id'] ?? 0) > 0) {
+                $incidentId = (int) $current['incident_id'];
+                $resolvedAt = date('Y-m-d H:i:s');
+                $incidentSync = $conn->prepare("
+                    UPDATE book_incidents
+                    SET settlement_status = 'paid',
+                        workflow_status = 'resolved',
+                        resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
+                        resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
+                    WHERE id = ?
+                ");
+                $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
+                $incidentSync->bind_param('sii', $resolvedAt, $actorUserId, $incidentId);
+                $incidentSync->execute();
+                $incidentSync->close();
+            }
+
+            if ($changed) {
+                audit_log($conn, 'admin.payment.approve', [
+                    'payment_id' => $id,
+                    'penalty_id' => (int) ($current['penalty_id'] ?? 0),
+                    'incident_id' => (int) ($current['incident_id'] ?? 0),
+                    'payment_batch' => (string) ($current['payment_batch'] ?? ''),
+                    'linked_penalty_ids' => $linkedPenaltyIds,
+                ]);
+                $targetRoleStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+                $targetRoleStmt->bind_param('i', $current['user_id']);
+                $targetRoleStmt->execute();
+                $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
+                $targetRoleStmt->close();
+                if (in_array($targetRole, ['student', 'faculty'], true)) {
+                    create_notification(
+                        $conn,
+                        $targetRole,
+                        'Payment Approved',
+                        'Payment #' . $id . ' was approved by admin.',
+                        'info',
+                        (int) $current['user_id']
+                    );
+                }
+            }
+
+            $conn->commit();
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            header('Location: payments_records.php?notice=' . urlencode('Unable to approve this payment right now.'));
+            exit;
         }
     }
 
