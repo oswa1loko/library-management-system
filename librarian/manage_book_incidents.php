@@ -258,7 +258,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <div>
             <label for="settlement_status_selected">Settlement state</label>
             <select id="settlement_status_selected" name="settlement_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
-              <?php foreach (book_incident_settlement_form_options((string) ($selectedIncident['settlement_status'] ?? '')) as $value => $label): ?>
+              <?php foreach (book_incident_admin_settlement_form_options((string) ($selectedIncident['settlement_status'] ?? '')) as $value => $label): ?>
                 <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['settlement_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
               <?php endforeach; ?>
             </select>
@@ -288,7 +288,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
             <span class="muted">This case is already closed. Admin can still update settlement if needed.</span>
           <?php else: ?>
             <button type="submit" name="update_incident" value="1">Save Incident Update</button>
-            <span class="muted">`Awaiting Settlement` sends the case to admin. `Resolved` closes it now.</span>
+            <span class="muted">Use `Pending` while waiting for payment. `Paid` is applied automatically after admin approves the payment record.</span>
           <?php endif; ?>
         </div>
       </form>

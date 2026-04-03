@@ -188,7 +188,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div>
           <p class="muted eyebrow-compact">Settlement Review</p>
           <h3 id="incident-settlement-modal-title" class="heading-card"><?php echo h($selectedIncident['title']); ?></h3>
-          <p class="muted">Admin finalizes the settlement result after the librarian completes review and inventory action.</p>
+          <p class="muted">Admin can keep this pending or waive it here. Paid status comes from approved payment records.</p>
         </div>
         <a class="button secondary" href="<?php echo h($baseHref); ?>">Close</a>
       </div>
@@ -208,7 +208,8 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           Workflow: <?php echo h(book_incident_workflow_label((string) ($selectedIncident['workflow_status'] ?? 'reported'))); ?><br>
           Inventory action: <?php echo h(book_incident_resolution_label((string) ($selectedIncident['resolution_action'] ?? 'none'))); ?><br>
           Assessed fee: <?php echo h(format_currency($selectedIncident['assessed_fee'] ?? 0)); ?><br>
-          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'reported'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
+          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'reported'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?><br>
+          Payment source: `Payments` approval sets `Paid` automatically.
         </div>
         <div class="empty-state">
           <strong class="label-block-gap">Notes</strong>
@@ -222,7 +223,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <div>
             <label for="settlement_status_selected">Settlement status</label>
             <select id="settlement_status_selected" name="settlement_status" <?php echo $canEditSettlement ? '' : 'disabled'; ?>>
-              <?php foreach (book_incident_settlement_form_options((string) ($selectedIncident['settlement_status'] ?? '')) as $value => $label): ?>
+              <?php foreach (book_incident_admin_settlement_form_options((string) ($selectedIncident['settlement_status'] ?? '')) as $value => $label): ?>
                 <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['settlement_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
               <?php endforeach; ?>
             </select>
@@ -239,6 +240,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
         <div class="inline-actions member-workspace-actions">
           <?php if ($canEditSettlement): ?>
             <button type="submit" name="update_settlement" value="1">Save Settlement Update</button>
+            <span class="muted">Use `Waived` only when no payment is required. Approve actual payments in `Payments`.</span>
           <?php else: ?>
             <span class="muted">This incident must be reviewed by the librarian first before admin can update the settlement state.</span>
           <?php endif; ?>

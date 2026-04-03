@@ -124,6 +124,20 @@ function book_incident_settlement_form_options(?string $currentValue = null): ar
     return $options;
 }
 
+function book_incident_admin_settlement_form_options(?string $currentValue = null): array
+{
+    $options = [
+        'pending' => 'Pending',
+        'waived' => 'Waived',
+    ];
+    $currentValue = trim((string) $currentValue);
+    if ($currentValue !== '' && !isset($options[$currentValue])) {
+        $options[$currentValue] = book_incident_settlement_label($currentValue);
+    }
+
+    return $options;
+}
+
 function book_incident_next_actor_label(string $workflowStatus, string $settlementStatus = 'pending'): string
 {
     $workflowStatus = trim($workflowStatus);
@@ -139,7 +153,7 @@ function book_incident_next_actor_label(string $workflowStatus, string $settleme
 
     if ($workflowStatus === 'awaiting_settlement') {
         return $settlementStatus === 'pending'
-            ? 'Next: Student payment or admin update'
+            ? 'Next: Student payment or admin waiver'
             : 'Next: Admin closeout';
     }
 
@@ -549,7 +563,7 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
         return ['ok' => false, 'message' => 'Select a valid resolution action.'];
     }
 
-    if (!isset(book_incident_settlement_form_options($settlementStatus)[$settlementStatus])) {
+    if (!isset(book_incident_admin_settlement_form_options($settlementStatus)[$settlementStatus])) {
         return ['ok' => false, 'message' => 'Select a valid settlement status.'];
     }
 
