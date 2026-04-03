@@ -9,6 +9,7 @@ require_role('librarian');
 $noticeItems = [];
 $statusFilter = trim((string) ($_GET['status'] ?? ''));
 $typeFilter = trim((string) ($_GET['type'] ?? ''));
+$selectedIncidentId = (int) ($_GET['incident'] ?? ($_POST['incident_id'] ?? 0));
 
 if (isset($_POST['update_incident'])) {
     $result = update_librarian_book_incident($conn, (int) ($_POST['incident_id'] ?? 0), (int) ($_SESSION['user_id'] ?? 0), [
@@ -27,6 +28,23 @@ if (isset($_POST['update_incident'])) {
 
 $summary = book_incident_summary($conn);
 $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
+$selectedIncident = null;
+foreach ($incidents as $incidentItem) {
+    if ((int) ($incidentItem['id'] ?? 0) === $selectedIncidentId) {
+        $selectedIncident = $incidentItem;
+        break;
+    }
+}
+
+$baseQuery = [];
+if ($statusFilter !== '') {
+    $baseQuery['status'] = $statusFilter;
+}
+if ($typeFilter !== '') {
+    $baseQuery['type'] = $typeFilter;
+}
+$baseUrl = 'manage_book_incidents.php';
+$baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) : '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -171,69 +189,112 @@ $incidents = get_librarian_incidents($conn, $statusFilter, $typeFilter);
               <?php echo nl2br(h((string) ($incident['description'] ?? ''))); ?>
             </div>
           </div>
-
-          <form method="post" class="stack flow-gap-md">
-            <input type="hidden" name="incident_id" value="<?php echo (int) $incident['id']; ?>">
-            <div class="field-grid three-up">
-              <div>
-                <label for="workflow_status_<?php echo (int) $incident['id']; ?>">Workflow status</label>
-                <select id="workflow_status_<?php echo (int) $incident['id']; ?>" name="workflow_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
-                  <?php foreach (book_incident_workflow_form_options((string) ($incident['workflow_status'] ?? '')) as $value => $label): ?>
-                    <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['workflow_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-              <div>
-                <label for="resolution_action_<?php echo (int) $incident['id']; ?>">Inventory action</label>
-                <select id="resolution_action_<?php echo (int) $incident['id']; ?>" name="resolution_action" <?php echo $isLocked ? 'disabled' : ''; ?>>
-                  <?php foreach (book_incident_resolution_form_options((string) ($incident['resolution_action'] ?? '')) as $value => $label): ?>
-                    <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['resolution_action'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-              <div>
-                <label for="settlement_status_<?php echo (int) $incident['id']; ?>">Settlement state</label>
-                <select id="settlement_status_<?php echo (int) $incident['id']; ?>" name="settlement_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
-                  <?php foreach (book_incident_settlement_form_options((string) ($incident['settlement_status'] ?? '')) as $value => $label): ?>
-                    <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['settlement_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-            </div>
-            <div class="field-grid two-up">
-              <div>
-                <label for="severity_<?php echo (int) $incident['id']; ?>">Severity</label>
-                <select id="severity_<?php echo (int) $incident['id']; ?>" name="severity" <?php echo $isLocked ? 'disabled' : ''; ?>>
-                  <option value="">No severity</option>
-                  <?php foreach (book_incident_severity_options() as $value => $label): ?>
-                    <option value="<?php echo h($value); ?>" <?php echo (string) ($incident['severity'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-              <div>
-                <label for="assessed_fee_<?php echo (int) $incident['id']; ?>">Assessed fee</label>
-                <input id="assessed_fee_<?php echo (int) $incident['id']; ?>" type="number" step="0.01" min="0" name="assessed_fee" value="<?php echo h(number_format((float) ($incident['assessed_fee'] ?? 0), 2, '.', '')); ?>" <?php echo $isLocked ? 'readonly' : ''; ?>>
-              </div>
-            </div>
-            <div>
-              <label for="resolution_notes_<?php echo (int) $incident['id']; ?>">Review notes</label>
-              <textarea id="resolution_notes_<?php echo (int) $incident['id']; ?>" name="resolution_notes" rows="4" <?php echo $isLocked ? 'readonly' : ''; ?>><?php echo h((string) ($incident['resolution_notes'] ?? '')); ?></textarea>
-            </div>
-            <div class="inline-actions member-workspace-actions">
-              <?php if ($isLocked): ?>
-                <span class="muted">This case is already closed. Admin can still update settlement if needed.</span>
-              <?php else: ?>
-                <button type="submit" name="update_incident" value="1">Save Incident Update</button>
-                <span class="muted">`Awaiting Settlement` sends the case to admin. `Resolved` closes it now.</span>
-              <?php endif; ?>
-            </div>
-          </form>
+          <div class="inline-actions member-workspace-actions">
+            <a class="button" href="<?php echo h($baseUrl . '?' . http_build_query($baseQuery + ['incident' => (int) $incident['id']])); ?>">Review Incident</a>
+            <span class="muted">Open the full review form in a modal so the queue stays visible.</span>
+          </div>
         </div>
       <?php endforeach; ?>
     </div>
   </div>
   </div>
 </div>
+<?php if ($selectedIncident): ?>
+  <?php $isLocked = in_array((string) ($selectedIncident['workflow_status'] ?? ''), ['resolved', 'rejected'], true); ?>
+  <div class="desk-modal" data-desk-modal>
+    <a class="desk-modal-backdrop" href="<?php echo h($baseHref); ?>" aria-label="Close incident review"></a>
+    <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="incident-review-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact">Incident Review</p>
+          <h3 id="incident-review-modal-title" class="heading-card"><?php echo h($selectedIncident['title']); ?></h3>
+          <p class="muted">Review the report, choose the inventory action, then move the case toward settlement or closure.</p>
+        </div>
+        <a class="button secondary" href="<?php echo h($baseHref); ?>">Close</a>
+      </div>
+
+      <div class="grid cards">
+        <div class="empty-state">
+          <strong class="label-block-gap">Borrow context</strong>
+          Incident #<?php echo (int) $selectedIncident['id']; ?><br>
+          Borrower: <?php echo h($selectedIncident['fullname']); ?> (<?php echo h(role_label((string) ($selectedIncident['role'] ?? ''))); ?>)<br>
+          Borrow #<?php echo (int) $selectedIncident['borrow_id']; ?><br>
+          Status: <?php echo h(ucfirst((string) ($selectedIncident['borrow_status'] ?? 'n/a'))); ?><br>
+          Borrowed: <?php echo h(format_display_date((string) ($selectedIncident['borrow_date'] ?? ''), '-')); ?><br>
+          Due: <?php echo h(format_display_date((string) ($selectedIncident['due_date'] ?? ''), '-')); ?>
+        </div>
+        <div class="empty-state">
+          <strong class="label-block-gap">Report details</strong>
+          Type: <?php echo h(book_incident_type_label((string) ($selectedIncident['incident_type'] ?? ''))); ?><br>
+          Severity: <?php echo h(book_incident_severity_label((string) ($selectedIncident['severity'] ?? ''))); ?><br>
+          Reported: <?php echo h(format_display_datetime((string) ($selectedIncident['reported_at'] ?? ''))); ?><br>
+          Next: <?php echo h(book_incident_next_actor_label((string) ($selectedIncident['workflow_status'] ?? 'reported'), (string) ($selectedIncident['settlement_status'] ?? 'pending'))); ?>
+        </div>
+        <div class="empty-state">
+          <strong class="label-block-gap">Member description</strong>
+          <?php echo nl2br(h((string) ($selectedIncident['description'] ?? ''))); ?>
+        </div>
+      </div>
+
+      <form method="post" class="stack flow-gap-md">
+        <input type="hidden" name="incident_id" value="<?php echo (int) $selectedIncident['id']; ?>">
+        <div class="field-grid three-up">
+          <div>
+            <label for="workflow_status_selected">Workflow status</label>
+            <select id="workflow_status_selected" name="workflow_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
+              <?php foreach (book_incident_workflow_form_options((string) ($selectedIncident['workflow_status'] ?? '')) as $value => $label): ?>
+                <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['workflow_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div>
+            <label for="resolution_action_selected">Inventory action</label>
+            <select id="resolution_action_selected" name="resolution_action" <?php echo $isLocked ? 'disabled' : ''; ?>>
+              <?php foreach (book_incident_resolution_form_options((string) ($selectedIncident['resolution_action'] ?? '')) as $value => $label): ?>
+                <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['resolution_action'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div>
+            <label for="settlement_status_selected">Settlement state</label>
+            <select id="settlement_status_selected" name="settlement_status" <?php echo $isLocked ? 'disabled' : ''; ?>>
+              <?php foreach (book_incident_settlement_form_options((string) ($selectedIncident['settlement_status'] ?? '')) as $value => $label): ?>
+                <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['settlement_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
+        <div class="field-grid two-up">
+          <div>
+            <label for="severity_selected">Severity</label>
+            <select id="severity_selected" name="severity" <?php echo $isLocked ? 'disabled' : ''; ?>>
+              <option value="">No severity</option>
+              <?php foreach (book_incident_severity_options() as $value => $label): ?>
+                <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['severity'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div>
+            <label for="assessed_fee_selected">Assessed fee</label>
+            <input id="assessed_fee_selected" type="number" step="0.01" min="0" name="assessed_fee" value="<?php echo h(number_format((float) ($selectedIncident['assessed_fee'] ?? 0), 2, '.', '')); ?>" <?php echo $isLocked ? 'readonly' : ''; ?>>
+          </div>
+        </div>
+        <div>
+          <label for="resolution_notes_selected">Review notes</label>
+          <textarea id="resolution_notes_selected" name="resolution_notes" rows="4" <?php echo $isLocked ? 'readonly' : ''; ?>><?php echo h((string) ($selectedIncident['resolution_notes'] ?? '')); ?></textarea>
+        </div>
+        <div class="inline-actions member-workspace-actions">
+          <?php if ($isLocked): ?>
+            <span class="muted">This case is already closed. Admin can still update settlement if needed.</span>
+          <?php else: ?>
+            <button type="submit" name="update_incident" value="1">Save Incident Update</button>
+            <span class="muted">`Awaiting Settlement` sends the case to admin. `Resolved` closes it now.</span>
+          <?php endif; ?>
+        </div>
+      </form>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="<?php echo h(app_url('assets/member_sidebar.js?v=' . urlencode($memberSidebarVersion))); ?>"></script>
 </body>
 </html>
