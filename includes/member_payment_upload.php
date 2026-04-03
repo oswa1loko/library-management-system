@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/book_incidents.php';
 
 require_roles(['student', 'faculty']);
 
@@ -42,14 +43,106 @@ function upload_payment_proof(array $file, int $userId): array
 
 if (isset($_POST['pay'])) {
     $bookId = (int) ($_POST['payment_group_book_id'] ?? 0);
+    $incidentId = (int) ($_POST['payment_incident_id'] ?? 0);
     $amount = (float) ($_POST['amount'] ?? 0);
 
-    if ($bookId <= 0) {
-        $msg = 'Select a grouped penalty first.';
+    if ($bookId <= 0 && $incidentId <= 0) {
+        $msg = 'Select a penalty group or book incident first.';
         $msgType = 'error';
     } elseif ($amount <= 0) {
         $msg = 'Enter a valid payment amount.';
         $msgType = 'error';
+    } elseif ($incidentId > 0) {
+        $incidentCheck = $conn->prepare("
+            SELECT
+                bi.id,
+                bi.book_id,
+                bi.assessed_fee,
+                bi.settlement_status,
+                bi.workflow_status,
+                b.title,
+                (
+                    SELECT pay.status
+                    FROM payments pay
+                    WHERE pay.user_id = bi.user_id
+                      AND pay.incident_id = bi.id
+                    ORDER BY pay.id DESC
+                    LIMIT 1
+                ) AS latest_payment_status
+            FROM book_incidents bi
+            JOIN books b ON b.id = bi.book_id
+            WHERE bi.id = ?
+              AND bi.user_id = ?
+            LIMIT 1
+        ");
+        $incidentCheck->bind_param('ii', $incidentId, $userId);
+        $incidentCheck->execute();
+        $incidentRow = $incidentCheck->get_result()->fetch_assoc();
+        $incidentCheck->close();
+
+        if (!$incidentRow) {
+            $msg = 'Selected incident payment record was not found.';
+            $msgType = 'error';
+        } else {
+            $expectedAmount = round((float) ($incidentRow['assessed_fee'] ?? 0), 2);
+            $latestPaymentStatus = (string) ($incidentRow['latest_payment_status'] ?? '');
+            $settlementStatus = (string) ($incidentRow['settlement_status'] ?? '');
+            $workflowStatus = (string) ($incidentRow['workflow_status'] ?? '');
+            $incidentTitle = (string) ($incidentRow['title'] ?? '');
+
+            if (!in_array($workflowStatus, ['awaiting_settlement', 'resolved'], true)) {
+                $msg = 'This incident is not yet ready for payment.';
+                $msgType = 'error';
+            } elseif ($settlementStatus !== 'pending') {
+                $msg = 'This incident no longer needs a payment submission.';
+                $msgType = 'error';
+            } elseif ($expectedAmount <= 0) {
+                $msg = 'This incident does not have a payable amount.';
+                $msgType = 'error';
+            } elseif ($latestPaymentStatus === 'pending') {
+                $msg = 'A payment for this incident is already pending admin review.';
+                $msgType = 'error';
+            } elseif (round($amount, 2) !== $expectedAmount) {
+                $msg = 'Payment amount must match the full assessed incident fee.';
+                $msgType = 'error';
+            } else {
+                $upload = upload_payment_proof($_FILES['proof'] ?? [], $userId);
+                if ($upload['error'] !== '') {
+                    $msg = $upload['error'];
+                    $msgType = 'error';
+                } else {
+                    $proofPath = $upload['path'];
+                    $paymentBatch = 'inc-pay-' . bin2hex(random_bytes(8));
+
+                    $conn->begin_transaction();
+                    try {
+                        $insert = $conn->prepare("
+                            INSERT INTO payments (user_id, penalty_id, incident_id, payment_batch, amount, proof_path, status)
+                            VALUES (?, NULL, ?, ?, ?, ?, 'pending')
+                        ");
+                        $insert->bind_param('iisds', $userId, $incidentId, $paymentBatch, $expectedAmount, $proofPath);
+                        $insert->execute();
+                        $paymentId = (int) $insert->insert_id;
+                        $insert->close();
+
+                        $conn->commit();
+                        create_notification(
+                            $conn,
+                            'admin',
+                            'New Incident Payment Submission',
+                            role_label($role) . ' ' . (string) ($_SESSION['username'] ?? 'member') . ' submitted a payment proof for incident #' . $incidentId . ' on ' . ($incidentTitle !== '' ? $incidentTitle : 'a book') . '.',
+                            'warning'
+                        );
+                        $msg = 'Incident payment submitted for ' . ($incidentTitle !== '' ? $incidentTitle : 'this book') . '. Wait for admin review.';
+                    } catch (Throwable $e) {
+                        $conn->rollback();
+                        remove_relative_file($proofPath);
+                        $msg = 'Unable to save incident payment right now.';
+                        $msgType = 'error';
+                    }
+                }
+            }
+        }
     } else {
         $groupCheck = $conn->prepare("
             SELECT
@@ -183,20 +276,24 @@ $paymentsStmt = $conn->prepare("
     SELECT
         pay.id,
         pay.penalty_id,
+        pay.incident_id,
         pay.payment_batch,
         pay.amount,
         pay.proof_path,
         pay.status,
         pay.created_at,
         COUNT(ppl.penalty_id) AS linked_penalty_count,
-        MAX(b.title) AS linked_book_title
+        MAX(b.title) AS linked_book_title,
+        MAX(ib.title) AS linked_incident_book_title
     FROM payments pay
     LEFT JOIN payment_penalty_links ppl ON ppl.payment_id = pay.id
     LEFT JOIN penalties p ON p.id = ppl.penalty_id
     LEFT JOIN borrows br ON br.id = p.borrow_id
     LEFT JOIN books b ON b.id = br.book_id
+    LEFT JOIN book_incidents bi ON bi.id = pay.incident_id
+    LEFT JOIN books ib ON ib.id = bi.book_id
     WHERE pay.user_id = ?
-    GROUP BY pay.id, pay.penalty_id, pay.payment_batch, pay.amount, pay.proof_path, pay.status, pay.created_at
+    GROUP BY pay.id, pay.penalty_id, pay.incident_id, pay.payment_batch, pay.amount, pay.proof_path, pay.status, pay.created_at
     ORDER BY pay.id DESC
 ");
 $paymentsStmt->bind_param('i', $userId);
@@ -227,6 +324,19 @@ $paymentOverview->bind_param('i', $userId);
 $paymentOverview->execute();
 $paymentStats = $paymentOverview->get_result()->fetch_assoc();
 $paymentOverview->close();
+
+$incidentOverview = $conn->prepare("
+    SELECT
+      COALESCE(SUM(CASE WHEN settlement_status = 'pending' AND assessed_fee > 0 THEN 1 ELSE 0 END), 0) AS payable_incidents,
+      COALESCE(SUM(CASE WHEN settlement_status = 'pending' THEN assessed_fee ELSE 0 END), 0) AS incident_balance
+    FROM book_incidents
+    WHERE user_id = ?
+      AND workflow_status IN ('awaiting_settlement', 'resolved')
+");
+$incidentOverview->bind_param('i', $userId);
+$incidentOverview->execute();
+$incidentStats = $incidentOverview->get_result()->fetch_assoc();
+$incidentOverview->close();
 
 $penaltyOptionStmt = $conn->prepare("
     SELECT
@@ -314,7 +424,73 @@ $payablePenaltyOptions = array_values(array_map(static function (array $option):
     $option['amount'] = round((float) ($option['amount'] ?? 0), 2);
     return $option;
 }, $payablePenaltyOptions));
-$canSubmitPayment = count($payablePenaltyOptions) > 0;
+
+$incidentOptionStmt = $conn->prepare("
+    SELECT
+      bi.id,
+      bi.assessed_fee,
+      bi.settlement_status,
+      bi.workflow_status,
+      bi.incident_type,
+      b.title,
+      (
+        SELECT pay.status
+        FROM payments pay
+        WHERE pay.user_id = bi.user_id
+          AND pay.incident_id = bi.id
+        ORDER BY pay.id DESC
+        LIMIT 1
+      ) AS latest_payment_status
+    FROM book_incidents bi
+    JOIN books b ON b.id = bi.book_id
+    WHERE bi.user_id = ?
+    ORDER BY bi.id DESC
+");
+$incidentOptionStmt->bind_param('i', $userId);
+$incidentOptionStmt->execute();
+$incidentOptionRows = $incidentOptionStmt->get_result();
+$incidentOptionStmt->close();
+
+$payableIncidentOptions = [];
+$blockedIncidentNotes = [];
+while ($incidentRow = $incidentOptionRows->fetch_assoc()) {
+    $rowIncidentId = (int) ($incidentRow['id'] ?? 0);
+    $incidentAmount = round((float) ($incidentRow['assessed_fee'] ?? 0), 2);
+    $incidentTitle = (string) ($incidentRow['title'] ?? '');
+    $incidentType = (string) ($incidentRow['incident_type'] ?? '');
+    $workflowStatus = (string) ($incidentRow['workflow_status'] ?? '');
+    $settlementStatus = (string) ($incidentRow['settlement_status'] ?? '');
+    $latestPaymentStatus = (string) ($incidentRow['latest_payment_status'] ?? '');
+
+    $blockReason = '';
+    if (!in_array($workflowStatus, ['awaiting_settlement', 'resolved'], true)) {
+        $blockReason = 'Waiting for librarian review';
+    } elseif ($settlementStatus !== 'pending') {
+        $blockReason = 'Already settled or no payment required';
+    } elseif ($incidentAmount <= 0) {
+        $blockReason = 'No assessed fee';
+    } elseif ($latestPaymentStatus === 'pending') {
+        $blockReason = 'Payment already pending admin review';
+    }
+
+    if ($blockReason === '') {
+        $payableIncidentOptions[] = [
+            'incident_id' => $rowIncidentId,
+            'title' => $incidentTitle !== '' ? $incidentTitle : ('Incident #' . $rowIncidentId),
+            'amount' => $incidentAmount,
+            'incident_type' => $incidentType,
+        ];
+    } else {
+        $blockedIncidentNotes[] = [
+            'id' => $rowIncidentId,
+            'amount' => $incidentAmount,
+            'reason' => ($incidentTitle !== '' ? $incidentTitle : ('Incident #' . $rowIncidentId)) . ' - ' . book_incident_type_label($incidentType),
+            'block_reason' => $blockReason,
+        ];
+    }
+}
+
+$canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentOptions) > 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -420,6 +596,14 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
           <strong><?php echo (int) ($paymentStats['approved_submissions'] ?? 0); ?></strong>
           <span class="muted">Approved submissions</span>
         </div>
+        <div class="stat-card">
+          <strong><?php echo (int) ($incidentStats['payable_incidents'] ?? 0); ?></strong>
+          <span class="muted">Payable incident cases</span>
+        </div>
+        <div class="stat-card">
+          <strong><?php echo h(format_currency($incidentStats['incident_balance'] ?? 0)); ?></strong>
+          <span class="muted">Incident payment balance</span>
+        </div>
       </div>
     </div>
 
@@ -446,6 +630,24 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
                   <?php endforeach; ?>
                 <?php else: ?>
                   <option value="" selected>No payable penalties available</option>
+                <?php endif; ?>
+              </select>
+              <span class="ui-select-caret" aria-hidden="true"></span>
+            </div>
+          </div>
+          <div>
+            <label for="payment_incident_id">Book Incident</label>
+            <div class="ui-select-shell">
+              <select id="payment_incident_id" name="payment_incident_id" class="ui-select" <?php echo $canSubmitPayment ? '' : 'disabled'; ?>>
+                <?php if (count($payableIncidentOptions) > 0): ?>
+                  <option value="" selected>Select a payable incident if needed</option>
+                  <?php foreach ($payableIncidentOptions as $option): ?>
+                    <option value="<?php echo (int) $option['incident_id']; ?>">
+                      Incident #<?php echo (int) $option['incident_id']; ?> - <?php echo h($option['title']); ?> - <?php echo h(book_incident_type_label((string) $option['incident_type'])); ?> - <?php echo h(format_currency($option['amount'])); ?>
+                    </option>
+                  <?php endforeach; ?>
+                <?php else: ?>
+                  <option value="" selected>No payable incidents available</option>
                 <?php endif; ?>
               </select>
               <span class="ui-select-caret" aria-hidden="true"></span>
@@ -482,6 +684,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
           <div class="empty-state">Payments are only allowed after the linked borrow record is marked as returned.</div>
           <div class="empty-state">Pending submissions still need admin approval before penalties are fully settled.</div>
           <div class="empty-state">Multiple penalty copies of the same book are grouped into one payment submission.</div>
+          <div class="empty-state">For lost or damaged books, wait until the librarian sets the assessed fee in Book Incidents before paying here.</div>
         </div>
       </div>
     </div>
@@ -510,6 +713,42 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
               <tr><td colspan="4" class="muted">No blocked penalties. All eligible unpaid penalties are ready for payment.</td></tr>
             <?php endif; ?>
             <?php foreach ($blockedPenaltyNotes as $blocked): ?>
+              <tr>
+                <td>#<?php echo (int) $blocked['id']; ?></td>
+                <td><?php echo h(format_currency($blocked['amount'])); ?></td>
+                <td><?php echo h($blocked['reason']); ?></td>
+                <td><span class="badge"><span class="status-dot due"></span><?php echo h($blocked['block_reason']); ?></span></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel member-workspace-history">
+      <div class="card-head">
+        <div class="dashboard-icon icon-guide" aria-hidden="true"></div>
+        <div>
+          <span class="chip">Incident Eligibility</span>
+          <h3 class="heading-top-md">Why some incident fees are blocked</h3>
+        </div>
+      </div>
+      <p class="muted copy-bottom">Incident payments only open after librarian review and fee assessment.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Incident ID</th>
+              <th>Amount</th>
+              <th>Book / Type</th>
+              <th>Payment Eligibility</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if (count($blockedIncidentNotes) === 0): ?>
+              <tr><td colspan="4" class="muted">No blocked incident payments. All payable incident fees are listed in the dropdown.</td></tr>
+            <?php endif; ?>
+            <?php foreach ($blockedIncidentNotes as $blocked): ?>
               <tr>
                 <td>#<?php echo (int) $blocked['id']; ?></td>
                 <td><?php echo h(format_currency($blocked['amount'])); ?></td>
@@ -576,7 +815,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
           <thead>
             <tr>
               <th>ID</th>
-              <th>Penalty Ref</th>
+              <th>Reference</th>
               <th>Amount</th>
               <th>Status</th>
               <th>Proof</th>
@@ -593,7 +832,12 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
                 <td>
                   <?php
                   $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
-                  if ($linkedPenaltyCount > 1) {
+                  if ((int) ($payment['incident_id'] ?? 0) > 0) {
+                      echo 'Incident #' . (int) $payment['incident_id'];
+                      if (trim((string) ($payment['linked_incident_book_title'] ?? '')) !== '') {
+                          echo ' / ' . h((string) $payment['linked_incident_book_title']);
+                      }
+                  } elseif ($linkedPenaltyCount > 1) {
                       echo h((string) ($payment['payment_batch'] ?: ('Payment #' . (int) $payment['id'])));
                       echo ' / ' . $linkedPenaltyCount . ' penalties';
                   } else {
@@ -610,7 +854,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0;
                     <span class="muted">None</span>
                   <?php endif; ?>
                 </td>
-                <td><?php echo h($payment['created_at']); ?></td>
+                <td><?php echo h(format_display_datetime((string) $payment['created_at'])); ?></td>
               </tr>
             <?php endwhile; ?>
           </tbody>

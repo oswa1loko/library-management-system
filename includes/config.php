@@ -372,6 +372,7 @@ function ensure_library_schema(mysqli $conn): void
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             penalty_id INT DEFAULT NULL,
+            incident_id INT DEFAULT NULL,
             payment_batch VARCHAR(40) DEFAULT NULL,
             amount DECIMAL(10,2) NOT NULL DEFAULT 0,
             proof_path VARCHAR(255) DEFAULT NULL,
@@ -869,8 +870,16 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("ALTER TABLE payments ADD COLUMN payment_batch VARCHAR(40) DEFAULT NULL AFTER penalty_id");
     }
 
+    if (!column_exists($conn, 'payments', 'incident_id')) {
+        $conn->query("ALTER TABLE payments ADD COLUMN incident_id INT DEFAULT NULL AFTER penalty_id");
+    }
+
     if (!index_exists($conn, 'payments', 'idx_payments_payment_batch')) {
         $conn->query("CREATE INDEX idx_payments_payment_batch ON payments (payment_batch)");
+    }
+
+    if (!index_exists($conn, 'payments', 'idx_payments_incident_id')) {
+        $conn->query("CREATE INDEX idx_payments_incident_id ON payments (incident_id)");
     }
 
     if (!index_exists($conn, 'payment_penalty_links', 'idx_payment_penalty_links_penalty')) {

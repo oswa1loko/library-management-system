@@ -31,7 +31,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     $id = (int) ($_POST['id'] ?? 0);
     $newStatus = isset($_POST['approve']) ? 'approved' : 'rejected';
 
-    $fetch = $conn->prepare("SELECT penalty_id, payment_batch, amount, proof_path, status FROM payments WHERE id = ? LIMIT 1");
+    $fetch = $conn->prepare("SELECT penalty_id, incident_id, payment_batch, amount, proof_path, status, user_id FROM payments WHERE id = ? LIMIT 1");
     $fetch->bind_param('i', $id);
     $fetch->execute();
     $current = $fetch->get_result()->fetch_assoc();
@@ -96,6 +96,30 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         }
     }
 
+    if ($newStatus === 'approved' && (int) ($current['incident_id'] ?? 0) > 0) {
+        $incidentId = (int) $current['incident_id'];
+        $incidentCheck = $conn->prepare("
+            SELECT assessed_fee, settlement_status, workflow_status
+            FROM book_incidents
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $incidentCheck->bind_param('i', $incidentId);
+        $incidentCheck->execute();
+        $incident = $incidentCheck->get_result()->fetch_assoc();
+        $incidentCheck->close();
+
+        if (
+            !$incident
+            || (string) ($incident['settlement_status'] ?? '') !== 'pending'
+            || !in_array((string) ($incident['workflow_status'] ?? ''), ['awaiting_settlement', 'resolved'], true)
+            || round((float) $current['amount'], 2) !== round((float) ($incident['assessed_fee'] ?? 0), 2)
+        ) {
+            header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved safely.'));
+            exit;
+        }
+    }
+
     if ($newStatus === 'rejected') {
         $stmt = $conn->prepare("UPDATE payments SET status = 'rejected', proof_path = NULL WHERE id = ? AND status = 'pending'");
         $stmt->bind_param('i', $id);
@@ -111,21 +135,23 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             audit_log($conn, 'admin.payment.reject', [
                 'payment_id' => $id,
                 'penalty_id' => (int) ($current['penalty_id'] ?? 0),
+                'incident_id' => (int) ($current['incident_id'] ?? 0),
             ]);
-            create_notification(
-                $conn,
-                'student',
-                'Payment Rejected',
-                'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
-                'critical'
-            );
-            create_notification(
-                $conn,
-                'faculty',
-                'Payment Rejected',
-                'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
-                'critical'
-            );
+            $targetRoleStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+            $targetRoleStmt->bind_param('i', $current['user_id']);
+            $targetRoleStmt->execute();
+            $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
+            $targetRoleStmt->close();
+            if (in_array($targetRole, ['student', 'faculty'], true)) {
+                create_notification(
+                    $conn,
+                    $targetRole,
+                    'Payment Rejected',
+                    'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
+                    'critical',
+                    (int) $current['user_id']
+                );
+            }
         }
     } else {
         $stmt = $conn->prepare("UPDATE payments SET status = 'approved' WHERE id = ? AND status = 'pending'");
@@ -143,27 +169,46 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             $sync->close();
         }
 
+        if ((int) ($current['incident_id'] ?? 0) > 0) {
+            $incidentId = (int) $current['incident_id'];
+            $resolvedAt = date('Y-m-d H:i:s');
+            $incidentSync = $conn->prepare("
+                UPDATE book_incidents
+                SET settlement_status = 'paid',
+                    workflow_status = 'resolved',
+                    resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
+                    resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
+                WHERE id = ?
+            ");
+            $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
+            $incidentSync->bind_param('sii', $resolvedAt, $actorUserId, $incidentId);
+            $incidentSync->execute();
+            $incidentSync->close();
+        }
+
         if ($changed) {
             audit_log($conn, 'admin.payment.approve', [
                 'payment_id' => $id,
                 'penalty_id' => (int) ($current['penalty_id'] ?? 0),
+                'incident_id' => (int) ($current['incident_id'] ?? 0),
                 'payment_batch' => (string) ($current['payment_batch'] ?? ''),
                 'linked_penalty_ids' => $linkedPenaltyIds,
             ]);
-            create_notification(
-                $conn,
-                'student',
-                'Payment Approved',
-                'Payment #' . $id . ' was approved by admin.',
-                'info'
-            );
-            create_notification(
-                $conn,
-                'faculty',
-                'Payment Approved',
-                'Payment #' . $id . ' was approved by admin.',
-                'info'
-            );
+            $targetRoleStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+            $targetRoleStmt->bind_param('i', $current['user_id']);
+            $targetRoleStmt->execute();
+            $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
+            $targetRoleStmt->close();
+            if (in_array($targetRole, ['student', 'faculty'], true)) {
+                create_notification(
+                    $conn,
+                    $targetRole,
+                    'Payment Approved',
+                    'Payment #' . $id . ' was approved by admin.',
+                    'info',
+                    (int) $current['user_id']
+                );
+            }
         }
     }
 
@@ -229,15 +274,19 @@ $sql = "
         u.username,
         u.role,
         p.status AS penalty_status,
-        b.title AS borrowed_book_title,
+        COALESCE(b.title, ib.title) AS borrowed_book_title,
         COALESCE(balance.unpaid_total, 0) AS current_balance,
-        COUNT(DISTINCT ppl.penalty_id) AS linked_penalty_count
+        COUNT(DISTINCT ppl.penalty_id) AS linked_penalty_count,
+        bi.incident_type,
+        bi.settlement_status AS incident_settlement_status
     FROM payments pay
     JOIN users u ON u.id = pay.user_id
     LEFT JOIN penalties p ON p.id = pay.penalty_id
     LEFT JOIN payment_penalty_links ppl ON ppl.payment_id = pay.id
     LEFT JOIN borrows br ON br.id = p.borrow_id
     LEFT JOIN books b ON b.id = br.book_id
+    LEFT JOIN book_incidents bi ON bi.id = pay.incident_id
+    LEFT JOIN books ib ON ib.id = bi.book_id
     LEFT JOIN (
         SELECT user_id, COALESCE(SUM(CASE WHEN status = 'unpaid' THEN amount ELSE 0 END), 0) AS unpaid_total
         FROM penalties
@@ -403,7 +452,7 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
               <th>Current Balance</th>
               <th>Status</th>
               <th>Proof</th>
-              <th>Penalty</th>
+              <th>Reference</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -430,7 +479,10 @@ $filterQueryString = payments_filter_query($search, $statusFilter, $roleFilter);
                 <td>
                   <?php
                   $linkedPenaltyCount = max(0, (int) ($payment['linked_penalty_count'] ?? 0));
-                  if ($linkedPenaltyCount > 1) {
+                  if ((int) ($payment['incident_id'] ?? 0) > 0) {
+                      echo 'Incident #' . (int) $payment['incident_id'] . ' / ' . h(book_incident_type_label((string) ($payment['incident_type'] ?? '')));
+                      echo ' / ' . h(book_incident_settlement_label((string) ($payment['incident_settlement_status'] ?? 'pending')));
+                  } elseif ($linkedPenaltyCount > 1) {
                       echo h((string) ($payment['payment_batch'] ?: ('Payment #' . (int) $payment['id'])));
                       echo ' / ' . $linkedPenaltyCount . ' penalties';
                   } elseif ((int) ($payment['penalty_id'] ?? 0) > 0) {
