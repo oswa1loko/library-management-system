@@ -34,6 +34,7 @@ $isValidRoleFilter = $roleFilter !== '' && in_array($roleFilter, $rolesAllowed, 
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 10;
 $flash = trim($_GET['notice'] ?? '');
+$flashType = trim($_GET['notice_type'] ?? '');
 
 if (isset($_POST['approve']) || isset($_POST['reject'])) {
     $id = (int) ($_POST['id'] ?? 0);
@@ -45,13 +46,11 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     $current = $fetch->get_result()->fetch_assoc();
     $fetch->close();
 
-    if (!$current || $current['status'] !== 'pending') {
-        header('Location: payments_records.php?notice=' . urlencode('Only pending payments can be reviewed.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
-        exit;
-    }
+    $redirectQuery = payments_filter_query($search, $statusFilter, $roleFilter, $paymentScope);
+    $redirectPrefix = 'payments_records.php' . $redirectQuery . ($redirectQuery !== '' ? '&' : '?');
 
-    if ((int) ($current['incident_id'] ?? 0) > 0) {
-        header('Location: book_incidents_records.php?incident=' . (int) $current['incident_id'] . '&notice=' . urlencode('Review incident payments from the Book Incidents page.') . '&notice_type=info');
+    if (!$current || $current['status'] !== 'pending') {
+        header('Location: ' . $redirectPrefix . 'notice=' . urlencode('Only pending payments can be reviewed.') . '&notice_type=error');
         exit;
     }
 
@@ -104,7 +103,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
         }
 
         if ($validPenaltyCount !== count($linkedPenaltyIds) || round((float) $current['amount'], 2) !== round($expectedAmount, 2)) {
-            header('Location: payments_records.php?notice=' . urlencode('This payment can no longer be approved safely.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
+            header('Location: ' . $redirectPrefix . 'notice=' . urlencode('This payment can no longer be approved safely.') . '&notice_type=error');
             exit;
         }
     }
@@ -127,7 +126,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             || (string) ($incident['settlement_status'] ?? '') !== 'pending'
             || round((float) $current['amount'], 2) <= 0
         ) {
-            header('Location: payments_records.php?notice=' . urlencode('This incident payment can no longer be approved.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
+            header('Location: ' . $redirectPrefix . 'notice=' . urlencode('This incident payment can no longer be approved.') . '&notice_type=error');
             exit;
         }
     }
@@ -170,7 +169,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             }
         } catch (Throwable $exception) {
             $conn->rollback();
-            header('Location: payments_records.php?notice=' . urlencode('Unable to reject this payment right now.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
+            header('Location: ' . $redirectPrefix . 'notice=' . urlencode('Unable to reject this payment right now.') . '&notice_type=error');
             exit;
         }
     } else {
@@ -238,12 +237,13 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             $conn->commit();
         } catch (Throwable $exception) {
             $conn->rollback();
-            header('Location: payments_records.php?notice=' . urlencode('Unable to approve this payment right now.') . ($paymentScope !== 'all' ? '&scope=' . urlencode($paymentScope) : ''));
+            header('Location: ' . $redirectPrefix . 'notice=' . urlencode('Unable to approve this payment right now.') . '&notice_type=error');
             exit;
         }
     }
 
-    header('Location: payments_records.php' . ($paymentScope !== 'all' ? '?scope=' . urlencode($paymentScope) : ''));
+    $decisionLabel = $newStatus === 'approved' ? 'approved' : 'rejected';
+    header('Location: ' . $redirectPrefix . 'notice=' . urlencode('Payment #' . $id . ' was ' . $decisionLabel . '.') . '&notice_type=success');
     exit;
 }
 
@@ -426,7 +426,7 @@ $summaryLabels = match ($paymentScope) {
         'pending_amount' => 'Pending Incident Fees',
         'pending_amount_copy' => 'Incident fee value currently waiting for approval.',
         'queue_title' => 'Incident submissions and actions',
-        'queue_copy' => 'Filter incident payment records here, then open the linked incident record to approve or reject the uploaded proof.',
+        'queue_copy' => 'Filter incident payment records here, inspect the linked incident context, then approve or reject the uploaded proof directly from this page.',
         'submitted_chip' => 'Incident submitted',
         'pending_chip' => 'Incident pending',
     ],
@@ -478,7 +478,10 @@ $summaryLabels = match ($paymentScope) {
     <?php
     $noticeItems = [];
     if ($flash !== '') {
-        $noticeItems[] = ['type' => 'error', 'message' => $flash];
+        $noticeItems[] = [
+            'type' => in_array($flashType, ['success', 'error', 'warning', 'info'], true) ? $flashType : 'info',
+            'message' => $flash,
+        ];
     }
     require __DIR__ . '/partials/notices.php';
     ?>
@@ -633,9 +636,10 @@ $summaryLabels = match ($paymentScope) {
                   ?>
                 </td>
                 <td class="payment-record-actions payment-record-action-stack">
-                  <?php if ((int) ($payment['incident_id'] ?? 0) > 0): ?>
-                    <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php?incident=' . (int) ($payment['incident_id'] ?? 0))); ?>">Open Incident</a>
-                  <?php elseif ((string) ($payment['status'] ?? '') === 'pending'): ?>
+                  <?php if ((string) ($payment['status'] ?? '') === 'pending'): ?>
+                    <?php if ((int) ($payment['incident_id'] ?? 0) > 0): ?>
+                      <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php?incident=' . (int) ($payment['incident_id'] ?? 0))); ?>">View Incident</a>
+                    <?php endif; ?>
                     <form method="post" class="inline-form">
                       <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
                       <button type="submit" name="approve" value="1">Approve</button>
@@ -645,6 +649,9 @@ $summaryLabels = match ($paymentScope) {
                       <button type="submit" class="danger" name="reject" value="1">Reject</button>
                     </form>
                   <?php else: ?>
+                    <?php if ((int) ($payment['incident_id'] ?? 0) > 0): ?>
+                      <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php?incident=' . (int) ($payment['incident_id'] ?? 0))); ?>">View Incident</a>
+                    <?php endif; ?>
                     <span class="review-state review-state-<?php echo h((string) ($payment['status'] ?? 'approved')); ?>">
                       <?php echo (string) ($payment['status'] ?? '') === 'rejected' ? 'Rejected by admin' : 'Reviewed'; ?>
                     </span>
