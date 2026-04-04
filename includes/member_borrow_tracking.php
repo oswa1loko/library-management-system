@@ -335,9 +335,23 @@ unset($trackingGroup);
             <span class="muted">Closed incident cases</span>
           </div>
         </div>
-        <div class="stack">
+        <div class="table-wrap member-tracking-desktop">
+          <table>
+            <thead>
+              <tr>
+                <th>Incident Ref</th>
+                <th>Book</th>
+                <th>Reported</th>
+                <th>Case Status</th>
+                <th>Payment Status</th>
+                <th>Next Step</th>
+                <th>Fee</th>
+                <th>Resolution</th>
+              </tr>
+            </thead>
+            <tbody>
           <?php if ($incidentTracking === []): ?>
-            <div class="empty-state">No incident reports found yet.</div>
+              <tr><td colspan="8" class="muted">No incident reports found yet.</td></tr>
           <?php endif; ?>
           <?php foreach ($incidentTracking as $incident): ?>
             <?php
@@ -347,68 +361,56 @@ unset($trackingGroup);
             $paymentStep = book_incident_payment_stage_label($incident);
             $nextActor = book_incident_next_actor_label($workflowStatus, $settlementStatus);
             $canUploadPayment = book_incident_can_accept_payment_submission($incident);
+            $nextStepCopy = 'The librarian is still reviewing this incident and will update the final fee or inventory action after assessment.';
+            if ($canUploadPayment) {
+                $nextStepCopy = 'Ready for payment upload';
+            } elseif ($paymentStep === 'Payment Submitted') {
+                $nextStepCopy = 'Waiting for admin approval';
+            } elseif ($paymentStep === 'Payment Rejected') {
+                $nextStepCopy = 'Upload a new payment proof';
+            } elseif ($paymentStep === 'No Payment Needed') {
+                $nextStepCopy = 'Waiting for final closeout';
+            } elseif ($currentStep === 'Closed') {
+                $nextStepCopy = 'Completed';
+            }
             ?>
-            <div class="panel member-return-batch-card">
-              <div class="member-return-batch-head">
-                <div>
+              <tr>
+                <td>
+                  <strong class="label-block">Incident #<?php echo (int) ($incident['id'] ?? 0); ?></strong>
+                  <span class="muted">Borrow #<?php echo (int) ($incident['borrow_id'] ?? 0); ?></span>
+                </td>
+                <td>
                   <strong class="label-block"><?php echo h((string) ($incident['title'] ?? 'Incident record')); ?></strong>
-                  <span class="muted">
-                    Incident #<?php echo (int) ($incident['id'] ?? 0); ?> |
-                    Borrow #<?php echo (int) ($incident['borrow_id'] ?? 0); ?> |
-                    Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?>
-                  </span>
-                  <div class="inline-actions chips-row batch-status-row">
-                    <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
-                    <span class="chip"><?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
-                    <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
-                    <span class="chip"><?php echo h($paymentStep); ?></span>
-                  </div>
-                </div>
-                <div class="stack flow-gap-sm">
+                  <span class="muted"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?> | <?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
+                </td>
+                <td><?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?></td>
+                <td>
                   <span class="badge">
                     <span class="status-dot <?php echo h(book_incident_status_dot_class($workflowStatus)); ?>"></span>
-                    Case: <?php echo h($currentStep); ?>
+                    <?php echo h($currentStep); ?>
                   </span>
+                </td>
+                <td>
                   <span class="badge">
                     <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
-                    Next: <?php echo h($nextActor); ?>
+                    <?php echo h($paymentStep); ?>
                   </span>
-                </div>
-              </div>
-              <div class="stack member-return-batch-list">
-                <div class="empty-state member-return-batch-item">
-                  <span class="grow">
-                    <strong class="label-block meta-top-sm">Progress</strong>
-                    <?php if ($canUploadPayment): ?>
-                      <span class="muted">This incident is ready for payment. Go to the Payments page to upload the assessed fee and proof.</span>
-                    <?php elseif ($paymentStep === 'Payment Submitted'): ?>
-                      <span class="muted">Your payment proof was submitted and is currently waiting for admin approval.</span>
-                    <?php elseif ($paymentStep === 'Payment Rejected'): ?>
-                      <span class="muted">Your payment proof was rejected. Upload a new proof from the Payments page to continue settlement.</span>
-                    <?php elseif ($paymentStep === 'No Payment Needed'): ?>
-                      <span class="muted">No payment is required for this incident. The case only needs final closeout from the library team.</span>
-                    <?php elseif ($currentStep === 'Closed'): ?>
-                      <span class="muted">This incident is already closed and no further action is required from you.</span>
-                    <?php else: ?>
-                      <span class="muted">The librarian is still reviewing this incident and will update the final fee or inventory action after assessment.</span>
-                    <?php endif; ?>
-                  </span>
-                </div>
-                <div class="empty-state member-return-batch-item">
-                  <span class="grow">
-                    <strong class="label-block meta-top-sm">Resolution</strong>
-                    <span class="muted">
-                      Action: <?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?> |
-                      Payment: <?php echo h($paymentStep); ?>
-                    </span>
+                </td>
+                <td>
+                  <strong class="label-block"><?php echo h($nextActor); ?></strong>
+                  <span class="muted"><?php echo h($nextStepCopy); ?></span>
+                </td>
+                <td><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></td>
+                <td>
+                  <strong class="label-block"><?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?></strong>
                     <?php if (trim((string) ($incident['resolution_notes'] ?? '')) !== ''): ?>
-                      <span class="muted meta-top-sm"><?php echo nl2br(h((string) $incident['resolution_notes'])); ?></span>
+                    <span class="muted"><?php echo nl2br(h((string) $incident['resolution_notes'])); ?></span>
                     <?php endif; ?>
-                  </span>
-                </div>
-              </div>
-            </div>
+                </td>
+              </tr>
           <?php endforeach; ?>
+            </tbody>
+          </table>
         </div>
       </div>
 
