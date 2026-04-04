@@ -312,12 +312,15 @@ function get_member_reportable_borrows(mysqli $conn, int $userId): array
         SELECT
             br.id,
             br.book_id,
+            br.book_copy_id,
             br.status,
             br.borrow_date,
             br.due_date,
             br.request_batch,
             b.title,
             b.author,
+            bc.copy_id,
+            bc.barcode,
             (
                 SELECT COUNT(*)
                 FROM book_incidents bi
@@ -326,6 +329,7 @@ function get_member_reportable_borrows(mysqli $conn, int $userId): array
             ) AS open_incident_count
         FROM borrows br
         JOIN books b ON b.id = br.book_id
+        LEFT JOIN book_copies bc ON bc.id = br.book_copy_id
         WHERE br.user_id = ?
           AND br.status IN ('borrowed', 'return_requested')
         ORDER BY COALESCE(br.approved_at, br.borrow_date, br.created_at) DESC, br.id DESC
@@ -349,6 +353,8 @@ function get_member_incidents(mysqli $conn, int $userId): array
             bi.*,
             b.title,
             b.author,
+            bc.copy_id,
+            bc.barcode,
             br.status AS borrow_status,
             (
                 SELECT pay.status
@@ -362,6 +368,7 @@ function get_member_incidents(mysqli $conn, int $userId): array
         FROM book_incidents bi
         JOIN books b ON b.id = bi.book_id
         JOIN borrows br ON br.id = bi.borrow_id
+        LEFT JOIN book_copies bc ON bc.id = COALESCE(bi.book_copy_id, br.book_copy_id)
         LEFT JOIN users reviewer ON reviewer.id = bi.reviewed_by
         LEFT JOIN users resolver ON resolver.id = bi.resolved_by
         WHERE bi.user_id = ?
@@ -398,9 +405,10 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     }
 
     $borrowStmt = $conn->prepare("
-        SELECT br.book_id, br.status, b.title
+        SELECT br.book_id, br.book_copy_id, br.status, b.title, bc.copy_id, bc.barcode
         FROM borrows br
         JOIN books b ON b.id = br.book_id
+        LEFT JOIN book_copies bc ON bc.id = br.book_copy_id
         WHERE br.id = ?
           AND br.user_id = ?
         LIMIT 1
@@ -438,12 +446,14 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     $reportedAt = date('Y-m-d H:i:s');
     $normalizedRole = canonical_role($userRole);
     $bookId = (int) ($borrow['book_id'] ?? 0);
+    $bookCopyId = (int) ($borrow['book_copy_id'] ?? 0);
     $severityValue = null;
     $insertStmt = $conn->prepare("
         INSERT INTO book_incidents (
             borrow_id,
             user_id,
             book_id,
+            book_copy_id,
             reported_by_role,
             incident_type,
             severity,
@@ -451,13 +461,14 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
             workflow_status,
             settlement_status,
             reported_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?)
     ");
     $insertStmt->bind_param(
-        'iiisssss',
+        'iiiisssss',
         $borrowId,
         $userId,
         $bookId,
+        $bookCopyId,
         $normalizedRole,
         $incidentType,
         $severityValue,
@@ -473,6 +484,10 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     }
 
     $bookTitle = trim((string) ($borrow['title'] ?? 'the selected book'));
+    $copyLabel = trim((string) ($borrow['copy_id'] ?? ''));
+    if ($copyLabel !== '') {
+        $bookTitle .= ' (' . $copyLabel . ')';
+    }
     create_notification(
         $conn,
         'librarian',
@@ -528,6 +543,9 @@ function get_librarian_incidents(mysqli $conn, string $statusFilter = '', string
             u.role,
             b.title,
             b.author,
+            COALESCE(bi.book_copy_id, br.book_copy_id) AS effective_book_copy_id,
+            bc.copy_id,
+            bc.barcode,
             br.status AS borrow_status,
             br.borrow_date,
             br.due_date,
@@ -544,6 +562,7 @@ function get_librarian_incidents(mysqli $conn, string $statusFilter = '', string
         JOIN users u ON u.id = bi.user_id
         JOIN books b ON b.id = bi.book_id
         JOIN borrows br ON br.id = bi.borrow_id
+        LEFT JOIN book_copies bc ON bc.id = COALESCE(bi.book_copy_id, br.book_copy_id)
         LEFT JOIN users reviewer ON reviewer.id = bi.reviewed_by
         LEFT JOIN users resolver ON resolver.id = bi.resolved_by
     ";
@@ -588,6 +607,7 @@ function apply_book_incident_resolution(mysqli $conn, array $incident, string $r
 {
     $borrowId = (int) ($incident['borrow_id'] ?? 0);
     $bookId = (int) ($incident['book_id'] ?? 0);
+    $bookCopyId = (int) ($incident['book_copy_id'] ?? $incident['effective_book_copy_id'] ?? 0);
     $borrowStatus = trim((string) ($incident['borrow_status'] ?? ''));
     $resolutionAction = trim((string) ($incident['resolution_action'] ?? 'none'));
     $inventoryAppliedAt = trim((string) ($incident['inventory_applied_at'] ?? ''));
@@ -618,6 +638,18 @@ function apply_book_incident_resolution(mysqli $conn, array $incident, string $r
     }
 
     if ($inventoryAppliedAt !== '') {
+        return ['ok' => true];
+    }
+
+    if ($bookCopyId > 0) {
+        if ($resolutionAction === 'return_to_shelf') {
+            set_book_copy_status($conn, $bookCopyId, 'available');
+        } elseif ($resolutionAction === 'write_off_lost') {
+            set_book_copy_status($conn, $bookCopyId, 'lost');
+        } elseif ($resolutionAction === 'write_off_damaged') {
+            set_book_copy_status($conn, $bookCopyId, 'damaged');
+        }
+
         return ['ok' => true];
     }
 

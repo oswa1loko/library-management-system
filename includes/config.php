@@ -284,6 +284,231 @@ function index_exists(mysqli $conn, string $table, string $index): bool
     return $result instanceof mysqli_result && $result->num_rows > 0;
 }
 
+function generate_book_copy_identifier(int $bookId, int $sequence): string
+{
+    return sprintf('B%04d-C%03d', max(1, $bookId), max(1, $sequence));
+}
+
+function sync_book_inventory_from_copies(mysqli $conn, int $bookId): void
+{
+    if ($bookId <= 0 || !table_exists($conn, 'book_copies')) {
+        return;
+    }
+
+    $summaryStmt = $conn->prepare("
+        SELECT
+            COUNT(CASE WHEN status NOT IN ('lost', 'damaged') THEN 1 END) AS total_copies,
+            COUNT(CASE WHEN status = 'available' THEN 1 END) AS available_copies
+        FROM book_copies
+        WHERE book_id = ?
+    ");
+    $summaryStmt->bind_param('i', $bookId);
+    $summaryStmt->execute();
+    $summary = $summaryStmt->get_result()->fetch_assoc() ?: [];
+    $summaryStmt->close();
+
+    $qtyTotal = max(0, (int) ($summary['total_copies'] ?? 0));
+    $qtyAvailable = max(0, (int) ($summary['available_copies'] ?? 0));
+
+    $updateStmt = $conn->prepare("
+        UPDATE books
+        SET qty_total = ?, qty_available = ?
+        WHERE id = ?
+    ");
+    $updateStmt->bind_param('iii', $qtyTotal, $qtyAvailable, $bookId);
+    $updateStmt->execute();
+    $updateStmt->close();
+}
+
+function create_missing_book_copies(mysqli $conn, int $bookId, int $count, string $status = 'available'): void
+{
+    if ($bookId <= 0 || $count <= 0 || !table_exists($conn, 'book_copies')) {
+        return;
+    }
+
+    $status = in_array($status, ['available', 'borrowed', 'damaged', 'lost'], true) ? $status : 'available';
+    $existingCountStmt = $conn->prepare("SELECT COUNT(*) AS copy_count FROM book_copies WHERE book_id = ?");
+    $existingCountStmt->bind_param('i', $bookId);
+    $existingCountStmt->execute();
+    $existingCount = (int) (($existingCountStmt->get_result()->fetch_assoc()['copy_count'] ?? 0));
+    $existingCountStmt->close();
+
+    $insertStmt = $conn->prepare("
+        INSERT INTO book_copies (book_id, copy_id, barcode, status)
+        VALUES (?, ?, ?, ?)
+    ");
+
+    for ($i = 1; $i <= $count; $i++) {
+        $sequence = $existingCount + $i;
+        $copyId = generate_book_copy_identifier($bookId, $sequence);
+        $barcode = $copyId;
+        $insertStmt->bind_param('isss', $bookId, $copyId, $barcode, $status);
+        $insertStmt->execute();
+    }
+
+    $insertStmt->close();
+}
+
+function backfill_book_copies_for_book(mysqli $conn, int $bookId): void
+{
+    if ($bookId <= 0 || !table_exists($conn, 'book_copies')) {
+        return;
+    }
+
+    $copyCountStmt = $conn->prepare("SELECT COUNT(*) AS copy_count FROM book_copies WHERE book_id = ?");
+    $copyCountStmt->bind_param('i', $bookId);
+    $copyCountStmt->execute();
+    $copyCount = (int) (($copyCountStmt->get_result()->fetch_assoc()['copy_count'] ?? 0));
+    $copyCountStmt->close();
+
+    if ($copyCount > 0) {
+        sync_book_inventory_from_copies($conn, $bookId);
+        return;
+    }
+
+    $bookStmt = $conn->prepare("
+        SELECT qty_total, qty_available
+        FROM books
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $bookStmt->bind_param('i', $bookId);
+    $bookStmt->execute();
+    $book = $bookStmt->get_result()->fetch_assoc();
+    $bookStmt->close();
+
+    if (!$book) {
+        return;
+    }
+
+    $qtyTotal = max(0, (int) ($book['qty_total'] ?? 0));
+    $qtyAvailable = max(0, min($qtyTotal, (int) ($book['qty_available'] ?? 0)));
+    $qtyBorrowed = max(0, $qtyTotal - $qtyAvailable);
+
+    create_missing_book_copies($conn, $bookId, $qtyAvailable, 'available');
+    create_missing_book_copies($conn, $bookId, $qtyBorrowed, 'borrowed');
+    sync_book_inventory_from_copies($conn, $bookId);
+}
+
+function assign_available_book_copy(mysqli $conn, int $bookId): ?array
+{
+    if ($bookId <= 0 || !table_exists($conn, 'book_copies')) {
+        return null;
+    }
+
+    backfill_book_copies_for_book($conn, $bookId);
+
+    $selectStmt = $conn->prepare("
+        SELECT id, copy_id, barcode
+        FROM book_copies
+        WHERE book_id = ?
+          AND status = 'available'
+        ORDER BY id ASC
+        LIMIT 1
+        FOR UPDATE
+    ");
+    $selectStmt->bind_param('i', $bookId);
+    $selectStmt->execute();
+    $copy = $selectStmt->get_result()->fetch_assoc();
+    $selectStmt->close();
+
+    if (!$copy) {
+        return null;
+    }
+
+    $copyId = (int) ($copy['id'] ?? 0);
+    $updateStmt = $conn->prepare("
+        UPDATE book_copies
+        SET status = 'borrowed'
+        WHERE id = ?
+          AND status = 'available'
+    ");
+    $updateStmt->bind_param('i', $copyId);
+    $updateStmt->execute();
+    $updated = $updateStmt->affected_rows === 1;
+    $updateStmt->close();
+
+    if (!$updated) {
+        return null;
+    }
+
+    sync_book_inventory_from_copies($conn, $bookId);
+
+    return [
+        'id' => $copyId,
+        'copy_id' => (string) ($copy['copy_id'] ?? ''),
+        'barcode' => (string) ($copy['barcode'] ?? ''),
+    ];
+}
+
+function set_book_copy_status(mysqli $conn, int $copyId, string $status): bool
+{
+    if ($copyId <= 0 || !table_exists($conn, 'book_copies')) {
+        return false;
+    }
+
+    if (!in_array($status, ['available', 'borrowed', 'damaged', 'lost'], true)) {
+        return false;
+    }
+
+    $fetchStmt = $conn->prepare("SELECT book_id FROM book_copies WHERE id = ? LIMIT 1");
+    $fetchStmt->bind_param('i', $copyId);
+    $fetchStmt->execute();
+    $row = $fetchStmt->get_result()->fetch_assoc();
+    $fetchStmt->close();
+
+    if (!$row) {
+        return false;
+    }
+
+    $bookId = (int) ($row['book_id'] ?? 0);
+    $updateStmt = $conn->prepare("UPDATE book_copies SET status = ? WHERE id = ?");
+    $updateStmt->bind_param('si', $status, $copyId);
+    $updateStmt->execute();
+    $updated = $updateStmt->affected_rows >= 0;
+    $updateStmt->close();
+
+    sync_book_inventory_from_copies($conn, $bookId);
+    return $updated;
+}
+
+function remove_available_book_copies(mysqli $conn, int $bookId, int $count): void
+{
+    if ($bookId <= 0 || $count <= 0 || !table_exists($conn, 'book_copies')) {
+        return;
+    }
+
+    $selectStmt = $conn->prepare("
+        SELECT id
+        FROM book_copies
+        WHERE book_id = ?
+          AND status = 'available'
+        ORDER BY id DESC
+        LIMIT ?
+    ");
+    $selectStmt->bind_param('ii', $bookId, $count);
+    $selectStmt->execute();
+    $result = $selectStmt->get_result();
+    $copyIds = [];
+    while ($result && ($row = $result->fetch_assoc())) {
+        $copyIds[] = (int) ($row['id'] ?? 0);
+    }
+    $selectStmt->close();
+
+    if ($copyIds === []) {
+        return;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($copyIds), '?'));
+    $types = str_repeat('i', count($copyIds));
+    $deleteStmt = $conn->prepare("DELETE FROM book_copies WHERE id IN ($placeholders)");
+    $deleteStmt->bind_param($types, ...$copyIds);
+    $deleteStmt->execute();
+    $deleteStmt->close();
+
+    sync_book_inventory_from_copies($conn, $bookId);
+}
+
 function ensure_library_schema(mysqli $conn): void
 {
     $conn->query("
@@ -331,10 +556,25 @@ function ensure_library_schema(mysqli $conn): void
     ");
 
     $conn->query("
+        CREATE TABLE IF NOT EXISTS book_copies (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            book_id INT NOT NULL,
+            copy_id VARCHAR(50) NOT NULL,
+            barcode VARCHAR(100) DEFAULT NULL,
+            status ENUM('available','borrowed','damaged','lost') NOT NULL DEFAULT 'available',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_book_copies_copy_id (copy_id),
+            UNIQUE KEY uniq_book_copies_barcode (barcode),
+            INDEX idx_book_copies_book_status (book_id, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
         CREATE TABLE IF NOT EXISTS borrows (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             book_id INT NOT NULL,
+            book_copy_id INT DEFAULT NULL,
             request_batch VARCHAR(40) DEFAULT NULL,
             return_batch VARCHAR(40) DEFAULT NULL,
             requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -396,6 +636,7 @@ function ensure_library_schema(mysqli $conn): void
             borrow_id INT NOT NULL,
             user_id INT NOT NULL,
             book_id INT NOT NULL,
+            book_copy_id INT DEFAULT NULL,
             reported_by_role ENUM('student','faculty','librarian','admin') NOT NULL,
             incident_type ENUM('lost','damaged') NOT NULL,
             severity ENUM('minor','major','severe') DEFAULT NULL,
@@ -651,8 +892,20 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("ALTER TABLE books ADD COLUMN qty_available INT NOT NULL DEFAULT 1 AFTER qty_total");
     }
 
+    if (!column_exists($conn, 'book_copies', 'barcode')) {
+        $conn->query("ALTER TABLE book_copies ADD COLUMN barcode VARCHAR(100) DEFAULT NULL AFTER copy_id");
+    }
+
+    if (!column_exists($conn, 'book_copies', 'status')) {
+        $conn->query("ALTER TABLE book_copies ADD COLUMN status ENUM('available','borrowed','damaged','lost') NOT NULL DEFAULT 'available' AFTER barcode");
+    }
+
     if (!column_exists($conn, 'borrows', 'borrow_days')) {
         $conn->query("ALTER TABLE borrows ADD COLUMN borrow_days INT NOT NULL DEFAULT 7 AFTER due_date");
+    }
+
+    if (!column_exists($conn, 'borrows', 'book_copy_id')) {
+        $conn->query("ALTER TABLE borrows ADD COLUMN book_copy_id INT DEFAULT NULL AFTER book_id");
     }
 
     if (!column_exists($conn, 'borrows', 'requested_at')) {
@@ -717,6 +970,10 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!index_exists($conn, 'borrows', 'idx_borrows_book_status')) {
         $conn->query("CREATE INDEX idx_borrows_book_status ON borrows (book_id, status)");
+    }
+
+    if (!index_exists($conn, 'borrows', 'idx_borrows_book_copy')) {
+        $conn->query("CREATE INDEX idx_borrows_book_copy ON borrows (book_copy_id)");
     }
 
     if (!index_exists($conn, 'borrows', 'idx_borrows_requested_at')) {
@@ -834,6 +1091,27 @@ function ensure_library_schema(mysqli $conn): void
     $conn->query("UPDATE books SET qty_total = 1 WHERE qty_total IS NULL OR qty_total < 0");
     $conn->query("UPDATE books SET qty_available = qty_total WHERE qty_available IS NULL OR qty_available < 0 OR qty_available > qty_total");
 
+    if (!index_exists($conn, 'book_copies', 'idx_book_copies_book_status')) {
+        $conn->query("CREATE INDEX idx_book_copies_book_status ON book_copies (book_id, status)");
+    }
+
+    if (!index_exists($conn, 'book_copies', 'uniq_book_copies_copy_id')) {
+        $conn->query("CREATE UNIQUE INDEX uniq_book_copies_copy_id ON book_copies (copy_id)");
+    }
+
+    if (!index_exists($conn, 'book_copies', 'uniq_book_copies_barcode')) {
+        $conn->query("CREATE UNIQUE INDEX uniq_book_copies_barcode ON book_copies (barcode)");
+    }
+
+    if (table_exists($conn, 'books') && table_exists($conn, 'book_copies')) {
+        $bookIdsResult = $conn->query("SELECT id FROM books ORDER BY id ASC");
+        if ($bookIdsResult instanceof mysqli_result) {
+            while ($bookRow = $bookIdsResult->fetch_assoc()) {
+                backfill_book_copies_for_book($conn, (int) ($bookRow['id'] ?? 0));
+            }
+        }
+    }
+
     if (column_exists($conn, 'books', 'copies')) {
         $conn->query("ALTER TABLE books DROP COLUMN copies");
     }
@@ -888,6 +1166,10 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'book_incidents', 'reported_by_role')) {
         $conn->query("ALTER TABLE book_incidents ADD COLUMN reported_by_role ENUM('student','faculty','librarian','admin') NOT NULL DEFAULT 'student' AFTER book_id");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'book_copy_id')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN book_copy_id INT DEFAULT NULL AFTER book_id");
     }
 
     if (!column_exists($conn, 'book_incidents', 'incident_type')) {
@@ -959,6 +1241,10 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!index_exists($conn, 'book_incidents', 'idx_book_incidents_book')) {
         $conn->query("CREATE INDEX idx_book_incidents_book ON book_incidents (book_id)");
+    }
+
+    if (!index_exists($conn, 'book_incidents', 'idx_book_incidents_book_copy')) {
+        $conn->query("CREATE INDEX idx_book_incidents_book_copy ON book_incidents (book_copy_id)");
     }
 
     if (!index_exists($conn, 'book_incidents', 'idx_book_incidents_reported_at')) {

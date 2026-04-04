@@ -106,16 +106,34 @@ if (isset($_POST['update'])) {
         $catalogName = trim((string) ($selectedCatalog['name'] ?? ''));
         $isbnValue = $isbn !== '' ? $isbn : null;
         $descriptionValue = $description !== '' ? $description : null;
-        $stmt = $conn->prepare("
-            UPDATE books
-            SET title = ?, author = ?, category = ?, catalog_id = ?, isbn = ?, description = ?, cover_path = ?, qty_total = ?, qty_available = ?
-            WHERE id = ?
-        ");
-        $stmt->bind_param('sssisssiii', $title, $author, $catalogName, $catalogId, $isbnValue, $descriptionValue, $coverPath, $total, $available, $bookId);
-        $stmt->execute();
-        $stmt->close();
-        header('Location: manage_books.php');
-        exit;
+        $conn->begin_transaction();
+
+        try {
+            $stmt = $conn->prepare("
+                UPDATE books
+                SET title = ?, author = ?, category = ?, catalog_id = ?, isbn = ?, description = ?, cover_path = ?, qty_total = ?, qty_available = ?
+                WHERE id = ?
+            ");
+            $stmt->bind_param('sssisssiii', $title, $author, $catalogName, $catalogId, $isbnValue, $descriptionValue, $coverPath, $total, $available, $bookId);
+            $stmt->execute();
+            $stmt->close();
+
+            if ($additionalCopies > 0) {
+                create_missing_book_copies($conn, $bookId, $additionalCopies, 'available');
+            }
+
+            if ($removedCopies > 0) {
+                remove_available_book_copies($conn, $bookId, $removedCopies);
+            }
+
+            sync_book_inventory_from_copies($conn, $bookId);
+            $conn->commit();
+            header('Location: manage_books.php');
+            exit;
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            $message = 'Unable to update the book right now.';
+        }
     }
 }
 

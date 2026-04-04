@@ -154,7 +154,23 @@ $incidents = get_member_incidents($conn, $userId);
                       ?>
                       <option value="<?php echo (int) $borrow['id']; ?>" <?php echo $isDisabled ? 'disabled' : ''; ?>>
                         <?php
-                        echo h($borrow['title'] . ' | Borrow #' . (int) $borrow['id'] . ' | Due ' . format_display_date((string) ($borrow['due_date'] ?? ''), '-') . ($isDisabled ? ' | Already has active report' : ''));
+                        $copyDetails = [];
+                        if (trim((string) ($borrow['copy_id'] ?? '')) !== '') {
+                            $copyDetails[] = 'Copy ' . trim((string) $borrow['copy_id']);
+                        }
+                        if (trim((string) ($borrow['barcode'] ?? '')) !== '') {
+                            $copyDetails[] = 'Barcode ' . trim((string) $borrow['barcode']);
+                        }
+                        $borrowLabel = $borrow['title'];
+                        if ($copyDetails !== []) {
+                            $borrowLabel .= ' | ' . implode(' | ', $copyDetails);
+                        }
+                        $borrowLabel .= ' | Borrow #' . (int) $borrow['id'];
+                        $borrowLabel .= ' | Due ' . format_display_date((string) ($borrow['due_date'] ?? ''), '-');
+                        if ($isDisabled) {
+                            $borrowLabel .= ' | Already has active report';
+                        }
+                        echo h($borrowLabel);
                         ?>
                       </option>
                     <?php endforeach; ?>
@@ -232,6 +248,9 @@ $incidents = get_member_incidents($conn, $userId);
                   <span class="muted">
                     Incident #<?php echo (int) $incident['id']; ?> |
                     Borrow #<?php echo (int) $incident['borrow_id']; ?> |
+                    <?php if (trim((string) ($incident['copy_id'] ?? '')) !== ''): ?>
+                      Copy <?php echo h((string) $incident['copy_id']); ?> |
+                    <?php endif; ?>
                     Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?>
                   </span>
                   <div class="inline-actions chips-row batch-status-row">

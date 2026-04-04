@@ -3,7 +3,7 @@
 function approve_pending_borrow(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT br.user_id, br.book_id, br.borrow_days, br.status, u.role, b.title
+        SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.book_copy_id, u.role, b.title
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         JOIN books b ON b.id = br.book_id
@@ -12,7 +12,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $userRole, $bookTitle);
+    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $bookCopyId, $userRole, $bookTitle);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -26,26 +26,33 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
     $dueAt = date('Y-m-d H:i:s', strtotime($approvedAt . " +{$borrowDays} days"));
     $dueDate = date('Y-m-d', strtotime($dueAt));
 
-    $stockStmt = $conn->prepare("UPDATE books SET qty_available = qty_available - 1 WHERE id = ? AND qty_available > 0");
-    $stockStmt->bind_param('i', $bookId);
-    $stockStmt->execute();
+    $assignedCopy = null;
+    if ((int) $bookCopyId > 0) {
+        $assignedCopy = ['id' => (int) $bookCopyId];
+        $copied = set_book_copy_status($conn, (int) $bookCopyId, 'borrowed');
+        if (!$copied) {
+            return ['ok' => false, 'reason' => 'no_stock'];
+        }
+    } else {
+        $assignedCopy = assign_available_book_copy($conn, $bookId);
+    }
 
-    if ($stockStmt->affected_rows !== 1) {
-        $stockStmt->close();
+    if (!$assignedCopy || (int) ($assignedCopy['id'] ?? 0) <= 0) {
         return ['ok' => false, 'reason' => 'no_stock'];
     }
-    $stockStmt->close();
 
     $approveStmt = $conn->prepare("
         UPDATE borrows
-        SET status = 'borrowed', borrow_date = ?, approved_at = ?, due_date = ?, due_at = ?, return_date = NULL, returned_at = NULL, return_requested_at = NULL
+        SET status = 'borrowed', book_copy_id = ?, borrow_date = ?, approved_at = ?, due_date = ?, due_at = ?, return_date = NULL, returned_at = NULL, return_requested_at = NULL
         WHERE id = ? AND status = 'pending'
     ");
-    $approveStmt->bind_param('ssssi', $borrowDate, $approvedAt, $dueDate, $dueAt, $borrowId);
+    $assignedCopyId = (int) ($assignedCopy['id'] ?? 0);
+    $approveStmt->bind_param('issssi', $assignedCopyId, $borrowDate, $approvedAt, $dueDate, $dueAt, $borrowId);
     $approveStmt->execute();
 
     if ($approveStmt->affected_rows !== 1) {
         $approveStmt->close();
+        set_book_copy_status($conn, $assignedCopyId, 'available');
         return ['ok' => false, 'reason' => 'update_failed'];
     }
     $approveStmt->close();
@@ -54,6 +61,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         'ok' => true,
         'borrow_id' => $borrowId,
         'book_id' => $bookId,
+        'book_copy_id' => $assignedCopyId,
         'user_id' => $userId,
         'user_role' => (string) $userRole,
         'book_title' => (string) $bookTitle,
@@ -67,7 +75,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
 function confirm_requested_return(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT br.user_id, br.book_id, br.due_date, br.status, br.return_requested_at, u.role
+        SELECT br.user_id, br.book_id, br.book_copy_id, br.due_date, br.status, br.return_requested_at, u.role
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         WHERE br.id = ?
@@ -75,7 +83,7 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $dueDate, $borrowStatus, $returnRequestedAt, $userRole);
+    $borrowStmt->bind_result($userId, $bookId, $bookCopyId, $dueDate, $borrowStatus, $returnRequestedAt, $userRole);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -100,10 +108,14 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
     }
     $returnStmt->close();
 
-    $stockStmt = $conn->prepare("UPDATE books SET qty_available = qty_available + 1 WHERE id = ?");
-    $stockStmt->bind_param('i', $bookId);
-    $stockStmt->execute();
-    $stockStmt->close();
+    if ((int) $bookCopyId > 0) {
+        set_book_copy_status($conn, (int) $bookCopyId, 'available');
+    } else {
+        $stockStmt = $conn->prepare("UPDATE books SET qty_available = qty_available + 1 WHERE id = ?");
+        $stockStmt->bind_param('i', $bookId);
+        $stockStmt->execute();
+        $stockStmt->close();
+    }
 
     create_penalty_if_late($conn, $borrowId, $userId, $dueDate, $returnDate, (string) $returnRequestedAt);
 
@@ -111,6 +123,7 @@ function confirm_requested_return(mysqli $conn, int $borrowId): array
         'ok' => true,
         'borrow_id' => $borrowId,
         'book_id' => $bookId,
+        'book_copy_id' => (int) $bookCopyId,
         'user_id' => $userId,
         'user_role' => (string) $userRole,
         'returned_at' => $returnedAt,

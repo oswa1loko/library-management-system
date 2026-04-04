@@ -151,22 +151,36 @@ if (isset($_POST['add'])) {
         } else {
             $isbnValue = $isbn !== '' ? $isbn : null;
             $descriptionValue = $description !== '' ? $description : null;
-            $stmt = $conn->prepare("
-                INSERT INTO books (title, author, category, catalog_id, isbn, description, cover_path, qty_total, qty_available)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->bind_param('sssisssii', $title, $author, $catalogName, $catalogId, $isbnValue, $descriptionValue, $coverPath, $qty, $qty);
-            $stmt->execute();
-            $stmt->close();
-            $message = 'Book added successfully.';
-            $formData = [
-                'title' => '',
-                'author' => '',
-                'catalog_id' => '',
-                'isbn' => '',
-                'description' => '',
-                'qty' => 1,
-            ];
+            $conn->begin_transaction();
+
+            try {
+                $stmt = $conn->prepare("
+                    INSERT INTO books (title, author, category, catalog_id, isbn, description, cover_path, qty_total, qty_available)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->bind_param('sssisssii', $title, $author, $catalogName, $catalogId, $isbnValue, $descriptionValue, $coverPath, $qty, $qty);
+                $stmt->execute();
+                $bookId = (int) $stmt->insert_id;
+                $stmt->close();
+
+                create_missing_book_copies($conn, $bookId, $qty, 'available');
+                sync_book_inventory_from_copies($conn, $bookId);
+
+                $conn->commit();
+                $message = 'Book added successfully.';
+                $formData = [
+                    'title' => '',
+                    'author' => '',
+                    'catalog_id' => '',
+                    'isbn' => '',
+                    'description' => '',
+                    'qty' => 1,
+                ];
+            } catch (Throwable $exception) {
+                $conn->rollback();
+                $message = 'Unable to add the book right now.';
+                $messageType = 'error';
+            }
         }
     }
 }
