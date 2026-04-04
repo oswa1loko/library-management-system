@@ -152,12 +152,15 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
                 $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
                 $targetRoleStmt->close();
                 if (in_array($targetRole, ['student', 'faculty'], true)) {
+                    $isIncidentPayment = (int) ($current['incident_id'] ?? 0) > 0;
                     create_notification(
                         $conn,
                         $targetRole,
-                        'Payment Rejected',
-                        'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
-                        'critical',
+                        $isIncidentPayment ? 'Incident Payment Rejected' : 'Payment Rejected',
+                        $isIncidentPayment
+                            ? 'Your incident payment proof was rejected by admin. Please upload a new valid proof.'
+                            : 'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
+                        $isIncidentPayment ? 'warning' : 'critical',
                         (int) $current['user_id']
                     );
                 }
@@ -223,11 +226,14 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
                 $targetRole = (string) ($targetRoleStmt->get_result()->fetch_assoc()['role'] ?? '');
                 $targetRoleStmt->close();
                 if (in_array($targetRole, ['student', 'faculty'], true)) {
+                    $isIncidentPayment = (int) ($current['incident_id'] ?? 0) > 0;
                     create_notification(
                         $conn,
                         $targetRole,
-                        'Payment Approved',
-                        'Payment #' . $id . ' was approved by admin.',
+                        $isIncidentPayment ? 'Incident Payment Approved' : 'Payment Approved',
+                        $isIncidentPayment
+                            ? 'Your incident payment proof was approved by admin.'
+                            : 'Payment #' . $id . ' was approved by admin.',
                         'info',
                         (int) $current['user_id']
                     );
@@ -235,6 +241,9 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             }
 
             $conn->commit();
+            if ($changed && (int) ($current['incident_id'] ?? 0) > 0) {
+                send_incident_payment_approval_email($conn, $id);
+            }
         } catch (Throwable $exception) {
             $conn->rollback();
             header('Location: ' . $redirectPrefix . 'notice=' . urlencode('Unable to approve this payment right now.') . '&notice_type=error');

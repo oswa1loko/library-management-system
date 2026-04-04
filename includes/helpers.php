@@ -1336,6 +1336,123 @@ function send_borrow_approval_email(mysqli $conn, int $borrowId): bool
     );
 }
 
+function build_incident_payment_approval_email_payload(mysqli $conn, int $paymentId): ?array
+{
+    if ($paymentId <= 0) {
+        set_library_mail_last_error('Invalid incident payment reference.');
+        return null;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT
+            pay.id AS payment_id,
+            pay.amount,
+            pay.status,
+            pay.created_at,
+            pay.incident_id,
+            u.fullname,
+            u.email,
+            u.role,
+            bi.incident_type,
+            bi.assessed_fee,
+            bi.settlement_status,
+            bi.workflow_status,
+            bi.resolved_at,
+            b.title
+        FROM payments pay
+        JOIN users u ON u.id = pay.user_id
+        JOIN book_incidents bi ON bi.id = pay.incident_id
+        LEFT JOIN books b ON b.id = bi.book_id
+        WHERE pay.id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $paymentId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row) {
+        set_library_mail_last_error('Incident payment email details were not found.');
+        return null;
+    }
+
+    $email = trim((string) ($row['email'] ?? ''));
+    if ($email === '' || !is_valid_email_address($email)) {
+        set_library_mail_last_error('Member email address is missing or invalid.');
+        return null;
+    }
+
+    if ((string) ($row['status'] ?? '') !== 'approved') {
+        set_library_mail_last_error('Incident payment has not been approved yet.');
+        return null;
+    }
+
+    $fullName = trim((string) ($row['fullname'] ?? 'Library Member'));
+    $roleLabel = role_label((string) ($row['role'] ?? ''));
+    $bookTitle = trim((string) ($row['title'] ?? 'Library Book'));
+    $incidentType = book_incident_type_label((string) ($row['incident_type'] ?? ''));
+    $incidentId = (int) ($row['incident_id'] ?? 0);
+    $paidAmount = format_currency((float) ($row['amount'] ?? 0));
+    $assessedFee = format_currency((float) ($row['assessed_fee'] ?? 0));
+    $approvedAt = format_display_datetime((string) ($row['resolved_at'] ?? ''), format_display_datetime((string) ($row['created_at'] ?? '')));
+    $finalStatus = 'Paid and Closed';
+
+    $subject = 'Incident Payment Confirmed - ' . ($bookTitle !== '' ? $bookTitle : 'Library Incident');
+    $message = "Good day, {$fullName}.\n\n"
+        . "This is to confirm that your incident payment has been successfully received and approved by the Regis Marie College Library.\n\n"
+        . "Incident reference: #{$incidentId}\n"
+        . "Book title: {$bookTitle}\n"
+        . "Incident type: {$incidentType}\n"
+        . "Paid amount: {$paidAmount}\n"
+        . "Assessed fee: {$assessedFee}\n"
+        . "Approval date: {$approvedAt}\n"
+        . "Final status: {$finalStatus}\n"
+        . "Account type: {$roleLabel}\n\n"
+        . "Your incident record has been marked as settled in the library system. Please keep this email for your reference.\n\n"
+        . "Thank you.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+        . '<p>This is to confirm that your incident payment has been <strong>successfully received and approved</strong> by the <strong>Regis Marie College Library</strong>.</p>'
+        . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
+        . '<p style="margin:0 0 8px;"><strong>Incident reference:</strong> #' . (int) $incidentId . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Book title:</strong> ' . h($bookTitle) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Incident type:</strong> ' . h($incidentType) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Paid amount:</strong> ' . h($paidAmount) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Assessed fee:</strong> ' . h($assessedFee) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Approval date:</strong> ' . h($approvedAt) . '</p>'
+        . '<p style="margin:0;"><strong>Final status:</strong> ' . h($finalStatus) . '</p>'
+        . '</div>'
+        . '<p><strong>Account type:</strong> ' . h($roleLabel) . '</p>'
+        . '<p>Your incident record has been marked as <strong>settled</strong> in the library system. Please keep this email for your reference.</p>'
+        . '<p>Thank you.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return [
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function send_incident_payment_approval_email(mysqli $conn, int $paymentId): bool
+{
+    $payload = build_incident_payment_approval_email_payload($conn, $paymentId);
+    if (!$payload) {
+        return false;
+    }
+
+    return send_library_email(
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
 function enqueue_email_job(
     mysqli $conn,
     string $jobType,
