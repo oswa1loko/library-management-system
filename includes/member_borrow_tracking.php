@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/book_incidents.php';
 
 require_roles(['student', 'faculty']);
 
@@ -89,6 +90,29 @@ $trackingStmt->bind_param('i', $userId);
 $trackingStmt->execute();
 $trackingRows = $trackingStmt->get_result();
 $trackingStmt->close();
+
+$incidentTracking = get_member_incidents($conn, $userId);
+$incidentOverview = [
+    'total' => count($incidentTracking),
+    'under_review' => 0,
+    'for_payment' => 0,
+    'submitted' => 0,
+    'closed' => 0,
+];
+foreach ($incidentTracking as $incidentItem) {
+    $workflowStatus = book_incident_normalize_workflow_status((string) ($incidentItem['workflow_status'] ?? 'open'));
+    $paymentStage = book_incident_payment_stage_label($incidentItem);
+
+    if ($paymentStage === 'Payment Submitted') {
+        $incidentOverview['submitted']++;
+    } elseif ($workflowStatus === 'for_payment') {
+        $incidentOverview['for_payment']++;
+    } elseif ($workflowStatus === 'closed') {
+        $incidentOverview['closed']++;
+    } else {
+        $incidentOverview['under_review']++;
+    }
+}
 
 $borrowTrackingGroups = [];
 while ($trackingRow = $trackingRows->fetch_assoc()) {
@@ -240,7 +264,7 @@ unset($trackingGroup);
     <div class="topbar">
       <div>
         <h1><?php echo h(role_label($role)); ?> Portal</h1>
-        <p>Track the progress of your borrow requests and completed returns</p>
+        <p>Track the progress of your borrow requests, incident cases, and completed returns</p>
       </div>
     </div>
 
@@ -269,6 +293,122 @@ unset($trackingGroup);
             <strong><?php echo (int) ($overview['completed_returns'] ?? 0); ?></strong>
             <span class="muted">Completed returns</span>
           </div>
+          <div class="stat-card">
+            <strong><?php echo (int) ($incidentOverview['for_payment'] ?? 0); ?></strong>
+            <span class="muted">Incidents waiting for payment</span>
+          </div>
+          <div class="stat-card">
+            <strong><?php echo (int) ($incidentOverview['submitted'] ?? 0); ?></strong>
+            <span class="muted">Incident payments under review</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel member-workspace-history">
+        <div class="card-head">
+          <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
+          <div>
+            <span class="chip">Incident Tracking</span>
+            <h3 class="heading-top-md">Book Incident Progress</h3>
+          </div>
+        </div>
+        <p class="muted copy-bottom">Use this section to check whether the librarian is still reviewing your report, waiting for your payment, or finishing the final closeout.</p>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <strong><?php echo (int) ($incidentOverview['total'] ?? 0); ?></strong>
+            <span class="muted">All incident reports</span>
+          </div>
+          <div class="stat-card">
+            <strong><?php echo (int) ($incidentOverview['under_review'] ?? 0); ?></strong>
+            <span class="muted">Still under librarian review</span>
+          </div>
+          <div class="stat-card">
+            <strong><?php echo (int) ($incidentOverview['for_payment'] ?? 0); ?></strong>
+            <span class="muted">Ready for payment upload</span>
+          </div>
+          <div class="stat-card">
+            <strong><?php echo (int) ($incidentOverview['submitted'] ?? 0); ?></strong>
+            <span class="muted">Waiting for admin review</span>
+          </div>
+          <div class="stat-card">
+            <strong><?php echo (int) ($incidentOverview['closed'] ?? 0); ?></strong>
+            <span class="muted">Closed incident cases</span>
+          </div>
+        </div>
+        <div class="stack">
+          <?php if ($incidentTracking === []): ?>
+            <div class="empty-state">No incident reports found yet.</div>
+          <?php endif; ?>
+          <?php foreach ($incidentTracking as $incident): ?>
+            <?php
+            $workflowStatus = (string) ($incident['workflow_status'] ?? 'open');
+            $settlementStatus = (string) ($incident['settlement_status'] ?? 'pending');
+            $currentStep = book_incident_workflow_label($workflowStatus);
+            $paymentStep = book_incident_payment_stage_label($incident);
+            $nextActor = book_incident_next_actor_label($workflowStatus, $settlementStatus);
+            $canUploadPayment = book_incident_can_accept_payment_submission($incident);
+            ?>
+            <div class="panel member-return-batch-card">
+              <div class="member-return-batch-head">
+                <div>
+                  <strong class="label-block"><?php echo h((string) ($incident['title'] ?? 'Incident record')); ?></strong>
+                  <span class="muted">
+                    Incident #<?php echo (int) ($incident['id'] ?? 0); ?> |
+                    Borrow #<?php echo (int) ($incident['borrow_id'] ?? 0); ?> |
+                    Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?>
+                  </span>
+                  <div class="inline-actions chips-row batch-status-row">
+                    <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
+                    <span class="chip"><?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span>
+                    <span class="chip"><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span>
+                    <span class="chip"><?php echo h($paymentStep); ?></span>
+                  </div>
+                </div>
+                <div class="stack flow-gap-sm">
+                  <span class="badge">
+                    <span class="status-dot <?php echo h(book_incident_status_dot_class($workflowStatus)); ?>"></span>
+                    Case: <?php echo h($currentStep); ?>
+                  </span>
+                  <span class="badge">
+                    <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($incident)); ?>"></span>
+                    Next: <?php echo h($nextActor); ?>
+                  </span>
+                </div>
+              </div>
+              <div class="stack member-return-batch-list">
+                <div class="empty-state member-return-batch-item">
+                  <span class="grow">
+                    <strong class="label-block meta-top-sm">Progress</strong>
+                    <?php if ($canUploadPayment): ?>
+                      <span class="muted">This incident is ready for payment. Go to the Payments page to upload the assessed fee and proof.</span>
+                    <?php elseif ($paymentStep === 'Payment Submitted'): ?>
+                      <span class="muted">Your payment proof was submitted and is currently waiting for admin approval.</span>
+                    <?php elseif ($paymentStep === 'Payment Rejected'): ?>
+                      <span class="muted">Your payment proof was rejected. Upload a new proof from the Payments page to continue settlement.</span>
+                    <?php elseif ($paymentStep === 'No Payment Needed'): ?>
+                      <span class="muted">No payment is required for this incident. The case only needs final closeout from the library team.</span>
+                    <?php elseif ($currentStep === 'Closed'): ?>
+                      <span class="muted">This incident is already closed and no further action is required from you.</span>
+                    <?php else: ?>
+                      <span class="muted">The librarian is still reviewing this incident and will update the final fee or inventory action after assessment.</span>
+                    <?php endif; ?>
+                  </span>
+                </div>
+                <div class="empty-state member-return-batch-item">
+                  <span class="grow">
+                    <strong class="label-block meta-top-sm">Resolution</strong>
+                    <span class="muted">
+                      Action: <?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?> |
+                      Payment: <?php echo h($paymentStep); ?>
+                    </span>
+                    <?php if (trim((string) ($incident['resolution_notes'] ?? '')) !== ''): ?>
+                      <span class="muted meta-top-sm"><?php echo nl2br(h((string) $incident['resolution_notes'])); ?></span>
+                    <?php endif; ?>
+                  </span>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
         </div>
       </div>
 
