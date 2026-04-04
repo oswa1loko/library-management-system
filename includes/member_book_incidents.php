@@ -154,18 +154,11 @@ $incidents = get_member_incidents($conn, $userId);
                       ?>
                       <option value="<?php echo (int) $borrow['id']; ?>" <?php echo $isDisabled ? 'disabled' : ''; ?>>
                         <?php
-                        $copyDetails = [];
-                        if (trim((string) ($borrow['copy_id'] ?? '')) !== '') {
-                            $copyDetails[] = 'Copy ' . trim((string) $borrow['copy_id']);
-                        }
-                        if (trim((string) ($borrow['barcode'] ?? '')) !== '') {
-                            $copyDetails[] = 'Barcode ' . trim((string) $borrow['barcode']);
-                        }
                         $borrowLabel = $borrow['title'];
-                        if ($copyDetails !== []) {
-                            $borrowLabel .= ' | ' . implode(' | ', $copyDetails);
+                        $copyId = trim((string) ($borrow['copy_id'] ?? ''));
+                        if ($copyId !== '') {
+                            $borrowLabel .= ' | Copy ' . $copyId;
                         }
-                        $borrowLabel .= ' | Borrow #' . (int) $borrow['id'];
                         $borrowLabel .= ' | Due ' . format_display_date((string) ($borrow['due_date'] ?? ''), '-');
                         if ($isDisabled) {
                             $borrowLabel .= ' | Already has active report';
@@ -189,6 +182,9 @@ $incidents = get_member_incidents($conn, $userId);
               <div class="empty-state">
                 <strong class="label-block-gap">Workflow note</strong>
                 Report the issue here first. The librarian will inspect the book and assign the severity during review.
+              </div>
+              <div class="muted">
+                Use the copy label from your borrowed books list to pick the exact item you want to report.
               </div>
               <div>
                 <label for="description">What happened?</label>
@@ -246,12 +242,17 @@ $incidents = get_member_incidents($conn, $userId);
                 <div>
                   <strong class="label-block"><?php echo h($incident['title']); ?></strong>
                   <span class="muted">
-                    Incident #<?php echo (int) $incident['id']; ?> |
-                    Borrow #<?php echo (int) $incident['borrow_id']; ?> |
                     <?php if (trim((string) ($incident['copy_id'] ?? '')) !== ''): ?>
                       Copy <?php echo h((string) $incident['copy_id']); ?> |
                     <?php endif; ?>
                     Reported <?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?>
+                  </span>
+                  <span class="muted">
+                    Incident #<?php echo (int) $incident['id']; ?>
+                    <?php if (trim((string) ($incident['barcode'] ?? '')) !== ''): ?>
+                      | Reference <?php echo h((string) $incident['barcode']); ?>
+                    <?php endif; ?>
+                    | Borrow #<?php echo (int) $incident['borrow_id']; ?>
                   </span>
                   <div class="inline-actions chips-row batch-status-row">
                     <span class="chip"><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span>
