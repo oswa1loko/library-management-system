@@ -426,7 +426,7 @@ $summaryLabels = match ($paymentScope) {
         'pending_amount' => 'Pending Incident Fees',
         'pending_amount_copy' => 'Incident fee value currently waiting for approval.',
         'queue_title' => 'Incident submissions and actions',
-        'queue_copy' => 'Filter incident payment records here, inspect the linked incident context, then approve or reject the uploaded proof directly from this page.',
+        'queue_copy' => 'Filter incident payment records here, then approve or reject the uploaded proof directly from this payment-focused workspace.',
         'submitted_chip' => 'Incident submitted',
         'pending_chip' => 'Incident pending',
     ],
@@ -637,9 +637,6 @@ $summaryLabels = match ($paymentScope) {
                 </td>
                 <td class="payment-record-actions payment-record-action-stack">
                   <?php if ((string) ($payment['status'] ?? '') === 'pending'): ?>
-                    <?php if ((int) ($payment['incident_id'] ?? 0) > 0): ?>
-                      <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php?incident=' . (int) ($payment['incident_id'] ?? 0))); ?>">View Incident</a>
-                    <?php endif; ?>
                     <form method="post" class="inline-form">
                       <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
                       <button type="submit" name="approve" value="1">Approve</button>
@@ -649,9 +646,6 @@ $summaryLabels = match ($paymentScope) {
                       <button type="submit" class="danger" name="reject" value="1">Reject</button>
                     </form>
                   <?php else: ?>
-                    <?php if ((int) ($payment['incident_id'] ?? 0) > 0): ?>
-                      <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php?incident=' . (int) ($payment['incident_id'] ?? 0))); ?>">View Incident</a>
-                    <?php endif; ?>
                     <span class="review-state review-state-<?php echo h((string) ($payment['status'] ?? 'approved')); ?>">
                       <?php echo (string) ($payment['status'] ?? '') === 'rejected' ? 'Rejected by admin' : 'Reviewed'; ?>
                     </span>
