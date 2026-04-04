@@ -361,17 +361,25 @@ unset($trackingGroup);
             $paymentStep = book_incident_payment_stage_label($incident);
             $nextActor = book_incident_next_actor_label($workflowStatus, $settlementStatus);
             $canUploadPayment = book_incident_can_accept_payment_submission($incident);
-            $nextStepCopy = 'The librarian is still reviewing this incident and will update the final fee or inventory action after assessment.';
+            $nextStepCopy = 'Waiting for librarian assessment';
             if ($canUploadPayment) {
-                $nextStepCopy = 'Ready for payment upload';
+                $nextStepCopy = 'Upload payment proof';
             } elseif ($paymentStep === 'Payment Submitted') {
-                $nextStepCopy = 'Waiting for admin approval';
+                $nextStepCopy = 'Waiting for admin review';
             } elseif ($paymentStep === 'Payment Rejected') {
-                $nextStepCopy = 'Upload a new payment proof';
+                $nextStepCopy = 'Upload new payment proof';
             } elseif ($paymentStep === 'No Payment Needed') {
-                $nextStepCopy = 'Waiting for final closeout';
+                $nextStepCopy = 'Waiting for closeout';
             } elseif ($currentStep === 'Closed') {
                 $nextStepCopy = 'Completed';
+            }
+            $resolutionLabel = book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'));
+            $resolutionNotes = trim((string) ($incident['resolution_notes'] ?? ''));
+            $resolutionPreview = '';
+            if ($resolutionNotes !== '') {
+                $resolutionPreview = strlen($resolutionNotes) > 72
+                    ? substr($resolutionNotes, 0, 72) . '...'
+                    : $resolutionNotes;
             }
             ?>
               <tr>
@@ -402,10 +410,10 @@ unset($trackingGroup);
                 </td>
                 <td><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></td>
                 <td>
-                  <strong class="label-block"><?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?></strong>
-                    <?php if (trim((string) ($incident['resolution_notes'] ?? '')) !== ''): ?>
-                    <span class="muted"><?php echo nl2br(h((string) $incident['resolution_notes'])); ?></span>
-                    <?php endif; ?>
+                  <strong class="label-block"><?php echo h($resolutionLabel); ?></strong>
+                  <?php if ($resolutionPreview !== ''): ?>
+                    <span class="muted"><?php echo h($resolutionPreview); ?></span>
+                  <?php endif; ?>
                 </td>
               </tr>
           <?php endforeach; ?>
