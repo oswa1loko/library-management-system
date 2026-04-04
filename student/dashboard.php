@@ -61,6 +61,10 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
         <span class="member-sidebar-label">Returns</span>
       </a>
+      <a class="member-sidebar-link" href="book_incidents.php" data-tooltip="Book Incidents">
+        <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Book Incidents</span>
+      </a>
       <a class="member-sidebar-link" href="tracking.php" data-tooltip="Records Tracking">
         <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
         <span class="member-sidebar-label">Records Tracking</span>
