@@ -5,27 +5,6 @@ require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('admin');
 
-$syncNotice = (string) ($_SESSION['admin_sync_notice'] ?? '');
-$syncError = (string) ($_SESSION['admin_sync_error'] ?? '');
-unset($_SESSION['admin_sync_notice'], $_SESSION['admin_sync_error']);
-
-if (isset($_POST['run_penalty_sync'])) {
-    try {
-        if (function_exists('sync_overdue_penalties')) {
-            $result = sync_overdue_penalties($conn);
-            $_SESSION['admin_sync_notice'] = 'Penalty sync completed. Inserted: ' . (int) ($result['inserted'] ?? 0) . ', updated: ' . (int) ($result['updated'] ?? 0) . '.';
-            audit_log($conn, 'admin.penalty_sync.run', $result);
-        } else {
-            $_SESSION['admin_sync_error'] = 'Penalty sync helper is unavailable.';
-        }
-    } catch (Throwable $e) {
-        $_SESSION['admin_sync_error'] = 'Penalty sync failed. Please try again.';
-    }
-
-    header('Location: dashboard.php');
-    exit;
-}
-
 $userStats = $conn->query("
     SELECT
       COUNT(*) AS total_users,
@@ -134,13 +113,6 @@ $recentActivity = $conn->query("
     ?>
 
     <div class="stack">
-    <?php if ($syncNotice !== ''): ?>
-      <div class="notice success"><?php echo h($syncNotice); ?></div>
-    <?php endif; ?>
-    <?php if ($syncError !== ''): ?>
-      <div class="notice error"><?php echo h($syncError); ?></div>
-    <?php endif; ?>
-
     <div class="panel">
       <p class="muted eyebrow-compact stack-copy">Overview</p>
       <h3 class="heading-panel">Administrative summary</h3>
@@ -165,16 +137,6 @@ $recentActivity = $conn->query("
           <strong><?php echo (int) ($complaintStats['new_complaints'] ?? 0); ?></strong>
           <span class="muted">New complaints</span>
         </div>
-      </div>
-      <div class="toolbar toolbar-top flow-top-md admin-maintenance-bar">
-        <div class="grow admin-maintenance-copy">
-          <span class="code-pill">Maintenance</span>
-          <h3 class="heading-top-md">Penalty Sync</h3>
-          <p class="muted">Use this only when overdue penalties need a manual refresh. Main navigation is now in the left sidebar.</p>
-        </div>
-        <form method="post" class="admin-maintenance-action" data-confirm="Run penalty sync now?">
-          <button type="submit" name="run_penalty_sync" value="1">Run Penalty Sync Now</button>
-        </form>
       </div>
     </div>
 

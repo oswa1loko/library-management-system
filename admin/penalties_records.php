@@ -5,27 +5,6 @@ require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('admin');
 
-$syncNotice = (string) ($_SESSION['penalties_sync_notice'] ?? '');
-$syncError = (string) ($_SESSION['penalties_sync_error'] ?? '');
-unset($_SESSION['penalties_sync_notice'], $_SESSION['penalties_sync_error']);
-
-if (isset($_POST['run_penalty_sync'])) {
-    try {
-        if (function_exists('sync_overdue_penalties')) {
-            $result = sync_overdue_penalties($conn);
-            $_SESSION['penalties_sync_notice'] = 'Penalty sync completed. Inserted: ' . (int) ($result['inserted'] ?? 0) . ', updated: ' . (int) ($result['updated'] ?? 0) . '.';
-            audit_log($conn, 'admin.penalty_sync.run', $result);
-        } else {
-            $_SESSION['penalties_sync_error'] = 'Penalty sync helper is unavailable.';
-        }
-    } catch (Throwable $e) {
-        $_SESSION['penalties_sync_error'] = 'Penalty sync failed. Please try again.';
-    }
-
-    header('Location: penalties_records.php');
-    exit;
-}
-
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
 $rolesAllowed = ['student', 'faculty'];
@@ -106,17 +85,6 @@ $penalties = $stmt->get_result();
   ?>
 
   <div class="stack">
-    <?php
-    $noticeItems = [];
-    if ($syncNotice !== '') {
-        $noticeItems[] = ['type' => 'success', 'message' => $syncNotice];
-    }
-    if ($syncError !== '') {
-        $noticeItems[] = ['type' => 'error', 'message' => $syncError];
-    }
-    require __DIR__ . '/partials/notices.php';
-    ?>
-
     <div class="panel">
       <div class="card-head">
         <div class="dashboard-icon icon-penalties" aria-hidden="true"></div>
@@ -211,9 +179,6 @@ $penalties = $stmt->get_result();
             </div>
           </div>
         </div>
-        <form method="post" data-confirm="Run penalty sync now?">
-          <button type="submit" name="run_penalty_sync" value="1">Run Penalty Sync Now</button>
-        </form>
         <form method="get" class="toolbar grow admin-record-filters penalties-record-filters">
           <div>
             <label for="status_filter">Status</label>
