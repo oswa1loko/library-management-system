@@ -10,17 +10,12 @@ $messageType = 'success';
 $title = trim((string) ($_POST['title'] ?? ''));
 $body = trim((string) ($_POST['body'] ?? ''));
 $audience = trim((string) ($_POST['audience'] ?? 'both'));
-$severity = trim((string) ($_POST['severity'] ?? 'info'));
+$severity = 'info';
 
 $allowedAudiences = ['student', 'faculty', 'both'];
-$allowedSeverity = ['info', 'warning', 'critical'];
 
 if (!in_array($audience, $allowedAudiences, true)) {
     $audience = 'both';
-}
-
-if (!in_array($severity, $allowedSeverity, true)) {
-    $severity = 'info';
 }
 
 if (isset($_POST['send_announcement'])) {
@@ -177,17 +172,6 @@ $announcements = $conn->query("
                   <option value="both" <?php echo $audience === 'both' ? 'selected' : ''; ?>>Students and Faculty</option>
                   <option value="student" <?php echo $audience === 'student' ? 'selected' : ''; ?>>Students only</option>
                   <option value="faculty" <?php echo $audience === 'faculty' ? 'selected' : ''; ?>>Faculty only</option>
-                </select>
-                <span class="ui-select-caret" aria-hidden="true"></span>
-              </div>
-            </div>
-            <div>
-              <label for="announcement_severity">Priority</label>
-              <div class="ui-select-shell">
-                <select id="announcement_severity" name="severity" class="ui-select">
-                  <option value="info" <?php echo $severity === 'info' ? 'selected' : ''; ?>>Info</option>
-                  <option value="warning" <?php echo $severity === 'warning' ? 'selected' : ''; ?>>Warning</option>
-                  <option value="critical" <?php echo $severity === 'critical' ? 'selected' : ''; ?>>Critical</option>
                 </select>
                 <span class="ui-select-caret" aria-hidden="true"></span>
               </div>
