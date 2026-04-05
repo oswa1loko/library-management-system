@@ -655,7 +655,8 @@ $summaryLabels = match ($paymentScope) {
                       <button type="submit" class="danger" name="reject" value="1">Reject</button>
                     </form>
                   <?php else: ?>
-                    <span class="review-state review-state-<?php echo h((string) ($payment['status'] ?? 'approved')); ?>">
+                    <span class="badge review-state payment-review-badge review-state-<?php echo h((string) ($payment['status'] ?? 'approved')); ?>">
+                      <span class="status-dot <?php echo h((string) ($payment['status'] ?? 'approved')); ?>"></span>
                       <?php echo (string) ($payment['status'] ?? '') === 'rejected' ? 'Rejected by admin' : 'Reviewed'; ?>
                     </span>
                   <?php endif; ?>
