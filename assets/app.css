@@ -8179,45 +8179,74 @@ body.modal-open{
 
 .manage-users-directory-table th,
 .manage-users-directory-table td{
-  padding:12px 14px;
+  padding:10px 14px;
+}
+
+.manage-users-directory-table th{
+  color:#d7e4f7;
+  font-size:10px;
+  letter-spacing:0.12em;
+  background:
+    linear-gradient(180deg, rgba(33,58,92,0.92), rgba(12,26,43,0.96)),
+    rgba(7,20,35,0.94);
+  border-bottom-color:rgba(120,166,230,0.18);
+}
+
+.manage-users-directory-table td{
+  border-bottom-color:rgba(255,255,255,0.07);
 }
 
 .manage-users-directory-table tbody tr{
-  transition:background-color .2s ease, box-shadow .2s ease;
+  transition:background-color .2s ease, box-shadow .2s ease, transform .2s ease;
 }
 
 .manage-users-directory-table tbody tr:hover{
-  background:rgba(255,255,255,0.045);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(255,255,255,0.03);
+  background:linear-gradient(90deg, rgba(44,74,116,0.22), rgba(21,39,62,0.08));
+  box-shadow:inset 3px 0 0 rgba(120,166,230,0.5), inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(255,255,255,0.03);
+  transform:translateX(2px);
 }
 
 .manage-users-directory-table tbody tr:nth-child(even){
-  background:rgba(255,255,255,0.012);
+  background:rgba(255,255,255,0.02);
 }
 
 .manage-users-role-badge{
-  background:rgba(255,255,255,0.045);
-  border-color:rgba(255,255,255,0.08);
-  color:rgba(230,238,248,0.9);
-  box-shadow:none;
+  min-width:84px;
+  justify-content:center;
+  padding:6px 12px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border-color:rgba(152,178,214,0.16);
+  color:#e3ebf7;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
 .manage-users-status-badge,
 .manage-users-access-badge{
-  min-width:108px;
+  min-width:92px;
+  padding:6px 12px;
+  border-radius:16px;
+  font-size:11px;
+  letter-spacing:.03em;
+  text-transform:uppercase;
 }
 
 .manage-users-status-badge-inactive,
 .manage-users-access-badge-pending{
-  background:linear-gradient(180deg, rgba(255,211,122,0.18), rgba(255,211,122,0.08));
-  border-color:rgba(255,211,122,0.34);
-  color:#ffefc7;
+  background:linear-gradient(180deg, rgba(255,191,71,0.28), rgba(255,191,71,0.12));
+  border-color:rgba(255,191,71,0.42);
+  color:#fff0c2;
 }
 
 .manage-users-access-badge-ready{
-  background:linear-gradient(180deg, rgba(143,227,176,0.14), rgba(143,227,176,0.06));
-  border-color:rgba(143,227,176,0.24);
-  color:#dcffee;
+  background:linear-gradient(180deg, rgba(88,214,141,0.24), rgba(88,214,141,0.1));
+  border-color:rgba(88,214,141,0.34);
+  color:#e6fff0;
+}
+
+.manage-users-directory-table .complaint-status-resolved.manage-users-status-badge{
+  background:linear-gradient(180deg, rgba(88,214,141,0.26), rgba(88,214,141,0.1));
+  border-color:rgba(88,214,141,0.36);
+  color:#e6fff0;
 }
 
 .print-users-sheet{
@@ -8507,22 +8536,45 @@ body.modal-open{
   background:rgba(47,109,255,0.018);
 }
 
+:root[data-theme="light"] .manage-users-directory-table th{
+  color:#49617f;
+  background:
+    linear-gradient(180deg, rgba(236,243,255,0.98), rgba(221,233,251,0.95)),
+    rgba(255,255,255,0.98);
+  border-bottom-color:rgba(47,109,255,0.14);
+}
+
+:root[data-theme="light"] .manage-users-directory-table td{
+  border-bottom-color:rgba(47,109,255,0.08);
+}
+
+:root[data-theme="light"] .manage-users-directory-table tbody tr:hover{
+  background:linear-gradient(90deg, rgba(47,109,255,0.09), rgba(47,109,255,0.025));
+  box-shadow:inset 3px 0 0 rgba(47,109,255,0.34), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+
 :root[data-theme="light"] .manage-users-role-badge{
-  background:rgba(233,241,255,0.82);
-  border-color:rgba(47,109,255,0.12);
+  background:linear-gradient(180deg, rgba(244,248,255,0.98), rgba(229,238,251,0.92));
+  border-color:rgba(47,109,255,0.14);
   color:#45607f;
 }
 
 :root[data-theme="light"] .manage-users-status-badge-inactive,
 :root[data-theme="light"] .manage-users-access-badge-pending{
-  background:linear-gradient(180deg, rgba(255,234,184,0.95), rgba(255,244,214,0.9));
-  border-color:rgba(210,162,58,0.22);
+  background:linear-gradient(180deg, rgba(255,229,163,0.98), rgba(255,242,206,0.94));
+  border-color:rgba(210,162,58,0.28);
   color:#8c6510;
 }
 
 :root[data-theme="light"] .manage-users-access-badge-ready{
-  background:linear-gradient(180deg, rgba(229,252,239,0.96), rgba(214,246,227,0.9));
-  border-color:rgba(69,170,112,0.18);
+  background:linear-gradient(180deg, rgba(224,252,235,0.98), rgba(210,244,223,0.94));
+  border-color:rgba(69,170,112,0.22);
+  color:#236742;
+}
+
+:root[data-theme="light"] .manage-users-directory-table .complaint-status-resolved.manage-users-status-badge{
+  background:linear-gradient(180deg, rgba(224,252,235,0.98), rgba(210,244,223,0.94));
+  border-color:rgba(69,170,112,0.22);
   color:#236742;
 }
 
