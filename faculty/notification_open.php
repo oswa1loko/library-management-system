@@ -21,29 +21,15 @@ if (
 }
 
 if ($notificationId > 0) {
-    $sourceStmt = $conn->prepare("
-        SELECT title, body
-        FROM notifications
-        WHERE id = ? AND role = 'faculty' AND user_id = ?
+    $markStmt = $conn->prepare("
+        UPDATE notifications
+        SET is_read = 1
+        WHERE id = ? AND role = 'faculty' AND user_id = ? AND is_read = 0
         LIMIT 1
     ");
-    $sourceStmt->bind_param('ii', $notificationId, $userId);
-    $sourceStmt->execute();
-    $sourceRow = $sourceStmt->get_result()->fetch_assoc();
-    $sourceStmt->close();
-
-    if ($sourceRow) {
-        $title = (string) ($sourceRow['title'] ?? '');
-        $body = (string) ($sourceRow['body'] ?? '');
-        $markStmt = $conn->prepare("
-            UPDATE notifications
-            SET is_read = 1
-            WHERE role = 'faculty' AND user_id = ? AND title = ? AND body = ? AND is_read = 0
-        ");
-        $markStmt->bind_param('iss', $userId, $title, $body);
-        $markStmt->execute();
-        $markStmt->close();
-    }
+    $markStmt->bind_param('ii', $notificationId, $userId);
+    $markStmt->execute();
+    $markStmt->close();
 }
 
 if ($borrowId > 0) {
