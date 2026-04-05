@@ -4342,12 +4342,12 @@ td{
   position:sticky;
   right:0;
   z-index:2;
-  padding-left:12px;
-  padding-right:12px;
+  padding-left:10px;
+  padding-right:10px;
   background:
-    linear-gradient(180deg, rgba(10,22,37,0.98), rgba(8,18,31,0.94)),
-    rgba(8,18,31,0.95);
-  box-shadow:-6px 0 14px rgba(2, 8, 18, 0.18);
+    linear-gradient(90deg, rgba(8,18,31,0.88), rgba(8,18,31,0.8) 18%, rgba(8,18,31,0.72));
+  box-shadow:-2px 0 10px rgba(2, 8, 18, 0.1);
+  border-left:1px solid rgba(255,255,255,0.05);
 }
 
 .payment-record-actions-head{
@@ -4355,7 +4355,8 @@ td{
   position:sticky;
   right:0;
   z-index:3;
-  box-shadow:-6px 0 14px rgba(2, 8, 18, 0.14);
+  box-shadow:-2px 0 10px rgba(2, 8, 18, 0.08);
+  border-left:1px solid rgba(255,255,255,0.06);
 }
 
 .payment-record-action-stack{
@@ -4380,23 +4381,29 @@ td{
 .payment-record-actions .review-state{
   width:100%;
   justify-content:center;
-  padding:9px 14px;
+  padding:8px 14px;
   border-radius:14px;
   box-sizing:border-box;
   text-align:center;
   font-size:13px;
   line-height:1.2;
+  background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
 }
 
 :root[data-theme="light"] .payment-record-actions{
   background:
-    linear-gradient(180deg, rgba(249,252,255,0.98), rgba(244,248,255,0.95)),
-    rgba(248,251,255,0.96);
-  box-shadow:-6px 0 14px rgba(35,72,127,0.08);
+    linear-gradient(90deg, rgba(248,251,255,0.94), rgba(245,249,255,0.9) 18%, rgba(241,246,255,0.84));
+  box-shadow:-2px 0 10px rgba(35,72,127,0.05);
+  border-left:1px solid rgba(47,109,255,0.08);
 }
 
 :root[data-theme="light"] .payment-record-actions-head{
-  box-shadow:-6px 0 14px rgba(35,72,127,0.08);
+  box-shadow:-2px 0 10px rgba(35,72,127,0.05);
+  border-left:1px solid rgba(47,109,255,0.08);
+}
+
+:root[data-theme="light"] .payment-record-actions .review-state{
+  background:linear-gradient(180deg, rgba(255,255,255,0.72), rgba(242,247,255,0.5));
 }
 
 .librarian-desk-tabs-shell{
