@@ -45,7 +45,7 @@
     </div>
     <span class="muted">Choosing an option opens the matching print preview.</span>
   </div>
-  <div class="table-wrap table-wrap-top">
+  <div class="table-wrap table-wrap-top manage-users-directory-table">
     <table>
       <thead>
         <tr>
@@ -83,19 +83,19 @@
             </td>
             <td><?php echo h($user['email']); ?></td>
             <td><?php echo h($user['username']); ?></td>
-            <td><span class="badge"><?php echo h(role_label((string) $user['role'])); ?></span></td>
+            <td><span class="badge manage-users-role-badge"><?php echo h(role_label((string) $user['role'])); ?></span></td>
             <td>
               <?php if ((string) ($user['account_status'] ?? 'active') === 'inactive'): ?>
-                <span class="badge complaint-status-badge complaint-status-reviewed">Inactive</span>
+                <span class="badge complaint-status-badge manage-users-status-badge manage-users-status-badge-inactive">Inactive</span>
               <?php else: ?>
-                <span class="badge complaint-status-badge complaint-status-resolved">Active</span>
+                <span class="badge complaint-status-badge manage-users-status-badge complaint-status-resolved">Active</span>
               <?php endif; ?>
             </td>
             <td>
               <?php if ((int) ($user['password_setup_required'] ?? 0) === 1): ?>
-                <span class="badge complaint-status-badge complaint-status-new">Pending Setup</span>
+                <span class="badge complaint-status-badge manage-users-access-badge manage-users-access-badge-pending">Pending Setup</span>
               <?php else: ?>
-                <span class="badge complaint-status-badge complaint-status-resolved">Active</span>
+                <span class="badge complaint-status-badge manage-users-access-badge manage-users-access-badge-ready">Active</span>
               <?php endif; ?>
             </td>
             <td><?php echo h((string) (($user['role'] ?? '') === 'student' ? ($user['course'] ?? '-') : '-')); ?></td>
