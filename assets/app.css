@@ -4344,11 +4344,10 @@ td{
   z-index:2;
   padding-left:12px;
   padding-right:12px;
-  background:
-    linear-gradient(90deg, rgba(8,18,31,0.78), rgba(8,18,31,0.68) 20%, rgba(8,18,31,0.6));
-  box-shadow:-1px 0 6px rgba(2, 8, 18, 0.06);
-  border-left:1px solid rgba(255,255,255,0.04);
-  backdrop-filter:blur(8px);
+  background:inherit;
+  box-shadow:none;
+  border-left:1px solid rgba(255,255,255,0.035);
+  backdrop-filter:none;
 }
 
 .payment-record-actions-head{
@@ -4400,10 +4399,9 @@ td{
 }
 
 :root[data-theme="light"] .payment-record-actions{
-  background:
-    linear-gradient(90deg, rgba(248,251,255,0.84), rgba(245,249,255,0.76) 20%, rgba(241,246,255,0.68));
-  box-shadow:-1px 0 6px rgba(35,72,127,0.04);
-  border-left:1px solid rgba(47,109,255,0.07);
+  background:inherit;
+  box-shadow:none;
+  border-left:1px solid rgba(47,109,255,0.06);
 }
 
 :root[data-theme="light"] .payment-record-actions-head{
