@@ -4357,9 +4357,6 @@ td{
 
 .payment-record-actions{
   min-width:176px;
-  position:sticky;
-  right:0;
-  z-index:2;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -4373,9 +4370,6 @@ td{
 
 .payment-record-actions-head{
   min-width:176px;
-  position:sticky;
-  right:0;
-  z-index:3;
   text-align:center;
   box-shadow:none;
   border-left:0;
