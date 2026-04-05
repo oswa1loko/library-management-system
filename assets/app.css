@@ -4404,40 +4404,44 @@ td{
 }
 
 .payment-record-actions .review-state{
-  width:100%;
+  width:auto;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   gap:8px;
-  padding:0;
-  border:0;
-  border-radius:0;
+  min-width:96px;
+  padding:7px 12px;
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:999px;
   box-sizing:border-box;
   text-align:center;
-  font-size:11px;
+  font-size:12px;
   font-weight:600;
-  letter-spacing:.02em;
-  line-height:1.2;
-  background:none;
-  box-shadow:none;
+  letter-spacing:.01em;
+  line-height:1;
+  background:rgba(255,255,255,0.07);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
   color:#d7e4f7;
 }
 
 .payment-record-actions .review-state::before{
   content:"";
-  width:7px;
-  height:7px;
+  width:8px;
+  height:8px;
   border-radius:50%;
   background:currentColor;
-  box-shadow:0 0 0 4px rgba(255,255,255,0.045);
   flex:0 0 auto;
 }
 
 .payment-record-actions .review-state.review-state-approved{
+  background:linear-gradient(180deg, rgba(143,227,176,0.16), rgba(143,227,176,0.08));
+  border-color:rgba(143,227,176,0.3);
   color:#9ee6b7;
 }
 
 .payment-record-actions .review-state.review-state-rejected{
+  background:linear-gradient(180deg, rgba(255,127,127,0.18), rgba(255,127,127,0.08));
+  border-color:rgba(255,127,127,0.26);
   color:#ffb3b3;
 }
 
@@ -4453,19 +4457,20 @@ td{
 }
 
 :root[data-theme="light"] .payment-record-actions .review-state{
-  background:none;
+  background:rgba(233,241,255,0.82);
+  border-color:rgba(47,109,255,0.12);
   color:#49617f;
 }
 
-:root[data-theme="light"] .payment-record-actions .review-state::before{
-  box-shadow:0 0 0 4px rgba(47,109,255,0.08);
-}
-
 :root[data-theme="light"] .payment-record-actions .review-state.review-state-approved{
+  background:linear-gradient(180deg, rgba(224,252,235,0.98), rgba(210,244,223,0.94));
+  border-color:rgba(69,170,112,0.22);
   color:#2e7d50;
 }
 
 :root[data-theme="light"] .payment-record-actions .review-state.review-state-rejected{
+  background:linear-gradient(180deg, rgba(255,232,232,0.98), rgba(255,217,217,0.94));
+  border-color:rgba(210,92,92,0.2);
   color:#b24a4a;
 }
 
