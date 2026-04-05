@@ -4360,9 +4360,12 @@ td{
   position:sticky;
   right:0;
   z-index:2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   padding-left:12px;
   padding-right:12px;
-  background:inherit;
+  background:transparent;
   box-shadow:none;
   border-left:0;
   backdrop-filter:none;
@@ -4379,18 +4382,19 @@ td{
 }
 
 .payment-record-action-stack{
-  display:grid;
+  display:flex;
+  flex-direction:column;
   gap:8px;
-  align-items:stretch;
-  justify-items:stretch;
-  width:100%;
-  max-width:120px;
-  margin:0 auto;
+  align-items:center;
+  justify-content:center;
+  width:auto;
+  max-width:none;
+  margin:0;
 }
 
 .payment-record-action-stack .inline-form{
   display:block;
-  width:100%;
+  width:120px;
 }
 
 .payment-record-action-stack .inline-form button{
@@ -4443,7 +4447,7 @@ td{
 }
 
 :root[data-theme="light"] .payment-record-actions{
-  background:inherit;
+  background:transparent;
   box-shadow:none;
   border-left:0;
 }
