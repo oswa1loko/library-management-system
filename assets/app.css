@@ -4338,25 +4338,27 @@ td{
 }
 
 .payment-record-actions{
-  min-width:188px;
+  min-width:176px;
   position:sticky;
   right:0;
   z-index:2;
-  padding-left:10px;
-  padding-right:10px;
+  padding-left:12px;
+  padding-right:12px;
   background:
-    linear-gradient(90deg, rgba(8,18,31,0.88), rgba(8,18,31,0.8) 18%, rgba(8,18,31,0.72));
-  box-shadow:-2px 0 10px rgba(2, 8, 18, 0.1);
-  border-left:1px solid rgba(255,255,255,0.05);
+    linear-gradient(90deg, rgba(8,18,31,0.78), rgba(8,18,31,0.68) 20%, rgba(8,18,31,0.6));
+  box-shadow:-1px 0 6px rgba(2, 8, 18, 0.06);
+  border-left:1px solid rgba(255,255,255,0.04);
+  backdrop-filter:blur(8px);
 }
 
 .payment-record-actions-head{
-  min-width:188px;
+  min-width:176px;
   position:sticky;
   right:0;
   z-index:3;
-  box-shadow:-2px 0 10px rgba(2, 8, 18, 0.08);
-  border-left:1px solid rgba(255,255,255,0.06);
+  text-align:center;
+  box-shadow:-1px 0 6px rgba(2, 8, 18, 0.05);
+  border-left:1px solid rgba(255,255,255,0.05);
 }
 
 .payment-record-action-stack{
@@ -4364,6 +4366,9 @@ td{
   gap:10px;
   align-items:stretch;
   justify-items:stretch;
+  width:100%;
+  max-width:128px;
+  margin:0 auto;
 }
 
 .payment-record-action-stack .inline-form{
@@ -4376,30 +4381,34 @@ td{
   min-width:0;
   justify-content:center;
   border-radius:14px;
+  min-height:36px;
+  padding:8px 12px;
+  font-size:12px;
 }
 
 .payment-record-actions .review-state{
   width:100%;
   justify-content:center;
-  padding:8px 14px;
+  padding:8px 12px;
   border-radius:14px;
   box-sizing:border-box;
   text-align:center;
-  font-size:13px;
+  font-size:12px;
+  font-weight:700;
   line-height:1.2;
   background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
 }
 
 :root[data-theme="light"] .payment-record-actions{
   background:
-    linear-gradient(90deg, rgba(248,251,255,0.94), rgba(245,249,255,0.9) 18%, rgba(241,246,255,0.84));
-  box-shadow:-2px 0 10px rgba(35,72,127,0.05);
-  border-left:1px solid rgba(47,109,255,0.08);
+    linear-gradient(90deg, rgba(248,251,255,0.84), rgba(245,249,255,0.76) 20%, rgba(241,246,255,0.68));
+  box-shadow:-1px 0 6px rgba(35,72,127,0.04);
+  border-left:1px solid rgba(47,109,255,0.07);
 }
 
 :root[data-theme="light"] .payment-record-actions-head{
-  box-shadow:-2px 0 10px rgba(35,72,127,0.05);
-  border-left:1px solid rgba(47,109,255,0.08);
+  box-shadow:-1px 0 6px rgba(35,72,127,0.04);
+  border-left:1px solid rgba(47,109,255,0.07);
 }
 
 :root[data-theme="light"] .payment-record-actions .review-state{
