@@ -4357,15 +4357,13 @@ td{
 
 .payment-record-actions{
   min-width:176px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
   padding-left:12px;
   padding-right:12px;
   background:transparent;
   box-shadow:none;
   border-left:0;
   backdrop-filter:none;
+  text-align:center;
 }
 
 .payment-record-actions-head{
@@ -4401,38 +4399,11 @@ td{
   font-size:12px;
 }
 
-.payment-record-actions .review-state{
-  width:auto;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  min-width:96px;
-  padding:7px 12px;
-  box-sizing:border-box;
-  text-align:center;
-  font-size:12px;
-  font-weight:600;
-  letter-spacing:.01em;
-  line-height:1;
-  color:var(--text);
-}
-
-.payment-record-actions .review-state::before{
-  content:none;
-}
-
-.payment-record-actions .review-state.review-state-approved{
-  color:var(--text);
-}
-
-.payment-record-actions .review-state.review-state-rejected{
-  color:var(--text);
-}
-
 .payment-record-actions .payment-review-badge{
+  display:inline-flex;
   margin:0 auto;
   justify-content:center;
+  vertical-align:middle;
 }
 
 .payment-record-actions .payment-review-badge .status-dot{
@@ -4449,18 +4420,6 @@ td{
 :root[data-theme="light"] .payment-record-actions-head{
   box-shadow:none;
   border-left:0;
-}
-
-:root[data-theme="light"] .payment-record-actions .review-state{
-  color:var(--text);
-}
-
-:root[data-theme="light"] .payment-record-actions .review-state.review-state-approved{
-  color:var(--text);
-}
-
-:root[data-theme="light"] .payment-record-actions .review-state.review-state-rejected{
-  color:var(--text);
 }
 
 .librarian-desk-tabs-shell{

@@ -644,18 +644,20 @@ $summaryLabels = match ($paymentScope) {
                   }
                   ?>
                 </td>
-                <td class="payment-record-actions payment-record-action-stack">
+                <td class="payment-record-actions">
                   <?php if ((string) ($payment['status'] ?? '') === 'pending'): ?>
-                    <form method="post" class="inline-form">
-                      <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                      <button type="submit" name="approve" value="1">Approve</button>
-                    </form>
-                    <form method="post" class="inline-form">
-                      <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
-                      <button type="submit" class="danger" name="reject" value="1">Reject</button>
-                    </form>
+                    <div class="payment-record-action-stack">
+                      <form method="post" class="inline-form">
+                        <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
+                        <button type="submit" name="approve" value="1">Approve</button>
+                      </form>
+                      <form method="post" class="inline-form">
+                        <input type="hidden" name="id" value="<?php echo (int) $payment['id']; ?>">
+                        <button type="submit" class="danger" name="reject" value="1">Reject</button>
+                      </form>
+                    </div>
                   <?php else: ?>
-                    <span class="badge review-state payment-review-badge review-state-<?php echo h((string) ($payment['status'] ?? 'approved')); ?>">
+                    <span class="badge payment-review-badge review-state-<?php echo h((string) ($payment['status'] ?? 'approved')); ?>">
                       <span class="status-dot <?php echo h((string) ($payment['status'] ?? 'approved')); ?>"></span>
                       <?php echo (string) ($payment['status'] ?? '') === 'rejected' ? 'Rejected by admin' : 'Reviewed'; ?>
                     </span>
