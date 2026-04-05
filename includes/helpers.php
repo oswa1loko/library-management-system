@@ -114,6 +114,174 @@ function library_get_request_header(string $name): string
     return trim((string) ($_SERVER[$serverKey] ?? ''));
 }
 
+function library_rate_limit_storage_path(): string
+{
+    return dirname(__DIR__) . '/storage/runtime/rate_limits.json';
+}
+
+function library_rate_limit_client_ip(): string
+{
+    $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    return $ip !== '' ? $ip : 'unknown';
+}
+
+function library_rate_limit_normalize_key(string $value): string
+{
+    $value = strtolower(trim($value));
+    if ($value === '') {
+        return 'anonymous';
+    }
+
+    $value = preg_replace('/[^a-z0-9@._:-]+/', '-', $value) ?? $value;
+    return trim($value, '-') !== '' ? trim($value, '-') : 'anonymous';
+}
+
+function library_rate_limit_attempt(string $bucket, int $maxAttempts, int $windowSeconds): array
+{
+    $maxAttempts = max(1, $maxAttempts);
+    $windowSeconds = max(1, $windowSeconds);
+
+    $path = library_rate_limit_storage_path();
+    $directory = dirname($path);
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0775, true);
+    }
+
+    $handle = fopen($path, 'c+');
+    if ($handle === false) {
+        return [
+            'allowed' => true,
+            'retry_after' => 0,
+            'remaining' => $maxAttempts - 1,
+        ];
+    }
+
+    $now = time();
+    $windowStart = $now - $windowSeconds;
+    $state = [];
+
+    try {
+        if (!flock($handle, LOCK_EX)) {
+            fclose($handle);
+            return [
+                'allowed' => true,
+                'retry_after' => 0,
+                'remaining' => $maxAttempts - 1,
+            ];
+        }
+
+        $raw = stream_get_contents($handle);
+        if (is_string($raw) && trim($raw) !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $state = $decoded;
+            }
+        }
+
+        foreach ($state as $key => $timestamps) {
+            if (!is_array($timestamps)) {
+                unset($state[$key]);
+                continue;
+            }
+
+            $filtered = array_values(array_filter($timestamps, static function ($timestamp) use ($windowStart) {
+                return is_int($timestamp) && $timestamp >= $windowStart;
+            }));
+
+            if ($filtered === []) {
+                unset($state[$key]);
+            } else {
+                $state[$key] = $filtered;
+            }
+        }
+
+        $bucketKey = library_rate_limit_normalize_key($bucket);
+        $bucketTimestamps = array_values(array_filter($state[$bucketKey] ?? [], static function ($timestamp) use ($windowStart) {
+            return is_int($timestamp) && $timestamp >= $windowStart;
+        }));
+
+        if (count($bucketTimestamps) >= $maxAttempts) {
+            $oldest = min($bucketTimestamps);
+            $retryAfter = max(1, ($oldest + $windowSeconds) - $now);
+
+            rewind($handle);
+            ftruncate($handle, 0);
+            fwrite($handle, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            fflush($handle);
+            flock($handle, LOCK_UN);
+            fclose($handle);
+
+            return [
+                'allowed' => false,
+                'retry_after' => $retryAfter,
+                'remaining' => 0,
+            ];
+        }
+
+        $bucketTimestamps[] = $now;
+        $state[$bucketKey] = $bucketTimestamps;
+
+        rewind($handle);
+        ftruncate($handle, 0);
+        fwrite($handle, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        fflush($handle);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+
+        return [
+            'allowed' => true,
+            'retry_after' => 0,
+            'remaining' => max(0, $maxAttempts - count($bucketTimestamps)),
+        ];
+    } catch (Throwable $exception) {
+        @flock($handle, LOCK_UN);
+        fclose($handle);
+        return [
+            'allowed' => true,
+            'retry_after' => 0,
+            'remaining' => $maxAttempts - 1,
+        ];
+    }
+}
+
+function library_rate_limit_clear(string $bucket): void
+{
+    $path = library_rate_limit_storage_path();
+    if (!is_file($path)) {
+        return;
+    }
+
+    $handle = fopen($path, 'c+');
+    if ($handle === false) {
+        return;
+    }
+
+    try {
+        if (!flock($handle, LOCK_EX)) {
+            fclose($handle);
+            return;
+        }
+
+        $raw = stream_get_contents($handle);
+        $state = json_decode((string) $raw, true);
+        if (!is_array($state)) {
+            $state = [];
+        }
+
+        unset($state[library_rate_limit_normalize_key($bucket)]);
+
+        rewind($handle);
+        ftruncate($handle, 0);
+        fwrite($handle, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        fflush($handle);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    } catch (Throwable $exception) {
+        @flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
 function library_should_enforce_csrf(): bool
 {
     if (PHP_SAPI === 'cli') {

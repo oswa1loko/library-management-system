@@ -14,6 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($login === '') {
         $error = 'Enter your email or username first.';
     } else {
+        $resetRateLimit = library_rate_limit_attempt(
+            'forgot_password:' . library_rate_limit_client_ip() . ':' . library_rate_limit_normalize_key($login),
+            5,
+            900
+        );
+        if (!$resetRateLimit['allowed']) {
+            $error = 'Too many reset requests. Please wait ' . $resetRateLimit['retry_after'] . ' seconds before trying again.';
+        } else {
         $stmt = $conn->prepare("
             SELECT id, fullname, email, username, role, account_status, password_setup_required
             FROM users
@@ -55,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $info = 'If the account exists and has a valid email address, a password reset link is being sent.';
+        }
     }
 }
 ?>

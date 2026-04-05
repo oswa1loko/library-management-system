@@ -59,6 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pendingOtp = null;
                 $error = 'This account does not have a valid email address for verification. Please contact the librarian.';
             } elseif (isset($_POST['resend_otp'])) {
+                $otpResendLimit = library_rate_limit_attempt(
+                    'login_otp_resend:' . library_rate_limit_client_ip() . ':' . $pendingUserId,
+                    5,
+                    900
+                );
+                if (!$otpResendLimit['allowed']) {
+                    $error = 'Too many verification code resend requests. Please wait ' . $otpResendLimit['retry_after'] . ' seconds.';
+                } else {
                 $resendWaitSeconds = get_login_otp_resend_wait_seconds($conn, $pendingUserId);
                 if ($resendWaitSeconds > 0) {
                     $error = 'Please wait ' . $resendWaitSeconds . ' seconds before requesting a new verification code.';
@@ -76,7 +84,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $error = 'Unable to resend the verification code right now.';
                     }
                 }
+                }
             } else {
+                $otpVerifyLimit = library_rate_limit_attempt(
+                    'login_otp_verify:' . library_rate_limit_client_ip() . ':' . $pendingUserId,
+                    8,
+                    600
+                );
+                if (!$otpVerifyLimit['allowed']) {
+                    $error = 'Too many verification attempts. Please wait ' . $otpVerifyLimit['retry_after'] . ' seconds before trying again.';
+                } else {
                 $otpCode = trim((string) ($_POST['otp_code'] ?? ''));
                 if ($otpCode === '') {
                     $error = 'Enter the verification code sent to your email.';
@@ -96,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } else {
                     clear_login_otp($conn, $pendingUserId);
+                    library_rate_limit_clear('login_otp_verify:' . library_rate_limit_client_ip() . ':' . $pendingUserId);
                     unset($_SESSION['pending_login_otp']);
                     session_regenerate_id(true);
                     $_SESSION['user_id'] = $pendingUserId;
@@ -103,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['email'] = $pendingEmail;
                     $_SESSION['role'] = $pendingRole;
                     redirect_to_dashboard($pendingRole);
+                }
                 }
             }
         }
@@ -113,6 +132,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($login === '' || $password === '') {
             $error = 'Please complete all fields.';
         } else {
+            $loginRateLimitKey = 'login_password:' . library_rate_limit_client_ip() . ':' . library_rate_limit_normalize_key($login);
+            $loginRateLimit = library_rate_limit_attempt($loginRateLimitKey, 10, 900);
+            if (!$loginRateLimit['allowed']) {
+                $error = 'Too many login attempts. Please wait ' . $loginRateLimit['retry_after'] . ' seconds before trying again.';
+            } else {
             $stmt = $conn->prepare("
                 SELECT id, fullname, username, email, password, role, account_status, password_setup_required
                 FROM users
@@ -149,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 clear_login_otp($conn, (int) $id);
                                 $error = 'This account does not have a valid email address for verification. Please contact the librarian.';
                             } else {
+                                library_rate_limit_clear($loginRateLimitKey);
                                 $issued = issue_login_otp($conn, (int) $id);
                                 $queued = enqueue_login_otp_email_job($conn, $dbEmail, $dbFullName, $dbRole, $issued['code']);
 
@@ -172,6 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
                         } else {
+                            library_rate_limit_clear($loginRateLimitKey);
                             session_regenerate_id(true);
                             $_SESSION['user_id'] = (int) $id;
                             $_SESSION['username'] = $dbUsername;
@@ -189,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stmt->close();
+            }
         }
     }
 }

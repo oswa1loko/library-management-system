@@ -6,6 +6,17 @@ $user = api_require_session_login();
 
 global $conn;
 
+$tokenRateLimit = library_rate_limit_attempt(
+    'api_token_create:user:' . (int) ($user['id'] ?? 0),
+    10,
+    3600
+);
+if (!$tokenRateLimit['allowed']) {
+    api_error('Too many token creation requests. Please try again later.', 429, [
+        'retry_after' => $tokenRateLimit['retry_after'],
+    ]);
+}
+
 $label = trim((string) ($_POST['label'] ?? 'default'));
 if ($label === '') {
     $label = 'default';
