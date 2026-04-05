@@ -584,7 +584,7 @@ $summaryLabels = match ($paymentScope) {
         <span class="chip"><?php echo h($summaryLabels['pending_chip']); ?>: <?php echo h(format_currency($summary['pending_amount'] ?? 0)); ?></span>
         <span class="chip">Rejected: <?php echo (int) ($summary['rejected_records'] ?? 0); ?></span>
       </div>
-      <div class="table-wrap table-wrap-top">
+      <div class="table-wrap table-wrap-top payment-records-table">
         <table>
           <thead>
             <tr>
