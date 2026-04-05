@@ -8184,8 +8184,8 @@ body.modal-open{
 
 .manage-users-directory-table th{
   color:#d7e4f7;
-  font-size:10px;
-  letter-spacing:0.12em;
+  font-size:11px;
+  letter-spacing:0.09em;
   background:
     linear-gradient(180deg, rgba(33,58,92,0.92), rgba(12,26,43,0.96)),
     rgba(7,20,35,0.94);
@@ -8214,6 +8214,8 @@ body.modal-open{
   min-width:84px;
   justify-content:center;
   padding:6px 12px;
+  font-size:12px;
+  letter-spacing:0;
   background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
   border-color:rgba(152,178,214,0.16);
   color:#e3ebf7;
@@ -8225,8 +8227,8 @@ body.modal-open{
   min-width:92px;
   padding:6px 12px;
   border-radius:16px;
-  font-size:11px;
-  letter-spacing:.03em;
+  font-size:12px;
+  letter-spacing:.015em;
   text-transform:uppercase;
 }
 
