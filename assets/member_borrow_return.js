@@ -190,6 +190,36 @@ function initBorrowSelection() {
     return rankedOptions.length ? rankedOptions[0].option : null;
   };
 
+  const findExactSearchBookOption = (value) => {
+    const normalizedValue = normalizeSearchValue(value);
+    if (!normalizedValue) {
+      return null;
+    }
+
+    const exactMatches = options.filter((option) => {
+      const title = normalizeSearchValue(option.getAttribute('data-book-title') || '');
+      const author = normalizeSearchValue(option.getAttribute('data-book-author') || '');
+      return title === normalizedValue || author === normalizedValue;
+    });
+
+    return exactMatches.length === 1 ? exactMatches[0] : null;
+  };
+
+  const syncExactBookMatch = (value) => {
+    const exactMatch = findExactSearchBookOption(value);
+    if (!exactMatch) {
+      exactBookId = '';
+      return false;
+    }
+
+    exactBookId = String(exactMatch.getAttribute('data-book-id') || '').trim();
+    if (categorySelect) {
+      categorySelect.value = normalizeCategoryValue(exactMatch.getAttribute('data-book-category-value') || '');
+    }
+
+    return true;
+  };
+
   const highlightSuggestion = (index) => {
     const buttons = getSuggestionButtons();
     activeSuggestionIndex = index;
@@ -362,13 +392,18 @@ function initBorrowSelection() {
   };
 
   searchInput.addEventListener('input', () => {
-    exactBookId = '';
     if (searchInput.value.trim() === '' && categorySelect) {
+      exactBookId = '';
       categorySelect.value = '';
       hideSearchSuggestions();
       window.location.assign(buildFilterUrl(''));
       return;
     }
+
+    if (!syncExactBookMatch(searchInput.value)) {
+      exactBookId = '';
+    }
+
     applyFilter();
     renderSearchSuggestions();
     queueFilterUrlSync();
