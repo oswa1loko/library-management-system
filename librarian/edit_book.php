@@ -295,26 +295,6 @@ $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRem
                 <input id="isbn" name="isbn" value="<?php echo h($_POST['isbn'] ?? ($book['isbn'] ?? '')); ?>" placeholder="9781234567890" inputmode="numeric" pattern="\d{13}" maxlength="13" aria-describedby="isbn_help">
                 <div id="isbn_help" class="muted">Enter exactly 13 digits. Example: 9781234567890</div>
               </div>
-              <div>
-                <label for="qty_total">Total quantity</label>
-                <input id="qty_total" type="number" name="qty_total" value="<?php echo $displayTotal; ?>" min="0" readonly aria-readonly="true" aria-describedby="qty_total_help">
-                <div id="qty_total_help" class="muted">Auto-updates from the current total plus the copies you add.</div>
-              </div>
-              <div>
-                <label for="qty_add">Add copies</label>
-                <input id="qty_add" type="number" name="qty_add" value="<?php echo $pendingAddedCopies; ?>" min="0" aria-describedby="qty_add_help">
-                <div id="qty_add_help" class="muted">Adding copies increases both total and available stock while keeping the <?php echo $borrowedCopies; ?> borrowed cop<?php echo $borrowedCopies === 1 ? 'y' : 'ies'; ?> counted.</div>
-              </div>
-              <div>
-                <label for="qty_remove">Remove copies</label>
-                <input id="qty_remove" type="number" name="qty_remove" value="<?php echo $pendingRemovedCopies; ?>" min="0" aria-describedby="qty_remove_help">
-                <div id="qty_remove_help" class="muted">Remove only from shelf stock. You can remove up to <?php echo $currentAvailable + $pendingAddedCopies; ?> available cop<?php echo ($currentAvailable + $pendingAddedCopies) === 1 ? 'y' : 'ies'; ?> without touching borrowed books.</div>
-              </div>
-              <div>
-                <label for="qty_available">Available quantity</label>
-                <input id="qty_available" type="number" name="qty_available" value="<?php echo $displayAvailable; ?>" min="0" readonly aria-readonly="true" aria-describedby="qty_available_help">
-                <div id="qty_available_help" class="muted">Auto-updates based on current available copies plus added stock. Borrowed copies stay reserved.</div>
-              </div>
               <div class="form-span-2">
                 <label for="description">Description</label>
                 <textarea id="description" name="description" rows="4"><?php echo h($_POST['description'] ?? ($book['description'] ?? '')); ?></textarea>
@@ -331,9 +311,37 @@ $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRem
             <div class="stack">
               <div>
                 <p class="muted eyebrow-compact">Inventory</p>
-                <h4 class="heading-top-md">Physical copies tied to this record</h4>
+                <h4 class="heading-top-md">Stock adjustments for this record</h4>
               </div>
-              <div class="empty-state">Use Add copies for restocking and Remove copies for safe stock reduction. Total and available quantities update automatically while borrowed copies remain reserved.</div>
+              <div class="librarian-edit-book-stock-grid">
+                <div class="empty-state librarian-edit-book-stock-card">
+                  <span class="code-pill">Total</span>
+                  <strong><?php echo $displayTotal; ?></strong>
+                  <span class="muted">All copies tied to this title after your pending changes.</span>
+                </div>
+                <div class="empty-state librarian-edit-book-stock-card">
+                  <span class="code-pill">Available</span>
+                  <strong><?php echo $displayAvailable; ?></strong>
+                  <span class="muted">Shelf stock ready for borrowing after your pending changes.</span>
+                </div>
+                <div class="empty-state librarian-edit-book-stock-card">
+                  <span class="code-pill">Borrowed</span>
+                  <strong><?php echo $borrowedCopies; ?></strong>
+                  <span class="muted">Copies currently outside the shelf and protected from removal.</span>
+                </div>
+              </div>
+              <div class="grid form librarian-edit-book-stock-controls">
+                <div>
+                  <label for="qty_add">Add copies</label>
+                  <input id="qty_add" type="number" name="qty_add" value="<?php echo $pendingAddedCopies; ?>" min="0" aria-describedby="qty_add_help">
+                  <div id="qty_add_help" class="muted">Use this for restocking. Added copies increase both total and available stock.</div>
+                </div>
+                <div>
+                  <label for="qty_remove">Remove copies</label>
+                  <input id="qty_remove" type="number" name="qty_remove" value="<?php echo $pendingRemovedCopies; ?>" min="0" aria-describedby="qty_remove_help">
+                  <div id="qty_remove_help" class="muted">Only available shelf copies can be removed. Borrowed copies stay reserved.</div>
+                </div>
+              </div>
             </div>
 
             <div class="inline-actions librarian-edit-book-actions">

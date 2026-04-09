@@ -5295,6 +5295,32 @@ button.catalog-search-suggestion{
   min-width:144px;
 }
 
+.librarian-edit-book-stock-grid,
+.librarian-book-add-stock-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:14px;
+}
+
+.librarian-edit-book-stock-card,
+.librarian-book-add-stock-card{
+  min-height:120px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:8px;
+}
+
+.librarian-edit-book-stock-card strong,
+.librarian-book-add-stock-card strong{
+  font-size:1.8rem;
+  line-height:1;
+}
+
+.librarian-edit-book-stock-controls{
+  gap:16px 18px;
+}
+
 .librarian-edit-book-chips{
   row-gap:10px;
 }

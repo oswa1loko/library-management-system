@@ -610,9 +610,20 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
       <div class="stack">
         <div>
           <p class="muted eyebrow-compact">Inventory</p>
-          <h4 class="heading-top-md">Physical copies for this catalog record</h4>
+          <h4 class="heading-top-md">Starting stock for this new title</h4>
         </div>
-        <div class="empty-state">Starting quantity becomes both total copies and available copies after the book is assigned to the selected catalog.</div>
+        <div class="librarian-book-add-stock-grid">
+          <div class="empty-state librarian-book-add-stock-card">
+            <span class="code-pill">Total on create</span>
+            <strong><?php echo (int) $formData['qty']; ?></strong>
+            <span class="muted">A new record starts with the same total and available stock.</span>
+          </div>
+          <div class="empty-state librarian-book-add-stock-card">
+            <span class="code-pill">Borrowed on create</span>
+            <strong>0</strong>
+            <span class="muted">Newly added titles begin with no borrowed copies yet.</span>
+          </div>
+        </div>
       </div>
 
       <div class="inline-actions">
