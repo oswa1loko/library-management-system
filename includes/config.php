@@ -641,6 +641,7 @@ function ensure_library_schema(mysqli $conn): void
             incident_type ENUM('lost','damaged') NOT NULL,
             severity ENUM('minor','major','severe') DEFAULT NULL,
             description TEXT NOT NULL,
+            incident_photo_path VARCHAR(255) DEFAULT NULL,
             workflow_status ENUM('open','for_payment','closed','reported','under_review','awaiting_settlement','resolved','rejected') NOT NULL DEFAULT 'open',
             resolution_action ENUM('none','return_to_shelf','send_for_repair','write_off_lost','write_off_damaged') NOT NULL DEFAULT 'none',
             settlement_status ENUM('pending','paid','waived','not_required','replacement_submitted') NOT NULL DEFAULT 'pending',
@@ -1202,6 +1203,10 @@ function ensure_library_schema(mysqli $conn): void
 
     if (!column_exists($conn, 'book_incidents', 'severity')) {
         $conn->query("ALTER TABLE book_incidents ADD COLUMN severity ENUM('minor','major','severe') DEFAULT NULL AFTER incident_type");
+    }
+
+    if (!column_exists($conn, 'book_incidents', 'incident_photo_path')) {
+        $conn->query("ALTER TABLE book_incidents ADD COLUMN incident_photo_path VARCHAR(255) DEFAULT NULL AFTER description");
     }
 
     if (!column_exists($conn, 'book_incidents', 'workflow_status')) {

@@ -1,5 +1,32 @@
 <?php
 
+function upload_book_incident_photo(array $file): array
+{
+    if (empty($file['name'])) {
+        return ['path' => '', 'error' => ''];
+    }
+
+    $extension = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
+    $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+    if (!in_array($extension, $allowed, true)) {
+        return ['path' => '', 'error' => 'Only JPG, JPEG, PNG, and WEBP incident photos are allowed.'];
+    }
+
+    $directory = __DIR__ . '/../uploads/incident_photos';
+    if (!ensure_upload_directory($directory)) {
+        return ['path' => '', 'error' => 'Incident photo folder could not be created.'];
+    }
+
+    $filename = 'incident_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+    $target = $directory . '/' . $filename;
+
+    if (!move_uploaded_file((string) ($file['tmp_name'] ?? ''), $target)) {
+        return ['path' => '', 'error' => 'Incident photo upload failed.'];
+    }
+
+    return ['path' => 'uploads/incident_photos/' . $filename, 'error' => ''];
+}
+
 function book_incident_type_options(): array
 {
     return [
@@ -407,6 +434,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     $borrowId = (int) ($data['borrow_id'] ?? 0);
     $incidentType = trim((string) ($data['incident_type'] ?? ''));
     $description = trim((string) ($data['description'] ?? ''));
+    $incidentPhotoFile = is_array($data['incident_photo_file'] ?? null) ? $data['incident_photo_file'] : [];
 
     if ($borrowId <= 0) {
         return ['ok' => false, 'message' => 'Select a borrowed item first.'];
@@ -418,6 +446,15 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
 
     if ($description === '') {
         return ['ok' => false, 'message' => 'Please describe what happened to the book.'];
+    }
+
+    if ($incidentType === 'damaged' && empty($incidentPhotoFile['name'])) {
+        return ['ok' => false, 'message' => 'Upload a clear photo of the damaged book before submitting the report.'];
+    }
+
+    $photoUpload = upload_book_incident_photo($incidentPhotoFile);
+    if (($photoUpload['error'] ?? '') !== '') {
+        return ['ok' => false, 'message' => (string) $photoUpload['error']];
     }
 
     $borrowStmt = $conn->prepare("
@@ -464,6 +501,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     $bookId = (int) ($borrow['book_id'] ?? 0);
     $bookCopyId = (int) ($borrow['book_copy_id'] ?? 0);
     $severityValue = null;
+    $incidentPhotoPath = trim((string) ($photoUpload['path'] ?? '')) !== '' ? (string) $photoUpload['path'] : null;
     $insertStmt = $conn->prepare("
         INSERT INTO book_incidents (
             borrow_id,
@@ -474,13 +512,14 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
             incident_type,
             severity,
             description,
+            incident_photo_path,
             workflow_status,
             settlement_status,
             reported_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 'pending', ?)
     ");
     $insertStmt->bind_param(
-        'iiiisssss',
+        'iiiissssss',
         $borrowId,
         $userId,
         $bookId,
@@ -489,6 +528,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
         $incidentType,
         $severityValue,
         $description,
+        $incidentPhotoPath,
         $reportedAt
     );
     $ok = $insertStmt->execute();
@@ -496,6 +536,9 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
     $insertStmt->close();
 
     if (!$ok) {
+        if ($incidentPhotoPath !== null) {
+            remove_relative_file($incidentPhotoPath);
+        }
         return ['ok' => false, 'message' => 'Unable to save the incident report right now.'];
     }
 

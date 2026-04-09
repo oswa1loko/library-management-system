@@ -16,6 +16,7 @@ if (isset($_POST['submit_incident'])) {
         'borrow_id' => (int) ($_POST['borrow_id'] ?? 0),
         'incident_type' => (string) ($_POST['incident_type'] ?? ''),
         'description' => (string) ($_POST['description'] ?? ''),
+        'incident_photo_file' => $_FILES['incident_photo'] ?? [],
     ]);
     $msg = (string) ($result['message'] ?? '');
     $msgType = ($result['ok'] ?? false) ? 'success' : 'error';
@@ -141,7 +142,7 @@ $incidents = get_member_incidents($conn, $userId);
           <?php if ($reportableBorrows === []): ?>
             <div class="empty-state">No active borrowed items are available for incident reporting right now.</div>
           <?php else: ?>
-            <form method="post" class="stack flow-gap-md">
+            <form method="post" enctype="multipart/form-data" class="stack flow-gap-md">
               <div class="field-grid two-up">
                 <div>
                   <label for="borrow_id">Borrowed book</label>
@@ -185,6 +186,13 @@ $incidents = get_member_incidents($conn, $userId);
               </div>
               <div class="muted">
                 Use the copy label from your borrowed books list to pick the exact item you want to report.
+              </div>
+              <div id="incident-photo-field" class="stack flow-gap-xs" hidden>
+                <div>
+                  <label for="incident_photo">Damage photo</label>
+                  <input id="incident_photo" type="file" name="incident_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                </div>
+                <div class="muted">Required only for damaged reports. Upload a clear photo so the librarian can assess the issue faster.</div>
               </div>
               <div>
                 <label for="description">What happened?</label>
@@ -277,6 +285,12 @@ $incidents = get_member_incidents($conn, $userId);
                   <span class="grow">
                     <strong class="label-block meta-top-sm">Description</strong>
                     <span class="muted"><?php echo nl2br(h((string) ($incident['description'] ?? ''))); ?></span>
+                    <?php if (trim((string) ($incident['incident_photo_path'] ?? '')) !== ''): ?>
+                      <span class="muted meta-top-sm">
+                        Damage photo:
+                        <a href="<?php echo h(app_url((string) $incident['incident_photo_path'])); ?>" target="_blank">View uploaded photo</a>
+                      </span>
+                    <?php endif; ?>
                   </span>
                 </div>
                 <div class="empty-state member-return-batch-item">
@@ -300,5 +314,27 @@ $incidents = get_member_incidents($conn, $userId);
   </div>
 </div>
 <script src="<?php echo h(app_url('assets/member_sidebar.js?v=' . urlencode($memberSidebarVersion))); ?>"></script>
+<script>
+(() => {
+  const incidentType = document.getElementById('incident_type');
+  const photoField = document.getElementById('incident-photo-field');
+  const photoInput = document.getElementById('incident_photo');
+  if (!incidentType || !photoField || !photoInput) {
+    return;
+  }
+
+  const syncIncidentPhotoRequirement = () => {
+    const requiresPhoto = incidentType.value === 'damaged';
+    photoField.hidden = !requiresPhoto;
+    photoInput.required = requiresPhoto;
+    if (!requiresPhoto) {
+      photoInput.value = '';
+    }
+  };
+
+  incidentType.addEventListener('change', syncIncidentPhotoRequirement);
+  syncIncidentPhotoRequirement();
+})();
+</script>
 </body>
 </html>
