@@ -765,7 +765,7 @@ if ($selectedPendingReturnBatch) {
     require __DIR__ . '/partials/notices.php';
     ?>
 
-    <div class="panel" data-ajax-panel-shell="librarian-borrows-records-panel">
+    <div class="panel">
       <p class="muted eyebrow-compact stack-copy">Overview</p>
       <h3 class="heading-panel">Active borrow operations</h3>
       <div class="stat-grid">
@@ -902,7 +902,7 @@ if ($selectedPendingReturnBatch) {
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-ajax-panel-shell="librarian-borrows-records-panel">
       <div class="card-head">
         <div class="dashboard-icon icon-books" aria-hidden="true"></div>
         <div class="grow">

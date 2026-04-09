@@ -333,7 +333,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
     require __DIR__ . '/partials/notices.php';
     ?>
 
-    <div class="panel" data-ajax-panel-shell="librarian-books-records-panel">
+    <div class="panel">
       <div class="card-head">
         <div class="dashboard-icon icon-books" aria-hidden="true"></div>
         <div>
@@ -387,7 +387,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
 
     </div>
 
-    <div class="panel">
+    <div class="panel" data-ajax-panel-shell="librarian-books-records-panel">
       <div class="manage-books-records-head">
         <div class="card-head card-head-tight">
           <div class="dashboard-icon icon-ledger" aria-hidden="true"></div>

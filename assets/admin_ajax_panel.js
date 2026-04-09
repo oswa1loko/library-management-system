@@ -151,7 +151,8 @@
     });
 
     shell.querySelectorAll('[data-ajax-filter-link]').forEach(function (link) {
-      if (link.dataset.ajaxFilterBound === '1' || !link.getAttribute('href')) {
+      var href = link.getAttribute('href');
+      if (link.dataset.ajaxFilterBound === '1' || !href || href === '#' || link.getAttribute('aria-disabled') === 'true') {
         return;
       }
 

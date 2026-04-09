@@ -124,7 +124,7 @@ $pageQuery = $_GET;
   ?>
 
   <div class="stack">
-    <div class="panel" data-ajax-panel-shell="librarian-borrow-records-panel">
+    <div class="panel">
       <p class="muted eyebrow-compact stack-copy">Overview</p>
       <h3 class="heading-panel">Borrow tracking summary</h3>
       <div class="stat-grid">
@@ -147,7 +147,7 @@ $pageQuery = $_GET;
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-ajax-panel-shell="librarian-borrow-records-panel">
       <div class="card-head">
         <div class="dashboard-icon icon-books" aria-hidden="true"></div>
         <div class="grow">
