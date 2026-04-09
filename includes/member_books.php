@@ -92,14 +92,19 @@ while ($categoryRows && ($categoryRow = $categoryRows->fetch_assoc())) {
     $bookCategories[] = (string) $categoryRow['category'];
 }
 $initialSearchFilter = trim((string) ($_GET['search'] ?? ''));
+$catalogScopeFilter = normalize_member_book_category((string) ($_GET['catalog'] ?? ''));
 $normalizedBookCategories = array_map('normalize_member_book_category', $bookCategories);
 $initialCategoryFilter = normalize_member_book_category((string) ($_GET['category'] ?? ''));
+if ($catalogScopeFilter !== '' && !in_array($catalogScopeFilter, $normalizedBookCategories, true)) {
+    $catalogScopeFilter = '';
+}
 if ($initialCategoryFilter !== '' && !in_array($initialCategoryFilter, $normalizedBookCategories, true)) {
     $initialCategoryFilter = '';
 }
+$effectiveCategoryFilter = $catalogScopeFilter !== '' ? $catalogScopeFilter : $initialCategoryFilter;
 $initialCategoryLabel = '';
-if ($initialCategoryFilter !== '') {
-    $matchedCategoryIndex = array_search($initialCategoryFilter, $normalizedBookCategories, true);
+if ($effectiveCategoryFilter !== '') {
+    $matchedCategoryIndex = array_search($effectiveCategoryFilter, $normalizedBookCategories, true);
     if ($matchedCategoryIndex !== false) {
         $initialCategoryLabel = $bookCategories[$matchedCategoryIndex] ?? '';
     }
@@ -110,11 +115,25 @@ $booksSql = "
     FROM books b
 ";
 
-$booksSql .= "
-    ORDER BY b.title ASC
-";
-
-$books = $conn->query($booksSql);
+if ($catalogScopeFilter !== '') {
+    $booksSql .= "
+        WHERE LOWER(TRIM(b.category)) = ?
+        ORDER BY b.title ASC
+    ";
+    $booksStmt = $conn->prepare($booksSql);
+    if ($booksStmt) {
+        $booksStmt->bind_param('s', $catalogScopeFilter);
+        $booksStmt->execute();
+        $books = $booksStmt->get_result();
+    } else {
+        $books = false;
+    }
+} else {
+    $booksSql .= "
+        ORDER BY b.title ASC
+    ";
+    $books = $conn->query($booksSql);
+}
 
 $blockedBookIds = [];
 $blockedBooksSql = "
@@ -311,16 +330,19 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                   <div class="member-book-search-suggestions" data-book-search-suggestions hidden></div>
                 </div>
                 <div class="ui-select-shell member-book-category-shell">
-                  <select class="ui-select" data-book-category>
+                  <select class="ui-select" data-book-category<?php echo $catalogScopeFilter !== '' ? ' data-book-fixed-category="1" disabled' : ''; ?>>
                     <option value="">All categories</option>
                     <?php foreach ($bookCategories as $bookCategory): ?>
                       <?php $normalizedBookCategory = normalize_member_book_category($bookCategory); ?>
-                      <option value="<?php echo h($normalizedBookCategory); ?>" <?php echo $initialCategoryFilter === $normalizedBookCategory ? 'selected' : ''; ?>><?php echo h($bookCategory); ?></option>
+                      <option value="<?php echo h($normalizedBookCategory); ?>" <?php echo $effectiveCategoryFilter === $normalizedBookCategory ? 'selected' : ''; ?>><?php echo h($bookCategory); ?></option>
                     <?php endforeach; ?>
                   </select>
                   <span class="ui-select-caret" aria-hidden="true"></span>
                 </div>
               </div>
+              <?php if ($catalogScopeFilter !== ''): ?>
+                <p class="muted meta-top-sm">Showing books from the selected catalog only. Return to Catalog to open a different section.</p>
+              <?php endif; ?>
               <div class="member-book-picker" id="book_ids">
                 <?php if ($availableBooks !== []): ?>
                   <section class="member-book-group" data-book-group>

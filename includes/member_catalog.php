@@ -135,7 +135,7 @@ function normalize_member_catalog_category(string $value): string
         <?php foreach ($catalogs as $catalog): ?>
           <?php $categoryValue = normalize_member_catalog_category((string) ($catalog['category'] ?? '')); ?>
           <div class="panel librarian-catalog-card member-catalog-card">
-            <a class="librarian-catalog-card-link" href="/librarymanage/<?php echo h($role); ?>/books.php?category=<?php echo urlencode($categoryValue); ?>">
+            <a class="librarian-catalog-card-link" href="/librarymanage/<?php echo h($role); ?>/books.php?catalog=<?php echo urlencode($categoryValue); ?>">
               <div class="librarian-catalog-card-media member-catalog-card-media">
                 <?php if (!empty($catalog['cover_path'])): ?>
                   <img class="book-cover" src="/librarymanage/<?php echo h((string) $catalog['cover_path']); ?>" alt="<?php echo h((string) ($catalog['category'] ?? 'Catalog')); ?>">
