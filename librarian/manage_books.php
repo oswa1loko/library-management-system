@@ -408,7 +408,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
           <input type="hidden" name="book" value="<?php echo $bookFilter > 0 ? (int) $bookFilter : ''; ?>" data-librarian-book-filter>
           <div class="grow">
             <label for="search">Search</label>
-            <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search title or author" data-ajax-filter-search>
+            <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search title or author">
           </div>
           <div data-filter-panel>
             <label for="catalog_filter">Catalog</label>

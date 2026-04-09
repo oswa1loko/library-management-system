@@ -104,6 +104,7 @@
     var catalogFilter = scope.querySelector('#catalog_filter');
     var bookFilter = scope.querySelector('[data-librarian-book-filter]');
     var rows = Array.prototype.slice.call(scope.querySelectorAll('[data-book-row]'));
+    var emptyState = scope.querySelector('#client-filter-empty');
 
     if (!filterForm || !searchInput || !catalogFilter || !bookFilter || rows.length === 0 || searchInput.dataset.booksSearchBound === '1') {
       return;
@@ -139,27 +140,91 @@
       });
     };
 
+    var applyClientFilter = function () {
+      var term = searchInput.value.trim();
+      var normalizedTerm = normalizeValue(term);
+      var selectedCatalogId = String(catalogFilter.value || '').trim();
+      var exactMatches = findExactMatches(term);
+      var exactBookIds = exactMatches.map(function (row) {
+        return String(row.getAttribute('data-book-id') || '').trim();
+      }).filter(function (value) {
+        return value !== '';
+      });
+
+      if (normalizedTerm === '') {
+        if (catalogFilter.dataset.autoSelected === '1') {
+          catalogFilter.value = '';
+          catalogFilter.dataset.autoSelected = '0';
+        }
+        bookFilter.value = '';
+      } else if (exactMatches.length === 1) {
+        catalogFilter.value = String(exactMatches[0].getAttribute('data-book-catalog-id') || '').trim();
+        catalogFilter.dataset.autoSelected = '1';
+        bookFilter.value = exactBookIds[0] || '';
+        selectedCatalogId = catalogFilter.value;
+      } else {
+        if (catalogFilter.dataset.autoSelected === '1') {
+          catalogFilter.value = '';
+          catalogFilter.dataset.autoSelected = '0';
+          selectedCatalogId = '';
+        }
+        bookFilter.value = '';
+      }
+
+      var visibleCount = 0;
+      rows.forEach(function (row) {
+        var rowTitle = normalizeValue(row.getAttribute('data-title') || '');
+        var rowAuthor = normalizeValue(row.getAttribute('data-author') || '');
+        var rowCatalogId = String(row.getAttribute('data-book-catalog-id') || '').trim();
+        var rowBookId = String(row.getAttribute('data-book-id') || '').trim();
+        var matchesSearch = normalizedTerm === '' || rowTitle.indexOf(normalizedTerm) !== -1 || rowAuthor.indexOf(normalizedTerm) !== -1;
+        var matchesCatalog = selectedCatalogId === '' || rowCatalogId === selectedCatalogId;
+        var matchesExact = exactBookIds.length === 1 ? rowBookId === exactBookIds[0] : true;
+        var isVisible = matchesSearch && matchesCatalog && matchesExact;
+
+        row.style.display = isVisible ? '' : 'none';
+        if (isVisible) {
+          visibleCount += 1;
+        }
+      });
+
+      if (emptyState) {
+        emptyState.classList.toggle('hidden', visibleCount !== 0);
+      }
+    };
+
     searchInput.dataset.booksSearchBound = '1';
     searchInput.addEventListener('input', function () {
-      var term = searchInput.value.trim();
+      applyClientFilter();
+    });
 
-      if (term === '') {
-        bookFilter.value = '';
-        catalogFilter.value = '';
-        window.location.assign(buildUrl());
+    searchInput.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter') {
         return;
       }
 
-      var exactMatches = findExactMatches(term);
-      if (exactMatches.length !== 1) {
-        bookFilter.value = '';
-        return;
-      }
-
-      var matchedRow = exactMatches[0];
-      bookFilter.value = String(matchedRow.getAttribute('data-book-id') || '').trim();
-      catalogFilter.value = String(matchedRow.getAttribute('data-book-catalog-id') || '').trim();
+      event.preventDefault();
+      applyClientFilter();
       window.location.assign(buildUrl());
+    });
+
+    if (catalogFilter.dataset.booksSearchBound !== '1') {
+      catalogFilter.dataset.booksSearchBound = '1';
+      catalogFilter.addEventListener('change', function () {
+        catalogFilter.dataset.autoSelected = '0';
+        bookFilter.value = '';
+      });
+    }
+
+    if (bookFilter.value) {
+      catalogFilter.dataset.autoSelected = '1';
+    } else {
+      catalogFilter.dataset.autoSelected = '0';
+    }
+
+    applyClientFilter();
+    filterForm.addEventListener('submit', function () {
+      applyClientFilter();
     });
   }
 
