@@ -294,7 +294,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
             <span class="muted">This case is already closed.</span>
           <?php else: ?>
             <button type="submit" name="update_incident" value="1">Save Incident Update</button>
-            <span class="muted">Use `Open` while reviewing. Add a fee to move the case into `For Payment`, or close it with no fee to waive payment automatically.</span>
+            <span class="muted">Use `Under Review` while assessing. Payment only settles the case. The selected inventory action still decides whether the copy returns to available stock or stays written off.</span>
           <?php endif; ?>
         </div>
       </form>
