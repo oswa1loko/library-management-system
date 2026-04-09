@@ -41,7 +41,7 @@ function book_incident_normalize_workflow_status(?string $value): string
 function book_incident_resolution_options(): array
 {
     return [
-        'none' => 'No inventory action yet',
+        'none' => 'Pending inventory action',
         'return_to_shelf' => 'Return to shelf',
         'write_off_lost' => 'Write off as lost',
         'write_off_damaged' => 'Write off as damaged',
@@ -114,6 +114,7 @@ function book_incident_workflow_form_options(?string $currentValue = null): arra
 function book_incident_resolution_form_options(?string $currentValue = null): array
 {
     $options = book_incident_resolution_options();
+    $options['none'] = 'Select final inventory action';
     $currentValue = trim((string) $currentValue);
     if ($currentValue !== '' && !isset($options[$currentValue])) {
         $options[$currentValue] = book_incident_resolution_label($currentValue);
