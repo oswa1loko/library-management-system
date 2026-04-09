@@ -467,6 +467,22 @@ $summaryLabels = match ($paymentScope) {
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
+<script>
+(() => {
+  try {
+    if (window.sessionStorage.getItem('admin-payments-filter-scroll') === 'filter-panel') {
+      document.documentElement.setAttribute('data-pending-filter-scroll', '1');
+    }
+  } catch (error) {
+    // Ignore session storage failures.
+  }
+})();
+</script>
+<style>
+html[data-pending-filter-scroll="1"] body {
+  opacity: 0;
+}
+</style>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
@@ -695,11 +711,15 @@ $summaryLabels = match ($paymentScope) {
       window.requestAnimationFrame(() => {
         const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
         window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+        document.documentElement.removeAttribute('data-pending-filter-scroll');
       });
       window.sessionStorage.removeItem(scrollStorageKey);
+    } else {
+      document.documentElement.removeAttribute('data-pending-filter-scroll');
     }
   } catch (error) {
     // Ignore session storage failures.
+    document.documentElement.removeAttribute('data-pending-filter-scroll');
   }
 
   if (!filterForm) {

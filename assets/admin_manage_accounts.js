@@ -18,11 +18,15 @@
       window.requestAnimationFrame(function () {
         var top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
         window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+        document.documentElement.removeAttribute('data-pending-filter-scroll');
       });
       window.sessionStorage.removeItem(scrollStorageKey);
+    } else {
+      document.documentElement.removeAttribute('data-pending-filter-scroll');
     }
   } catch (error) {
     // Ignore session storage failures.
+    document.documentElement.removeAttribute('data-pending-filter-scroll');
   }
 
   function submitFilters() {
