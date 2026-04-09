@@ -1,4 +1,4 @@
-<div class="panel">
+<div class="panel" data-filter-panel>
   <div class="toolbar manage-users-toolbar">
     <form method="get" class="toolbar grow manage-users-filters js-auto-submit-filters">
       <div class="grow">

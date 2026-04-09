@@ -183,7 +183,7 @@ $complaints = $stmt->get_result();
   ?>
 
   <div class="stack">
-    <div class="panel">
+    <div class="panel" data-filter-panel>
       <div class="card-head">
         <div class="dashboard-icon icon-feedback" aria-hidden="true"></div>
         <div>
@@ -417,14 +417,33 @@ $complaints = $stmt->get_result();
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 <script>
 (() => {
+  const scrollStorageKey = 'admin-complaints-filter-scroll';
   const filterForm = document.querySelector('.admin-record-filters-compact');
   const statusFilter = document.getElementById('status');
+  const filterPanel = document.querySelector('[data-filter-panel]');
+
+  try {
+    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
+      window.requestAnimationFrame(() => {
+        const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      });
+      window.sessionStorage.removeItem(scrollStorageKey);
+    }
+  } catch (error) {
+    // Ignore session storage failures.
+  }
 
   if (!filterForm || !statusFilter) {
     return;
   }
 
   statusFilter.addEventListener('change', () => {
+    try {
+      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
+    } catch (error) {
+      // Ignore session storage failures and continue with submit.
+    }
     if (filterForm.requestSubmit) {
       filterForm.requestSubmit();
       return;

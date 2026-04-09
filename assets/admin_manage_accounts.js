@@ -9,11 +9,31 @@
   var deleteForms = Array.prototype.slice.call(document.querySelectorAll('.js-confirm-delete-user'));
   var createForm = document.querySelector('.manage-users-create-form');
   var provisioningShell = document.querySelector('.js-manage-users-provisioning');
+  var filterPanel = document.querySelector('[data-filter-panel]');
   var autoSubmitTimer = null;
+  var scrollStorageKey = 'admin-manage-accounts-filter-scroll';
+
+  try {
+    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
+      window.requestAnimationFrame(function () {
+        var top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      });
+      window.sessionStorage.removeItem(scrollStorageKey);
+    }
+  } catch (error) {
+    // Ignore session storage failures.
+  }
 
   function submitFilters() {
     if (!filterForm) {
       return;
+    }
+
+    try {
+      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
+    } catch (error) {
+      // Ignore session storage failures and continue with submit.
     }
 
     filterForm.requestSubmit ? filterForm.requestSubmit() : filterForm.submit();

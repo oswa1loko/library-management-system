@@ -85,7 +85,7 @@ $penalties = $stmt->get_result();
   ?>
 
   <div class="stack">
-    <div class="panel">
+    <div class="panel" data-filter-panel>
       <div class="card-head">
         <div class="dashboard-icon icon-penalties" aria-hidden="true"></div>
         <div>
@@ -255,15 +255,34 @@ $penalties = $stmt->get_result();
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 <script>
 (() => {
+  const scrollStorageKey = 'admin-penalties-filter-scroll';
   const filterForm = document.querySelector('.penalties-record-filters');
   const statusFilter = document.getElementById('status_filter');
   const roleFilter = document.getElementById('role_filter');
+  const filterPanel = document.querySelector('[data-filter-panel]');
+
+  try {
+    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
+      window.requestAnimationFrame(() => {
+        const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      });
+      window.sessionStorage.removeItem(scrollStorageKey);
+    }
+  } catch (error) {
+    // Ignore session storage failures.
+  }
 
   if (!filterForm) {
     return;
   }
 
   const submitFilters = () => {
+    try {
+      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
+    } catch (error) {
+      // Ignore session storage failures and continue with submit.
+    }
     if (filterForm.requestSubmit) {
       filterForm.requestSubmit();
       return;

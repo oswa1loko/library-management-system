@@ -82,7 +82,7 @@ $logs = $stmt->get_result();
     ?>
 
   <div class="stack">
-    <div class="panel">
+    <div class="panel" data-filter-panel>
       <div class="toolbar toolbar-top">
         <div class="grow">
           <p class="muted eyebrow-compact">Filter</p>
@@ -156,14 +156,33 @@ $logs = $stmt->get_result();
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script>
 (() => {
+  const scrollStorageKey = 'admin-audit-filter-scroll';
   const filterForm = document.querySelector('.audit-log-filters');
   const roleFilter = document.getElementById('role');
+  const filterPanel = document.querySelector('[data-filter-panel]');
+
+  try {
+    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
+      window.requestAnimationFrame(() => {
+        const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      });
+      window.sessionStorage.removeItem(scrollStorageKey);
+    }
+  } catch (error) {
+    // Ignore session storage failures.
+  }
 
   if (!filterForm || !roleFilter) {
     return;
   }
 
   roleFilter.addEventListener('change', () => {
+    try {
+      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
+    } catch (error) {
+      // Ignore session storage failures and continue with submit.
+    }
     if (filterForm.requestSubmit) {
       filterForm.requestSubmit();
       return;
