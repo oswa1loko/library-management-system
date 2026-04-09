@@ -416,6 +416,12 @@ function initBorrowSelection() {
       exactMatchBookIds = [];
     }
 
+    if (exactMatchBookIds.length === 1 && exactBookId !== '') {
+      hideSearchSuggestions();
+      window.location.assign(buildFilterUrl(exactBookId));
+      return;
+    }
+
     applyFilter();
     renderSearchSuggestions();
     queueFilterUrlSync();

@@ -196,6 +196,15 @@ while ($books && ($bookRow = $books->fetch_assoc())) {
     }
 }
 
+if ($initialBookFilter > 0) {
+    $availableBooks = array_values(array_filter($availableBooks, static function (array $bookRow) use ($initialBookFilter): bool {
+        return (int) ($bookRow['id'] ?? 0) === $initialBookFilter;
+    }));
+    $unavailableBooks = array_values(array_filter($unavailableBooks, static function (array $bookRow) use ($initialBookFilter): bool {
+        return (int) ($bookRow['id'] ?? 0) === $initialBookFilter;
+    }));
+}
+
 $bookSearchSuggestions = [];
 $bookSearchSuggestionIndex = [];
 foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) {
