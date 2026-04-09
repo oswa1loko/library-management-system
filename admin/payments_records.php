@@ -549,6 +549,7 @@ html[data-pending-filter-scroll="1"] body {
       </div>
     </div>
 
+    <div class="payments-panel-shell" data-payments-panel-shell>
     <div class="panel" data-filter-panel>
       <div class="toolbar toolbar-top">
         <div class="grow">
@@ -694,60 +695,181 @@ html[data-pending-filter-scroll="1"] body {
         <?php endif; ?>
       </div>
     </div>
+    </div>
   </div>
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script>
 (() => {
-  const scrollStorageKey = 'admin-payments-filter-scroll';
-  const filterForm = document.querySelector('.admin-record-filters');
-  const statusFilter = document.getElementById('status_filter');
-  const roleFilter = document.getElementById('role_filter');
-  const filterPanel = document.querySelector('[data-filter-panel]');
+  const shellSelector = '[data-payments-panel-shell]';
+  const loadingClass = 'is-filter-loading';
+  let activeRequest = null;
 
-  try {
-    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
-      window.requestAnimationFrame(() => {
-        const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-        document.documentElement.removeAttribute('data-pending-filter-scroll');
-      });
-      window.sessionStorage.removeItem(scrollStorageKey);
-    } else {
-      document.documentElement.removeAttribute('data-pending-filter-scroll');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
+  function removePendingFlashState() {
     document.documentElement.removeAttribute('data-pending-filter-scroll');
-  }
-
-  if (!filterForm) {
-    return;
-  }
-
-  const submitFilters = () => {
     try {
-      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
+      window.sessionStorage.removeItem('admin-payments-filter-scroll');
     } catch (error) {
-      // Ignore session storage failures and continue with submit.
+      // Ignore session storage failures.
     }
-    if (filterForm.requestSubmit) {
-      filterForm.requestSubmit();
+  }
+
+  function setShellLoading(shell, isLoading) {
+    if (!shell) {
       return;
     }
-    filterForm.submit();
-  };
 
-  if (statusFilter) {
-    statusFilter.addEventListener('change', submitFilters);
+    shell.classList.toggle(loadingClass, isLoading);
+    shell.querySelectorAll('select, input, button, a.button').forEach((element) => {
+      if (element.tagName === 'A') {
+        element.style.pointerEvents = isLoading ? 'none' : '';
+        element.style.opacity = isLoading ? '0.72' : '';
+        return;
+      }
+
+      element.disabled = isLoading;
+    });
   }
 
-  if (roleFilter) {
-    roleFilter.addEventListener('change', submitFilters);
+  function restorePanelPosition() {
+    const filterPanel = document.querySelector('[data-filter-panel]');
+    if (!filterPanel) {
+      return;
+    }
+
+    const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
   }
+
+  async function loadPanel(url, options = {}) {
+    const shell = document.querySelector(shellSelector);
+    if (!shell) {
+      window.location.href = url;
+      return;
+    }
+
+    if (activeRequest && typeof activeRequest.abort === 'function') {
+      activeRequest.abort();
+    }
+
+    const controller = new AbortController();
+    activeRequest = controller;
+    setShellLoading(shell, true);
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new Error('Request failed');
+      }
+
+      const html = await response.text();
+      const parser = new DOMParser();
+      const nextDoc = parser.parseFromString(html, 'text/html');
+      const nextShell = nextDoc.querySelector(shellSelector);
+
+      if (!nextShell) {
+        throw new Error('Missing panel shell');
+      }
+
+      shell.replaceWith(nextShell);
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState({}, '', url);
+      }
+      restorePanelPosition();
+      bindPanelInteractions();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+
+      window.location.href = url;
+    } finally {
+      if (activeRequest === controller) {
+        activeRequest = null;
+      }
+
+      const currentShell = document.querySelector(shellSelector);
+      setShellLoading(currentShell, false);
+    }
+  }
+
+  function buildFormUrl(form) {
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+
+    formData.forEach((value, key) => {
+      if (String(value).trim() !== '') {
+        params.set(key, String(value));
+      }
+    });
+
+    const query = params.toString();
+    return form.getAttribute('action') || ('payments_records.php' + (query ? '?' + query : ''));
+  }
+
+  function bindPanelInteractions() {
+    const shell = document.querySelector(shellSelector);
+    const filterForm = document.querySelector('.admin-record-filters');
+    const statusFilter = document.getElementById('status_filter');
+    const roleFilter = document.getElementById('role_filter');
+
+    if (!shell || !filterForm) {
+      removePendingFlashState();
+      return;
+    }
+
+    const submitFilters = () => {
+      loadPanel(buildFormUrl(filterForm));
+    };
+
+    if (filterForm.dataset.ajaxBound !== '1') {
+      filterForm.dataset.ajaxBound = '1';
+      filterForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitFilters();
+      });
+    }
+
+    [statusFilter, roleFilter].forEach((control) => {
+      if (!control || control.dataset.ajaxBound === '1') {
+        return;
+      }
+
+      control.dataset.ajaxBound = '1';
+      control.addEventListener('change', submitFilters);
+    });
+
+    shell.querySelectorAll('.pagination a, .inline-actions a.button.secondary').forEach((link) => {
+      if (!link.getAttribute('href') || link.dataset.ajaxBound === '1') {
+        return;
+      }
+
+      link.dataset.ajaxBound = '1';
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        loadPanel(link.href);
+      });
+    });
+
+    removePendingFlashState();
+  }
+
+  bindPanelInteractions();
 })();
 </script>
+<style>
+.payments-panel-shell.is-filter-loading {
+  opacity: 0.72;
+  transition: opacity 120ms ease;
+}
+</style>
 </body>
 </html>
 
