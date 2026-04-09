@@ -20,9 +20,9 @@ function book_incident_severity_options(): array
 function book_incident_workflow_options(): array
 {
     return [
-        'open' => 'Open',
-        'for_payment' => 'For Payment',
-        'closed' => 'Closed',
+        'open' => 'Under Review',
+        'for_payment' => 'Waiting for Payment',
+        'closed' => 'Resolved',
     ];
 }
 
@@ -42,9 +42,9 @@ function book_incident_resolution_options(): array
 {
     return [
         'none' => 'Pending inventory action',
-        'return_to_shelf' => 'Return to shelf',
         'write_off_lost' => 'Write off as lost',
         'write_off_damaged' => 'Write off as damaged',
+        'return_to_shelf' => 'Recovered: return to shelf',
     ];
 }
 
