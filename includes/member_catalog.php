@@ -39,6 +39,12 @@ $catalogs = [];
 while ($catalogRows && ($catalogRow = $catalogRows->fetch_assoc())) {
     $catalogs[] = $catalogRow;
 }
+
+function normalize_member_catalog_category(string $value): string
+{
+    $value = preg_replace('/\s+/', ' ', trim($value));
+    return strtolower((string) $value);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -127,7 +133,7 @@ while ($catalogRows && ($catalogRow = $catalogRows->fetch_assoc())) {
           </div>
         <?php endif; ?>
         <?php foreach ($catalogs as $catalog): ?>
-          <?php $categoryValue = strtolower((string) ($catalog['category'] ?? '')); ?>
+          <?php $categoryValue = normalize_member_catalog_category((string) ($catalog['category'] ?? '')); ?>
           <div class="panel librarian-catalog-card member-catalog-card">
             <a class="librarian-catalog-card-link" href="/librarymanage/<?php echo h($role); ?>/books.php?category=<?php echo urlencode($categoryValue); ?>">
               <div class="librarian-catalog-card-media member-catalog-card-media">

@@ -5,6 +5,12 @@ require_once __DIR__ . '/helpers.php';
 
 require_roles(['student', 'faculty']);
 
+function normalize_member_book_category(string $value): string
+{
+    $value = preg_replace('/\s+/', ' ', trim($value));
+    return strtolower((string) $value);
+}
+
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $role = (string) $_SESSION['role'];
 $msg = '';
@@ -86,10 +92,17 @@ while ($categoryRows && ($categoryRow = $categoryRows->fetch_assoc())) {
     $bookCategories[] = (string) $categoryRow['category'];
 }
 $initialSearchFilter = trim((string) ($_GET['search'] ?? ''));
-$initialCategoryFilter = trim((string) ($_GET['category'] ?? ''));
-$initialCategoryFilter = strtolower($initialCategoryFilter);
-if ($initialCategoryFilter !== '' && !in_array($initialCategoryFilter, array_map('strtolower', $bookCategories), true)) {
+$normalizedBookCategories = array_map('normalize_member_book_category', $bookCategories);
+$initialCategoryFilter = normalize_member_book_category((string) ($_GET['category'] ?? ''));
+if ($initialCategoryFilter !== '' && !in_array($initialCategoryFilter, $normalizedBookCategories, true)) {
     $initialCategoryFilter = '';
+}
+$initialCategoryLabel = '';
+if ($initialCategoryFilter !== '') {
+    $matchedCategoryIndex = array_search($initialCategoryFilter, $normalizedBookCategories, true);
+    if ($matchedCategoryIndex !== false) {
+        $initialCategoryLabel = $bookCategories[$matchedCategoryIndex] ?? '';
+    }
 }
 
 $booksSql = "
@@ -281,6 +294,14 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
             </div>
           </div>
           <p class="muted">Tap an available book card to open the borrow request form.</p>
+          <div class="chips-row meta-top-sm" data-book-results-status<?php echo $initialCategoryLabel === '' && $initialSearchFilter === '' ? ' hidden' : ''; ?>>
+            <?php if ($initialCategoryLabel !== ''): ?>
+              <span class="chip">Catalog: <?php echo h($initialCategoryLabel); ?></span>
+            <?php endif; ?>
+            <?php if ($initialSearchFilter !== ''): ?>
+              <span class="chip">Search: <?php echo h($initialSearchFilter); ?></span>
+            <?php endif; ?>
+          </div>
           <div class="stack chips-row member-workspace-form">
             <div>
               <label for="book_ids">Books</label>
@@ -293,7 +314,8 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                   <select class="ui-select" data-book-category>
                     <option value="">All categories</option>
                     <?php foreach ($bookCategories as $bookCategory): ?>
-                      <option value="<?php echo h(strtolower($bookCategory)); ?>" <?php echo $initialCategoryFilter === strtolower($bookCategory) ? 'selected' : ''; ?>><?php echo h($bookCategory); ?></option>
+                      <?php $normalizedBookCategory = normalize_member_book_category($bookCategory); ?>
+                      <option value="<?php echo h($normalizedBookCategory); ?>" <?php echo $initialCategoryFilter === $normalizedBookCategory ? 'selected' : ''; ?>><?php echo h($bookCategory); ?></option>
                     <?php endforeach; ?>
                   </select>
                   <span class="ui-select-caret" aria-hidden="true"></span>
@@ -319,7 +341,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                           data-book-available="<?php echo (int) $book['qty_available']; ?>"
                           data-book-max-qty="<?php echo max(1, min(5, (int) $book['qty_available'])); ?>"
                           data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>"
-                          data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>"
+                          data-book-category-value="<?php echo h(normalize_member_book_category((string) $book['category'])); ?>"
                         >
                           <?php if (!empty($book['cover_path'])): ?>
                             <img class="member-book-option-cover" src="<?php echo h(app_url((string) $book['cover_path'])); ?>" alt="<?php echo h($book['title']); ?>">
@@ -343,7 +365,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                     <p class="member-book-group-title" data-book-group-title>Unavailable right now</p>
                     <div class="member-book-group-grid">
                       <?php foreach ($unavailableBooks as $book): ?>
-                        <div class="member-book-option member-book-option-static is-unavailable" data-book-option data-book-category-value="<?php echo h(strtolower((string) $book['category'])); ?>" data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
+                        <div class="member-book-option member-book-option-static is-unavailable" data-book-option data-book-category-value="<?php echo h(normalize_member_book_category((string) $book['category'])); ?>" data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
                           <?php if (!empty($book['cover_path'])): ?>
                             <img class="member-book-option-cover" src="<?php echo h(app_url((string) $book['cover_path'])); ?>" alt="<?php echo h($book['title']); ?>">
                           <?php else: ?>

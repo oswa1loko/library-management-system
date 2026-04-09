@@ -15,6 +15,7 @@ function initBorrowSelection() {
   const emptyState = document.querySelector('[data-book-empty]');
   const categorySelect = document.querySelector('[data-book-category]');
   const groups = Array.from(document.querySelectorAll('[data-book-group]'));
+  const resultsStatus = document.querySelector('[data-book-results-status]');
   const modal = document.querySelector('[data-book-modal]');
   const modalTriggers = Array.from(document.querySelectorAll('[data-book-trigger]'));
   const modalCloseButtons = Array.from(document.querySelectorAll('[data-book-modal-close]'));
@@ -32,6 +33,7 @@ function initBorrowSelection() {
   let syncUrlTimer = null;
 
   const normalizeSearchValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const normalizeCategoryValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
   const escapeHtml = (value) => String(value)
     .replace(/&/g, '&amp;')
@@ -43,7 +45,7 @@ function initBorrowSelection() {
   const buildFilterUrl = () => {
     const url = new URL(window.location.href);
     const query = searchInput.value.trim();
-    const selectedCategory = categorySelect ? categorySelect.value.trim() : '';
+    const selectedCategory = categorySelect ? normalizeCategoryValue(categorySelect.value) : '';
 
     if (query !== '') {
       url.searchParams.set('search', query);
@@ -81,6 +83,38 @@ function initBorrowSelection() {
 
     const panelTop = resultsPanel.getBoundingClientRect().top + window.scrollY - 24;
     window.scrollTo({ top: Math.max(0, panelTop), behavior: 'auto' });
+  };
+
+  const focusFirstVisibleBook = () => {
+    const firstVisibleOption = options.find((option) => !option.hidden);
+    if (!firstVisibleOption) {
+      focusResultsPanel();
+      return;
+    }
+
+    const firstOptionTop = firstVisibleOption.getBoundingClientRect().top + window.scrollY - 24;
+    window.scrollTo({ top: Math.max(0, firstOptionTop), behavior: 'auto' });
+  };
+
+  const updateResultsStatus = (query, selectedCategory) => {
+    if (!resultsStatus) {
+      return;
+    }
+
+    const chips = [];
+    if (selectedCategory && categorySelect) {
+      const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+      const categoryLabel = selectedOption ? selectedOption.textContent.trim() : '';
+      if (categoryLabel !== '') {
+        chips.push(`<span class="chip">Catalog: ${escapeHtml(categoryLabel)}</span>`);
+      }
+    }
+    if (query !== '') {
+      chips.push(`<span class="chip">Search: ${escapeHtml(searchInput.value.trim())}</span>`);
+    }
+
+    resultsStatus.innerHTML = chips.join('');
+    resultsStatus.hidden = chips.length === 0;
   };
 
   const hideSearchSuggestions = () => {
@@ -197,7 +231,7 @@ function initBorrowSelection() {
     searchInput.value = value;
     const matchedOption = findBestMatchingBookOption(value);
     if (matchedOption && categorySelect) {
-      categorySelect.value = matchedOption.getAttribute('data-book-category-value') || '';
+      categorySelect.value = normalizeCategoryValue(matchedOption.getAttribute('data-book-category-value') || '');
     }
     applyFilter();
     hideSearchSuggestions();
@@ -205,8 +239,8 @@ function initBorrowSelection() {
   };
 
   const applyFilter = () => {
-    const query = searchInput.value.trim().toLowerCase();
-    const selectedCategory = categorySelect ? categorySelect.value.trim().toLowerCase() : '';
+    const query = normalizeSearchValue(searchInput.value);
+    const selectedCategory = categorySelect ? normalizeCategoryValue(categorySelect.value) : '';
     let visibleCount = 0;
 
     options.forEach((option) => {
@@ -230,6 +264,8 @@ function initBorrowSelection() {
       const groupOptions = Array.from(group.querySelectorAll('[data-book-option]'));
       group.hidden = !groupOptions.some((option) => !option.hidden);
     });
+
+    updateResultsStatus(query, selectedCategory);
   };
 
   const closeModal = () => {
@@ -404,7 +440,7 @@ function initBorrowSelection() {
   applyFilter();
 
   if ((categorySelect && categorySelect.value.trim() !== '') || searchInput.value.trim() !== '') {
-    window.requestAnimationFrame(focusResultsPanel);
+    window.requestAnimationFrame(focusFirstVisibleBook);
   }
 }
 
