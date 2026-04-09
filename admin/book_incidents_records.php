@@ -102,10 +102,10 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <p class="muted">Use this when you want to focus on pending fees, paid incidents, or waived cases only.</p>
         </div>
       </div>
-      <form method="get" class="toolbar grow admin-record-filters penalties-record-filters">
+      <form method="get" class="toolbar grow admin-record-filters penalties-record-filters" data-auto-submit-filter>
         <div>
           <label for="settlement">Settlement status</label>
-          <select id="settlement" name="settlement">
+          <select id="settlement" name="settlement" data-auto-submit-control>
             <option value="">All settlement states</option>
             <?php foreach (book_incident_settlement_options() as $value => $label): ?>
               <option value="<?php echo h($value); ?>" <?php echo $settlementFilter === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
@@ -113,8 +113,10 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           </select>
         </div>
         <div class="inline-actions">
-          <button type="submit">Apply Filter</button>
-          <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php')); ?>">Reset</a>
+          <noscript><button type="submit">Apply Filter</button></noscript>
+          <?php if ($settlementFilter !== ''): ?>
+            <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php')); ?>">Clear Filter</a>
+          <?php endif; ?>
         </div>
       </form>
     </div>
@@ -197,6 +199,26 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
   </div>
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-auto-submit-filter]').forEach(function (form) {
+    var control = form.querySelector('[data-auto-submit-control]');
+    if (!control || control.dataset.autoSubmitBound === '1') {
+      return;
+    }
+
+    control.dataset.autoSubmitBound = '1';
+    control.addEventListener('change', function () {
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+        return;
+      }
+
+      form.submit();
+    });
+  });
+});
+</script>
 <?php if ($selectedIncident): ?>
   <div class="desk-modal" data-desk-modal>
     <a class="desk-modal-backdrop" href="<?php echo h($baseHref); ?>" aria-label="Close settlement details"></a>
