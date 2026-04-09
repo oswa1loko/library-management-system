@@ -1,79 +1,69 @@
 (function () {
-  var printAction = document.getElementById('printBooksAction');
-  var printShell = document.querySelector('.manage-users-print-shell');
-  var filterForm = document.querySelector('.js-auto-submit-filters');
-  var searchInput = document.getElementById('search');
-  var catalogFilter = document.getElementById('catalog_filter');
-  var autoSubmitTimer = null;
+  function initManageBooksTools(root) {
+    var scope = root || document;
+    var printAction = scope.querySelector('#printBooksAction');
+    var printShell = scope.querySelector('.manage-users-print-shell');
+    var searchInput = scope.querySelector('#search');
+    var catalogFilter = scope.querySelector('#catalog_filter');
 
-  if (!printAction || !printShell) {
-    return;
-  }
-
-  function submitFilters() {
-    if (!filterForm) {
+    if (!printAction || !printShell || printAction.dataset.booksToolsBound === '1') {
       return;
     }
 
-    filterForm.requestSubmit ? filterForm.requestSubmit() : filterForm.submit();
-  }
-
-  function queueFilterSubmit() {
-    if (!filterForm) {
-      return;
+    function syncPrintSelectState() {
+      printShell.classList.toggle('is-selected', !!printAction.value);
     }
 
-    window.clearTimeout(autoSubmitTimer);
-    autoSubmitTimer = window.setTimeout(submitFilters, 320);
-  }
+    function buildPrintParams(action) {
+      var params = new URLSearchParams();
+      params.set('print', '1');
 
-  function syncPrintSelectState() {
-    printShell.classList.toggle('is-selected', !!printAction.value);
-  }
+      var searchValue = searchInput ? searchInput.value.trim() : '';
+      var catalogValue = catalogFilter ? catalogFilter.value : '';
 
-  function buildPrintParams(action) {
-    var params = new URLSearchParams();
-    params.set('print', '1');
+      if (searchValue) {
+        params.set('search', searchValue);
+      }
 
-    var searchValue = searchInput ? searchInput.value.trim() : '';
-    var catalogValue = catalogFilter ? catalogFilter.value : '';
+      if (action.indexOf('catalog:') === 0) {
+        params.set('catalog', action.split(':')[1]);
+        params.set('print_scope', 'catalog');
+        return params;
+      }
 
-    if (searchValue) {
-      params.set('search', searchValue);
-    }
+      if (catalogValue && action !== 'all') {
+        params.set('catalog', catalogValue);
+      }
 
-    if (action.indexOf('catalog:') === 0) {
-      params.set('catalog', action.split(':')[1]);
-      params.set('print_scope', 'catalog');
+      params.set('print_scope', action);
       return params;
     }
 
-    if (catalogValue && action !== 'all') {
-      params.set('catalog', catalogValue);
-    }
+    printAction.dataset.booksToolsBound = '1';
+    printAction.addEventListener('change', function () {
+      syncPrintSelectState();
 
-    params.set('print_scope', action);
-    return params;
+      var action = printAction.value;
+      if (!action) {
+        return;
+      }
+
+      var params = buildPrintParams(action);
+      window.location.href = 'manage_books.php?' + params.toString();
+    });
+
+    syncPrintSelectState();
   }
 
-  printAction.addEventListener('change', function () {
-    syncPrintSelectState();
+  document.addEventListener('DOMContentLoaded', function () {
+    initManageBooksTools(document);
+  });
 
-    var action = printAction.value;
-    if (!action) {
+  document.addEventListener('adminAjaxPanel:updated', function (event) {
+    if (!event.detail || event.detail.shellKey !== 'librarian-books-records-panel') {
       return;
     }
 
-    var params = buildPrintParams(action);
-    window.location.href = 'manage_books.php?' + params.toString();
+    initManageBooksTools(event.detail.shell);
   });
-  syncPrintSelectState();
-
-  if (searchInput) {
-    searchInput.addEventListener('input', queueFilterSubmit);
-  }
-
-  if (catalogFilter) {
-    catalogFilter.addEventListener('change', submitFilters);
-  }
 })();

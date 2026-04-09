@@ -298,6 +298,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
+<?php $ajaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
 <?php $manageBooksVersion = (string) filemtime(__DIR__ . '/../assets/librarian_manage_books.js'); ?>
 <?php $manageBooksPrintVersion = (string) filemtime(__DIR__ . '/../assets/librarian_manage_books_print.js'); ?>
 <?php $manageBooksToolsVersion = (string) filemtime(__DIR__ . '/../assets/librarian_manage_books_tools.js'); ?>
@@ -332,7 +333,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
     require __DIR__ . '/partials/notices.php';
     ?>
 
-    <div class="panel">
+    <div class="panel" data-ajax-panel-shell="librarian-books-records-panel">
       <div class="card-head">
         <div class="dashboard-icon icon-books" aria-hidden="true"></div>
         <div>
@@ -396,15 +397,15 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
             <p class="muted">Search by title or author, narrow by assigned catalog, and jump to edit when copy counts need correction.</p>
           </div>
         </div>
-        <form method="get" class="manage-books-tablefilters js-auto-submit-filters">
+        <form method="get" class="manage-books-tablefilters js-auto-submit-filters" data-ajax-filter-form>
           <div class="grow">
             <label for="search">Search</label>
-            <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search title or author">
+            <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search title or author" data-ajax-filter-search>
           </div>
-          <div>
+          <div data-filter-panel>
             <label for="catalog_filter">Catalog</label>
             <div class="ui-select-shell">
-              <select id="catalog_filter" name="catalog" class="ui-select">
+              <select id="catalog_filter" name="catalog" class="ui-select" data-ajax-filter-control>
                 <option value="">All catalogs</option>
                 <?php foreach ($catalogs as $catalog): ?>
                   <option value="<?php echo (int) $catalog['id']; ?>" <?php echo $catalogFilter === (string) $catalog['id'] ? 'selected' : ''; ?>>
@@ -436,7 +437,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
             </div>
           </div>
           <div class="inline-actions">
-            <a class="button secondary" href="manage_books.php">Reset</a>
+            <a class="button secondary" href="manage_books.php" data-ajax-filter-link>Reset</a>
           </div>
         </form>
       </div>
@@ -592,6 +593,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
+<script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($ajaxPanelVersion); ?>"></script>
 <script src="/librarymanage/assets/librarian_manage_books.js?v=<?php echo urlencode($manageBooksVersion); ?>"></script>
 <script src="/librarymanage/assets/librarian_manage_books_tools.js?v=<?php echo urlencode($manageBooksToolsVersion); ?>"></script>
 <?php endif; ?>

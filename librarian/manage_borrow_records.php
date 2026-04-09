@@ -105,6 +105,7 @@ $pageQuery = $_GET;
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
+<?php $ajaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
 <script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
@@ -123,7 +124,7 @@ $pageQuery = $_GET;
   ?>
 
   <div class="stack">
-    <div class="panel">
+    <div class="panel" data-ajax-panel-shell="librarian-borrow-records-panel">
       <p class="muted eyebrow-compact stack-copy">Overview</p>
       <h3 class="heading-panel">Borrow tracking summary</h3>
       <div class="stat-grid">
@@ -155,15 +156,15 @@ $pageQuery = $_GET;
           <p class="muted">Search borrower name, username, title, or author when you need to verify a specific record.</p>
         </div>
       </div>
-      <form method="get" class="toolbar flow-top-md borrow-records-toolbar" data-auto-submit-filter>
+      <form method="get" class="toolbar flow-top-md borrow-records-toolbar" data-ajax-filter-form>
         <div class="grow">
           <label for="search">Search</label>
-          <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Borrower or book">
+          <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Borrower or book" data-ajax-filter-search>
         </div>
-        <div>
+        <div data-filter-panel>
           <label for="status">View</label>
           <div class="ui-select-shell">
-            <select id="status" name="status" class="ui-select">
+            <select id="status" name="status" class="ui-select" data-ajax-filter-control>
               <option value="all" <?php echo $statusFilter === 'all' ? 'selected' : ''; ?>>All active</option>
               <option value="overdue" <?php echo $statusFilter === 'overdue' ? 'selected' : ''; ?>>Overdue only</option>
               <option value="due_today" <?php echo $statusFilter === 'due_today' ? 'selected' : ''; ?>>Due today</option>
@@ -173,7 +174,7 @@ $pageQuery = $_GET;
         </div>
         <div class="inline-actions">
           <button type="submit">Search</button>
-          <a class="button secondary" href="manage_borrow_records.php">Reset</a>
+          <a class="button secondary" href="manage_borrow_records.php" data-ajax-filter-link>Reset</a>
         </div>
       </form>
 
@@ -189,9 +190,9 @@ $pageQuery = $_GET;
           $nextQuery = $pageQuery;
           $nextQuery['page'] = min($totalPages, $page + 1);
           ?>
-          <a class="button secondary<?php echo $page <= 1 ? ' is-disabled' : ''; ?>" href="<?php echo $page <= 1 ? '#' : ('manage_borrow_records.php?' . h(http_build_query($previousQuery))); ?>"<?php echo $page <= 1 ? ' aria-disabled="true"' : ''; ?>>Previous</a>
+          <a class="button secondary<?php echo $page <= 1 ? ' is-disabled' : ''; ?>" href="<?php echo $page <= 1 ? '#' : ('manage_borrow_records.php?' . h(http_build_query($previousQuery))); ?>"<?php echo $page <= 1 ? ' aria-disabled="true"' : ''; ?> data-ajax-filter-link>Previous</a>
           <span class="badge">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
-          <a class="button secondary<?php echo $page >= $totalPages ? ' is-disabled' : ''; ?>" href="<?php echo $page >= $totalPages ? '#' : ('manage_borrow_records.php?' . h(http_build_query($nextQuery))); ?>"<?php echo $page >= $totalPages ? ' aria-disabled="true"' : ''; ?>>Next</a>
+          <a class="button secondary<?php echo $page >= $totalPages ? ' is-disabled' : ''; ?>" href="<?php echo $page >= $totalPages ? '#' : ('manage_borrow_records.php?' . h(http_build_query($nextQuery))); ?>"<?php echo $page >= $totalPages ? ' aria-disabled="true"' : ''; ?> data-ajax-filter-link>Next</a>
         <?php endif; ?>
       </div>
 
@@ -267,17 +268,6 @@ $pageQuery = $_GET;
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
-<script>
-document.querySelectorAll('[data-auto-submit-filter]').forEach(function (form) {
-  var statusSelect = form.querySelector('select[name="status"]');
-  if (!statusSelect) {
-    return;
-  }
-
-  statusSelect.addEventListener('change', function () {
-    form.submit();
-  });
-});
-</script>
+<script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($ajaxPanelVersion); ?>"></script>
 </body>
 </html>

@@ -54,23 +54,8 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
+<?php $ajaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
 <script src="<?php echo h(app_url('assets/theme.js?v=' . urlencode($themeVersion))); ?>"></script>
-<script>
-(() => {
-  try {
-    if (window.sessionStorage.getItem('librarian-book-incidents-filter-scroll') === 'filter-panel') {
-      document.documentElement.setAttribute('data-pending-filter-scroll', '1');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-  }
-})();
-</script>
-<style>
-html[data-pending-filter-scroll="1"] body {
-  opacity: 0;
-}
-</style>
 <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css?v=' . urlencode($assetVersion))); ?>">
 </head>
 <body>
@@ -123,7 +108,8 @@ html[data-pending-filter-scroll="1"] body {
       </div>
     </div>
 
-    <div class="panel">
+    <div data-ajax-panel-shell="librarian-book-incidents-records">
+    <div class="panel" data-filter-panel>
       <div class="card-head card-head-tight">
         <div class="dashboard-icon icon-checklist" aria-hidden="true"></div>
         <div>
@@ -132,10 +118,10 @@ html[data-pending-filter-scroll="1"] body {
           <p class="muted">Use `Open` while reviewing, move to `For Payment` if there is a fee, then finish with `Closed`.</p>
         </div>
       </div>
-      <form method="get" class="toolbar grow admin-record-filters penalties-record-filters" data-auto-submit-filter>
+      <form method="get" class="toolbar grow admin-record-filters penalties-record-filters" data-ajax-filter-form>
         <div>
           <label for="status">Workflow</label>
-          <select id="status" name="status" data-auto-submit-control>
+          <select id="status" name="status" data-ajax-filter-control>
             <option value="">All workflow states</option>
             <?php foreach (book_incident_workflow_options() as $value => $label): ?>
               <option value="<?php echo h($value); ?>" <?php echo $statusFilter === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
@@ -144,7 +130,7 @@ html[data-pending-filter-scroll="1"] body {
         </div>
         <div>
           <label for="type">Incident type</label>
-          <select id="type" name="type" data-auto-submit-control>
+          <select id="type" name="type" data-ajax-filter-control>
             <option value="">All incident types</option>
             <?php foreach (book_incident_type_options() as $value => $label): ?>
               <option value="<?php echo h($value); ?>" <?php echo $typeFilter === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
@@ -154,7 +140,7 @@ html[data-pending-filter-scroll="1"] body {
         <div class="inline-actions">
           <noscript><button type="submit">Apply Filters</button></noscript>
           <?php if ($statusFilter !== '' || $typeFilter !== ''): ?>
-            <a class="button secondary" href="<?php echo h(app_url('librarian/manage_book_incidents.php')); ?>">Clear Filters</a>
+            <a class="button secondary" href="<?php echo h(app_url('librarian/manage_book_incidents.php')); ?>" data-ajax-filter-link>Clear Filters</a>
           <?php endif; ?>
         </div>
       </form>
@@ -212,6 +198,7 @@ html[data-pending-filter-scroll="1"] body {
           </div>
         </div>
       <?php endforeach; ?>
+    </div>
     </div>
   </div>
   </div>
@@ -305,51 +292,6 @@ html[data-pending-filter-scroll="1"] body {
   </div>
 <?php endif; ?>
 <script src="<?php echo h(app_url('assets/member_sidebar.js?v=' . urlencode($memberSidebarVersion))); ?>"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  var scrollStorageKey = 'librarian-book-incidents-filter-scroll';
-  var filterPanel = document.querySelector('[data-filter-panel]');
-
-  try {
-    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
-      window.requestAnimationFrame(function () {
-        var top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-        document.documentElement.removeAttribute('data-pending-filter-scroll');
-      });
-      window.sessionStorage.removeItem(scrollStorageKey);
-    } else {
-      document.documentElement.removeAttribute('data-pending-filter-scroll');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-    document.documentElement.removeAttribute('data-pending-filter-scroll');
-  }
-
-  document.querySelectorAll('[data-auto-submit-filter]').forEach(function (form) {
-    form.querySelectorAll('[data-auto-submit-control]').forEach(function (control) {
-      if (!control || control.dataset.autoSubmitBound === '1') {
-        return;
-      }
-
-      control.dataset.autoSubmitBound = '1';
-      control.addEventListener('change', function () {
-        try {
-          window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
-        } catch (error) {
-          // Ignore session storage failures and continue with submit.
-        }
-
-        if (typeof form.requestSubmit === 'function') {
-          form.requestSubmit();
-          return;
-        }
-
-        form.submit();
-      });
-    });
-  });
-});
-</script>
+<script src="<?php echo h(app_url('assets/admin_ajax_panel.js?v=' . urlencode($ajaxPanelVersion))); ?>"></script>
 </body>
 </html>
