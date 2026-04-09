@@ -489,8 +489,8 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
                 <td><?php echo h((string) ($book['category'] ?: '-')); ?></td>
                 <td><?php echo h((string) ($book['isbn'] ?: '-')); ?></td>
                 <td><?php echo (int) $book['qty_total']; ?></td>
-                <td>
-                  <div class="stack stack-compact">
+                <td class="manage-books-stock-cell">
+                  <div class="stack stack-compact manage-books-stock-stack">
                     <span class="badge">
                       <span class="status-dot <?php echo (int) $book['qty_available'] <= 0 ? 'overdue' : ((int) $book['qty_available'] <= 2 ? 'due' : 'approved'); ?>"></span>
                       <?php echo (int) $book['qty_available']; ?> available
@@ -505,12 +505,14 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
                     <?php endif; ?>
                   </div>
                 </td>
-                <td class="inline-actions">
-                  <a class="button secondary" href="edit_book.php?id=<?php echo (int) $book['id']; ?>">Edit</a>
-                  <form method="post" class="inline-form" data-confirm="Delete this book?">
+                <td class="manage-books-action-cell">
+                  <div class="manage-books-action-stack">
+                    <a class="button secondary" href="edit_book.php?id=<?php echo (int) $book['id']; ?>">Edit</a>
+                    <form method="post" class="inline-form" data-confirm="Delete this book?">
                     <input type="hidden" name="id" value="<?php echo (int) $book['id']; ?>">
                     <button type="submit" class="danger" name="delete" value="1">Delete</button>
-                  </form>
+                    </form>
+                  </div>
                 </td>
               </tr>
             <?php endwhile; ?>

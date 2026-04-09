@@ -5141,6 +5141,30 @@ button.catalog-search-suggestion{
   margin-top:16px;
 }
 
+.manage-books-stock-cell,
+.manage-books-action-cell{
+  vertical-align:middle;
+}
+
+.manage-books-stock-stack,
+.manage-books-action-stack{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:88px;
+}
+
+.manage-books-action-stack .inline-form{
+  display:flex;
+}
+
+.manage-books-action-stack .button,
+.manage-books-action-stack button{
+  min-width:82px;
+}
+
 .manage-books-printcontrol{
   min-width:0;
   margin-right:0;
