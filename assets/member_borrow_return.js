@@ -422,14 +422,8 @@ function initBorrowSelection() {
 
   if (categorySelect) {
     categorySelect.addEventListener('change', () => {
-      if (categorySelect.hasAttribute('data-book-fixed-category')) {
-        window.location.assign(buildFilterUrl());
-        return;
-      }
-
-      applyFilter();
       hideSearchSuggestions();
-      syncFiltersInUrl();
+      window.location.assign(buildFilterUrl());
     });
   }
 

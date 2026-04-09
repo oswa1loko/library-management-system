@@ -115,14 +115,14 @@ $booksSql = "
     FROM books b
 ";
 
-if ($catalogScopeFilter !== '') {
+if ($effectiveCategoryFilter !== '') {
     $booksSql .= "
         WHERE LOWER(TRIM(b.category)) = ?
         ORDER BY b.title ASC
     ";
     $booksStmt = $conn->prepare($booksSql);
     if ($booksStmt) {
-        $booksStmt->bind_param('s', $catalogScopeFilter);
+        $booksStmt->bind_param('s', $effectiveCategoryFilter);
         $booksStmt->execute();
         $books = $booksStmt->get_result();
     } else {
