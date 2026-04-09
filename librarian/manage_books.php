@@ -466,6 +466,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
               <tr><td colspan="8" class="muted">No books matched your current filters.</td></tr>
             <?php endif; ?>
               <?php while ($book = $books->fetch_assoc()): ?>
+              <?php $borrowedCount = max(0, (int) $book['qty_total'] - (int) $book['qty_available']); ?>
               <tr data-book-row data-title="<?php echo h(strtolower($book['title'])); ?>" data-author="<?php echo h(strtolower($book['author'])); ?>" data-category="<?php echo h(strtolower($book['category'])); ?>">
                 <td><?php echo (int) $book['id']; ?></td>
                 <td>
@@ -489,10 +490,13 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
                 <td><?php echo h((string) ($book['isbn'] ?: '-')); ?></td>
                 <td><?php echo (int) $book['qty_total']; ?></td>
                 <td>
-                  <span class="badge">
-                    <span class="status-dot <?php echo (int) $book['qty_available'] <= 0 ? 'overdue' : ((int) $book['qty_available'] <= 2 ? 'due' : 'approved'); ?>"></span>
-                    <?php echo (int) $book['qty_available']; ?> available
-                  </span>
+                  <div class="stack stack-compact">
+                    <span class="badge">
+                      <span class="status-dot <?php echo (int) $book['qty_available'] <= 0 ? 'overdue' : ((int) $book['qty_available'] <= 2 ? 'due' : 'approved'); ?>"></span>
+                      <?php echo (int) $book['qty_available']; ?> available
+                    </span>
+                    <span class="muted"><?php echo $borrowedCount; ?> borrowed</span>
+                  </div>
                 </td>
                 <td class="inline-actions">
                   <a class="button secondary" href="edit_book.php?id=<?php echo (int) $book['id']; ?>">Edit</a>
