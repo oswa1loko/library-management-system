@@ -165,13 +165,38 @@ $activeBorrowedRow = $activeBorrowedStmt->get_result()->fetch_assoc();
 $activeBorrowedStmt->close();
 
 $borrowedCopies = (int) ($activeBorrowedRow['borrowed_copies'] ?? 0);
+$copyStatusCounts = [
+    'available' => (int) ($book['qty_available'] ?? 0),
+    'borrowed' => $borrowedCopies,
+    'damaged' => 0,
+    'lost' => 0,
+];
+if (table_exists($conn, 'book_copies')) {
+    $copyStatusStmt = $conn->prepare("
+        SELECT status, COUNT(*) AS total
+        FROM book_copies
+        WHERE book_id = ?
+        GROUP BY status
+    ");
+    $copyStatusStmt->bind_param('i', $bookId);
+    $copyStatusStmt->execute();
+    $copyStatusRows = $copyStatusStmt->get_result();
+    while ($copyStatusRows && ($copyStatusRow = $copyStatusRows->fetch_assoc())) {
+        $statusKey = (string) ($copyStatusRow['status'] ?? '');
+        if (array_key_exists($statusKey, $copyStatusCounts)) {
+            $copyStatusCounts[$statusKey] = (int) ($copyStatusRow['total'] ?? 0);
+        }
+    }
+    $copyStatusStmt->close();
+}
 $currentTotal = (int) ($book['qty_total'] ?? 0);
 $currentAvailable = (int) ($book['qty_available'] ?? 0);
 $pendingAddedCopies = max(0, (int) ($_POST['qty_add'] ?? 0));
 $pendingRemovedCopies = max(0, (int) ($_POST['qty_remove'] ?? 0));
 $displayTotal = max(0, $currentTotal + $pendingAddedCopies - $pendingRemovedCopies);
 $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRemovedCopies);
-$displayOffShelf = max(0, $displayTotal - $displayAvailable);
+$displayDamaged = max(0, $copyStatusCounts['damaged']);
+$displayLost = max(0, $copyStatusCounts['lost']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -331,9 +356,14 @@ $displayOffShelf = max(0, $displayTotal - $displayAvailable);
                   <span class="muted">Copies actively borrowed or waiting for return confirmation.</span>
                 </div>
                 <div class="empty-state librarian-edit-book-stock-card">
-                  <span class="code-pill">Off Shelf</span>
-                  <strong><?php echo $displayOffShelf; ?></strong>
-                  <span class="muted">All copies not currently available, including borrowed and other unavailable stock.</span>
+                  <span class="code-pill">Damaged</span>
+                  <strong><?php echo $displayDamaged; ?></strong>
+                  <span class="muted">Copies marked damaged and kept out of circulation.</span>
+                </div>
+                <div class="empty-state librarian-edit-book-stock-card">
+                  <span class="code-pill">Lost</span>
+                  <strong><?php echo $displayLost; ?></strong>
+                  <span class="muted">Copies marked lost and no longer expected back to shelf.</span>
                 </div>
               </div>
               <div class="grid form librarian-edit-book-stock-controls">
@@ -356,7 +386,8 @@ $displayOffShelf = max(0, $displayTotal - $displayAvailable);
             </div>
             <div class="inline-actions librarian-edit-book-chips">
               <span class="chip">Currently borrowed: <?php echo $borrowedCopies; ?></span>
-              <span class="chip">Off shelf: <?php echo $displayOffShelf; ?></span>
+              <span class="chip">Damaged: <?php echo $displayDamaged; ?></span>
+              <span class="chip">Lost: <?php echo $displayLost; ?></span>
               <span class="chip">Available now: <?php echo $displayAvailable; ?></span>
               <span class="chip">Catalog: <?php echo h($book['category']); ?></span>
               <?php if (!empty($book['isbn'])): ?>
@@ -380,7 +411,8 @@ $displayOffShelf = max(0, $displayTotal - $displayAvailable);
             <div class="empty-state">Total copies: <strong><?php echo $displayTotal; ?></strong></div>
             <div class="empty-state">Available copies: <strong><?php echo $displayAvailable; ?></strong></div>
             <div class="empty-state">Currently borrowed: <strong><?php echo $borrowedCopies; ?></strong></div>
-            <div class="empty-state">Off shelf: <strong><?php echo $displayOffShelf; ?></strong></div>
+            <div class="empty-state">Damaged: <strong><?php echo $displayDamaged; ?></strong></div>
+            <div class="empty-state">Lost: <strong><?php echo $displayLost; ?></strong></div>
             <div class="empty-state">Catalog: <strong><?php echo h((string) (($book['category'] ?? '') !== '' ? $book['category'] : '-')); ?></strong></div>
             <div class="empty-state">ISBN: <strong><?php echo h((string) (($book['isbn'] ?? '') !== '' ? $book['isbn'] : '-')); ?></strong></div>
           </div>
