@@ -495,10 +495,14 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
                       <span class="status-dot <?php echo (int) $book['qty_available'] <= 0 ? 'overdue' : ((int) $book['qty_available'] <= 2 ? 'due' : 'approved'); ?>"></span>
                       <?php echo (int) $book['qty_available']; ?> available
                     </span>
-                    <span class="badge">
-                      <span class="status-dot <?php echo $borrowedCount > 0 ? 'due' : 'approved'; ?>"></span>
-                      <?php echo $borrowedCount; ?> borrowed
-                    </span>
+                    <?php if ($borrowedCount > 0): ?>
+                      <span class="badge">
+                        <span class="status-dot due"></span>
+                        <?php echo $borrowedCount; ?> borrowed
+                      </span>
+                    <?php else: ?>
+                      <span class="muted">0 borrowed</span>
+                    <?php endif; ?>
                   </div>
                 </td>
                 <td class="inline-actions">
