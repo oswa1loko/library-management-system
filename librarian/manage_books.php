@@ -44,6 +44,7 @@ $message = '';
 $messageType = 'success';
 $search = trim($_GET['search'] ?? '');
 $catalogFilter = trim((string) ($_GET['catalog'] ?? $_GET['category'] ?? ''));
+$bookFilter = max(0, (int) ($_GET['book'] ?? 0));
 $printMode = isset($_GET['print']) && $_GET['print'] === '1';
 $printScope = trim((string) ($_GET['print_scope'] ?? 'current'));
 $formData = [
@@ -256,6 +257,12 @@ if ($catalogFilter !== '') {
     $booksTypes .= 'i';
 }
 
+if ($bookFilter > 0) {
+    $booksSql .= " AND id = ?";
+    $booksParams[] = $bookFilter;
+    $booksTypes .= 'i';
+}
+
 if ($printMode) {
     if ($printScope === 'available') {
         $booksSql .= " AND qty_available > 2";
@@ -398,6 +405,7 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
           </div>
         </div>
         <form method="get" class="manage-books-tablefilters js-auto-submit-filters" data-ajax-filter-form>
+          <input type="hidden" name="book" value="<?php echo $bookFilter > 0 ? (int) $bookFilter : ''; ?>" data-librarian-book-filter>
           <div class="grow">
             <label for="search">Search</label>
             <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Search title or author" data-ajax-filter-search>
@@ -467,7 +475,14 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
             <?php endif; ?>
               <?php while ($book = $books->fetch_assoc()): ?>
               <?php $borrowedCount = max(0, (int) $book['qty_total'] - (int) $book['qty_available']); ?>
-              <tr data-book-row data-title="<?php echo h(strtolower($book['title'])); ?>" data-author="<?php echo h(strtolower($book['author'])); ?>" data-category="<?php echo h(strtolower($book['category'])); ?>">
+              <tr
+                data-book-row
+                data-book-id="<?php echo (int) $book['id']; ?>"
+                data-book-catalog-id="<?php echo (int) ($book['catalog_id'] ?? 0); ?>"
+                data-title="<?php echo h(strtolower($book['title'])); ?>"
+                data-author="<?php echo h(strtolower($book['author'])); ?>"
+                data-category="<?php echo h(strtolower($book['category'])); ?>"
+              >
                 <td><?php echo (int) $book['id']; ?></td>
                 <td>
                   <div class="book-media">
