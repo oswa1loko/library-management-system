@@ -65,7 +65,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
   <div class="stack">
     <?php require __DIR__ . '/partials/notices.php'; ?>
 
-    <div class="panel" data-filter-panel>
+    <div class="panel">
       <div class="card-head">
         <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
         <div>
@@ -93,7 +93,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-filter-panel>
       <div class="card-head card-head-tight">
         <div class="dashboard-icon icon-checklist" aria-hidden="true"></div>
         <div>
