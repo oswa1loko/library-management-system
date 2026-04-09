@@ -35,6 +35,7 @@ function initBorrowSelection() {
   let activeSuggestionIndex = -1;
   let syncUrlTimer = null;
   let exactBookId = String(initialFilterState.bookId || '').trim();
+  let exactMatchBookIds = exactBookId !== '' ? [exactBookId] : [];
 
   const normalizeSearchValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const normalizeCategoryValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -190,31 +191,37 @@ function initBorrowSelection() {
     return rankedOptions.length ? rankedOptions[0].option : null;
   };
 
-  const findExactSearchBookOption = (value) => {
+  const findExactSearchBookOptions = (value) => {
     const normalizedValue = normalizeSearchValue(value);
     if (!normalizedValue) {
-      return null;
+      return [];
     }
 
-    const exactMatches = options.filter((option) => {
+    return options.filter((option) => {
       const title = normalizeSearchValue(option.getAttribute('data-book-title') || '');
       const author = normalizeSearchValue(option.getAttribute('data-book-author') || '');
       return title === normalizedValue || author === normalizedValue;
     });
-
-    return exactMatches.length === 1 ? exactMatches[0] : null;
   };
 
   const syncExactBookMatch = (value) => {
-    const exactMatch = findExactSearchBookOption(value);
-    if (!exactMatch) {
+    const exactMatches = findExactSearchBookOptions(value);
+    if (!exactMatches.length) {
       exactBookId = '';
+      exactMatchBookIds = [];
       return false;
     }
 
-    exactBookId = String(exactMatch.getAttribute('data-book-id') || '').trim();
+    exactMatchBookIds = exactMatches
+      .map((option) => String(option.getAttribute('data-book-id') || '').trim())
+      .filter((value) => value !== '');
+    exactBookId = exactMatchBookIds.length === 1 ? exactMatchBookIds[0] : '';
+
     if (categorySelect) {
-      categorySelect.value = normalizeCategoryValue(exactMatch.getAttribute('data-book-category-value') || '');
+      const matchedCategories = Array.from(new Set(exactMatches
+        .map((option) => normalizeCategoryValue(option.getAttribute('data-book-category-value') || ''))
+        .filter((value) => value !== '')));
+      categorySelect.value = matchedCategories.length === 1 ? matchedCategories[0] : '';
     }
 
     return true;
@@ -294,6 +301,7 @@ function initBorrowSelection() {
     const query = normalizeSearchValue(searchInput.value);
     const selectedCategory = categorySelect ? normalizeCategoryValue(categorySelect.value) : '';
     const exactBookValue = String(exactBookId || '').trim();
+    const exactBookValues = exactMatchBookIds.filter((value) => value !== '');
     let visibleCount = 0;
 
     options.forEach((option) => {
@@ -302,7 +310,9 @@ function initBorrowSelection() {
       const optionBookId = String(option.getAttribute('data-book-id') || '').trim();
       const matchesQuery = query === '' || haystack.includes(query);
       const matchesCategory = selectedCategory === '' || categoryValue === selectedCategory;
-      const matchesExactBook = exactBookValue === '' || optionBookId === exactBookValue;
+      const matchesExactBook = exactBookValues.length > 0
+        ? exactBookValues.includes(optionBookId)
+        : (exactBookValue === '' || optionBookId === exactBookValue);
       const isVisible = matchesQuery && matchesCategory && matchesExactBook;
       option.hidden = !isVisible;
 
@@ -394,6 +404,7 @@ function initBorrowSelection() {
   searchInput.addEventListener('input', () => {
     if (searchInput.value.trim() === '' && categorySelect) {
       exactBookId = '';
+      exactMatchBookIds = [];
       categorySelect.value = '';
       hideSearchSuggestions();
       window.location.assign(buildFilterUrl(''));
@@ -402,6 +413,7 @@ function initBorrowSelection() {
 
     if (!syncExactBookMatch(searchInput.value)) {
       exactBookId = '';
+      exactMatchBookIds = [];
     }
 
     applyFilter();
@@ -485,6 +497,7 @@ function initBorrowSelection() {
   if (categorySelect) {
     categorySelect.addEventListener('change', () => {
       exactBookId = '';
+      exactMatchBookIds = [];
       hideSearchSuggestions();
       window.location.assign(buildFilterUrl(''));
     });
