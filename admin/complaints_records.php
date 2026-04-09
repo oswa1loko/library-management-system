@@ -166,22 +166,6 @@ $complaints = $stmt->get_result();
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
-<script>
-(() => {
-  try {
-    if (window.sessionStorage.getItem('admin-complaints-filter-scroll') === 'filter-panel') {
-      document.documentElement.setAttribute('data-pending-filter-scroll', '1');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-  }
-})();
-</script>
-<style>
-html[data-pending-filter-scroll="1"] body {
-  opacity: 0;
-}
-</style>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
@@ -288,7 +272,7 @@ html[data-pending-filter-scroll="1"] body {
       </div>
     </div>
 
-    <div class="panel" data-filter-panel>
+    <div class="panel" data-filter-panel data-ajax-panel-shell="admin-complaints-records">
       <div class="toolbar toolbar-top">
         <div class="grow">
           <div class="card-head card-head-tight">
@@ -300,11 +284,11 @@ html[data-pending-filter-scroll="1"] body {
             </div>
           </div>
         </div>
-        <form method="get" class="toolbar grow admin-record-filters admin-record-filters-compact">
+        <form method="get" class="toolbar grow admin-record-filters admin-record-filters-compact" data-ajax-filter-form>
           <div>
             <label for="status">Status</label>
             <div class="ui-select-shell">
-              <select id="status" name="status" class="ui-select">
+              <select id="status" name="status" class="ui-select" data-ajax-filter-control>
                 <option value="">All statuses</option>
                 <?php foreach ($statusOptions as $status): ?>
                   <option value="<?php echo h($status); ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>><?php echo h(ucfirst($status)); ?></option>
@@ -314,7 +298,7 @@ html[data-pending-filter-scroll="1"] body {
             </div>
           </div>
           <div class="inline-actions">
-            <a class="button secondary" href="complaints_records.php">Reset</a>
+            <a class="button secondary" href="complaints_records.php" data-ajax-filter-link>Reset</a>
           </div>
         </form>
       </div>
@@ -431,47 +415,8 @@ html[data-pending-filter-scroll="1"] body {
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
-<script>
-(() => {
-  const scrollStorageKey = 'admin-complaints-filter-scroll';
-  const filterForm = document.querySelector('.admin-record-filters-compact');
-  const statusFilter = document.getElementById('status');
-  const filterPanel = document.querySelector('[data-filter-panel]');
-
-  try {
-    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
-      window.requestAnimationFrame(() => {
-        const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-        document.documentElement.removeAttribute('data-pending-filter-scroll');
-      });
-      window.sessionStorage.removeItem(scrollStorageKey);
-    } else {
-      document.documentElement.removeAttribute('data-pending-filter-scroll');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-    document.documentElement.removeAttribute('data-pending-filter-scroll');
-  }
-
-  if (!filterForm || !statusFilter) {
-    return;
-  }
-
-  statusFilter.addEventListener('change', () => {
-    try {
-      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
-    } catch (error) {
-      // Ignore session storage failures and continue with submit.
-    }
-    if (filterForm.requestSubmit) {
-      filterForm.requestSubmit();
-      return;
-    }
-    filterForm.submit();
-  });
-})();
-</script>
+<?php $adminAjaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
+<script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($adminAjaxPanelVersion); ?>"></script>
 </body>
 </html>
 

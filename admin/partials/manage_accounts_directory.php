@@ -1,4 +1,4 @@
-<div class="panel" data-filter-panel>
+<div class="panel" data-filter-panel data-manage-accounts-shell>
   <div class="toolbar manage-users-toolbar">
     <form method="get" class="toolbar grow manage-users-filters js-auto-submit-filters">
       <div class="grow">
@@ -18,7 +18,7 @@
         </div>
       </div>
       <div class="inline-actions">
-        <a class="button secondary" href="manage_accounts.php">Reset</a>
+        <a class="button secondary" href="manage_accounts.php" data-manage-accounts-reset>Reset</a>
       </div>
     </form>
   </div>

@@ -345,7 +345,7 @@ try {
     ?>
 
     <div class="stack">
-      <div class="panel">
+      <div class="panel" data-filter-panel data-ajax-panel-shell="admin-analytics-year">
         <div class="inline-actions inline-actions-spread analytics-print-head">
           <div>
             <p class="muted eyebrow-compact stack-copy">Analytics</p>
@@ -354,10 +354,10 @@ try {
             <p class="analytics-print-note">For best print results, enable browser background graphics when saving this report as PDF.</p>
           </div>
           <div class="inline-actions analytics-print-actions">
-            <form method="get" class="analytics-year-filter">
+            <form method="get" class="analytics-year-filter" data-ajax-filter-form>
               <label for="analytics-year" class="sr-only">Select analytics year</label>
               <div class="ui-select-shell">
-                <select id="analytics-year" name="year" class="ui-select" onchange="this.form.submit()">
+                <select id="analytics-year" name="year" class="ui-select" data-ajax-filter-control>
                   <?php foreach ($analyticsYears as $analyticsYear): ?>
                     <option value="<?php echo (int) $analyticsYear; ?>" <?php echo $analyticsYear === (int) $selectedBorrowYear ? 'selected' : ''; ?>>
                       <?php echo (int) $analyticsYear; ?>
@@ -651,6 +651,8 @@ try {
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/admin_dashboard.js?v=<?php echo urlencode($adminDashboardVersion); ?>"></script>
+<?php $adminAjaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
+<script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($adminAjaxPanelVersion); ?>"></script>
 </body>
 </html>
 

@@ -46,22 +46,6 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="<?php echo h(app_url('assets/theme.js?v=' . urlencode($themeVersion))); ?>"></script>
-<script>
-(() => {
-  try {
-    if (window.sessionStorage.getItem('admin-book-incidents-filter-scroll') === 'filter-panel') {
-      document.documentElement.setAttribute('data-pending-filter-scroll', '1');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-  }
-})();
-</script>
-<style>
-html[data-pending-filter-scroll="1"] body {
-  opacity: 0;
-}
-</style>
 <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css?v=' . urlencode($assetVersion))); ?>">
 </head>
 <body>
@@ -109,6 +93,7 @@ html[data-pending-filter-scroll="1"] body {
       </div>
     </div>
 
+    <div data-ajax-panel-shell="admin-book-incidents-records">
     <div class="panel" data-filter-panel>
       <div class="card-head card-head-tight">
         <div class="dashboard-icon icon-checklist" aria-hidden="true"></div>
@@ -118,10 +103,10 @@ html[data-pending-filter-scroll="1"] body {
           <p class="muted">Use this when you want to focus on pending fees, paid incidents, or waived cases only.</p>
         </div>
       </div>
-      <form method="get" class="toolbar grow admin-record-filters penalties-record-filters" data-auto-submit-filter>
+      <form method="get" class="toolbar grow admin-record-filters penalties-record-filters" data-ajax-filter-form>
         <div>
           <label for="settlement">Settlement status</label>
-          <select id="settlement" name="settlement" data-auto-submit-control>
+          <select id="settlement" name="settlement" data-ajax-filter-control>
             <option value="">All settlement states</option>
             <?php foreach (book_incident_settlement_options() as $value => $label): ?>
               <option value="<?php echo h($value); ?>" <?php echo $settlementFilter === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
@@ -131,7 +116,7 @@ html[data-pending-filter-scroll="1"] body {
         <div class="inline-actions">
           <noscript><button type="submit">Apply Filter</button></noscript>
           <?php if ($settlementFilter !== ''): ?>
-            <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php')); ?>">Clear Filter</a>
+            <a class="button secondary" href="<?php echo h(app_url('admin/book_incidents_records.php')); ?>" data-ajax-filter-link>Clear Filter</a>
           <?php endif; ?>
         </div>
       </form>
@@ -212,65 +197,12 @@ html[data-pending-filter-scroll="1"] body {
         </div>
       <?php endforeach; ?>
     </div>
+    </div>
   </div>
   </div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  var scrollStorageKey = 'admin-book-incidents-filter-scroll';
-  var savedScrollTarget = '';
-
-  try {
-    savedScrollTarget = window.sessionStorage.getItem(scrollStorageKey) || '';
-  } catch (error) {
-    savedScrollTarget = '';
-  }
-
-  if (savedScrollTarget === 'filter-panel') {
-    var filterPanel = document.querySelector('[data-filter-panel]');
-    if (filterPanel) {
-      window.requestAnimationFrame(function () {
-        var top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-        document.documentElement.removeAttribute('data-pending-filter-scroll');
-      });
-    } else {
-      document.documentElement.removeAttribute('data-pending-filter-scroll');
-    }
-
-    try {
-      window.sessionStorage.removeItem(scrollStorageKey);
-    } catch (error) {
-      // Ignore session storage cleanup failures.
-    }
-  } else {
-    document.documentElement.removeAttribute('data-pending-filter-scroll');
-  }
-
-  document.querySelectorAll('[data-auto-submit-filter]').forEach(function (form) {
-    var control = form.querySelector('[data-auto-submit-control]');
-    if (!control || control.dataset.autoSubmitBound === '1') {
-      return;
-    }
-
-    control.dataset.autoSubmitBound = '1';
-    control.addEventListener('change', function () {
-      try {
-        window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
-      } catch (error) {
-        // Ignore session storage failures and continue with submit.
-      }
-
-      if (typeof form.requestSubmit === 'function') {
-        form.requestSubmit();
-        return;
-      }
-
-      form.submit();
-    });
-  });
-});
-</script>
+<?php $adminAjaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
+<script src="<?php echo h(app_url('assets/admin_ajax_panel.js?v=' . urlencode($adminAjaxPanelVersion))); ?>"></script>
 <?php if ($selectedIncident): ?>
   <div class="desk-modal" data-desk-modal>
     <a class="desk-modal-backdrop" href="<?php echo h($baseHref); ?>" aria-label="Close settlement details"></a>

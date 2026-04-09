@@ -65,22 +65,6 @@ $logs = $stmt->get_result();
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
-<script>
-(() => {
-  try {
-    if (window.sessionStorage.getItem('admin-audit-filter-scroll') === 'filter-panel') {
-      document.documentElement.setAttribute('data-pending-filter-scroll', '1');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-  }
-})();
-</script>
-<style>
-html[data-pending-filter-scroll="1"] body {
-  opacity: 0;
-}
-</style>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
@@ -98,21 +82,21 @@ html[data-pending-filter-scroll="1"] body {
     ?>
 
   <div class="stack">
-    <div class="panel" data-filter-panel>
+    <div class="panel" data-filter-panel data-ajax-panel-shell="admin-audit-records">
       <div class="toolbar toolbar-top">
         <div class="grow">
           <p class="muted eyebrow-compact">Filter</p>
           <h3 class="heading-card">Audit stream</h3>
         </div>
-        <form method="get" class="grow admin-record-filters audit-log-filters">
+        <form method="get" class="grow admin-record-filters audit-log-filters" data-ajax-filter-form>
           <div class="grow">
             <label for="event">Event</label>
-            <input id="event" name="event" value="<?php echo h($eventFilter); ?>" placeholder="event name contains">
+            <input id="event" name="event" value="<?php echo h($eventFilter); ?>" placeholder="event name contains" data-ajax-filter-search>
           </div>
           <div>
             <label for="role">Actor role</label>
             <div class="ui-select-shell">
-              <select id="role" name="role" class="ui-select">
+              <select id="role" name="role" class="ui-select" data-ajax-filter-control>
                 <option value="">All roles</option>
                 <?php foreach (['admin', 'student', 'faculty', 'librarian', 'system'] as $role): ?>
                   <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(role_label($role)); ?></option>
@@ -122,7 +106,7 @@ html[data-pending-filter-scroll="1"] body {
             </div>
           </div>
           <div class="inline-actions">
-            <a class="button secondary" href="audit_logs.php">Reset</a>
+            <a class="button secondary" href="audit_logs.php" data-ajax-filter-link>Reset</a>
           </div>
         </form>
       </div>
@@ -160,57 +144,18 @@ html[data-pending-filter-scroll="1"] body {
       <div class="pagination">
         <span class="current">Page <?php echo (int) $page; ?> of <?php echo (int) $totalPages; ?></span>
         <?php if ($page > 1): ?>
-          <a class="button secondary" href="?event=<?php echo urlencode($eventFilter); ?>&role=<?php echo urlencode($roleFilter); ?>&page=<?php echo $page - 1; ?>">Previous</a>
+          <a class="button secondary" href="?event=<?php echo urlencode($eventFilter); ?>&role=<?php echo urlencode($roleFilter); ?>&page=<?php echo $page - 1; ?>" data-ajax-filter-link>Previous</a>
         <?php endif; ?>
         <?php if ($page < $totalPages): ?>
-          <a class="button secondary" href="?event=<?php echo urlencode($eventFilter); ?>&role=<?php echo urlencode($roleFilter); ?>&page=<?php echo $page + 1; ?>">Next</a>
+          <a class="button secondary" href="?event=<?php echo urlencode($eventFilter); ?>&role=<?php echo urlencode($roleFilter); ?>&page=<?php echo $page + 1; ?>" data-ajax-filter-link>Next</a>
         <?php endif; ?>
       </div>
     </div>
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
-<script>
-(() => {
-  const scrollStorageKey = 'admin-audit-filter-scroll';
-  const filterForm = document.querySelector('.audit-log-filters');
-  const roleFilter = document.getElementById('role');
-  const filterPanel = document.querySelector('[data-filter-panel]');
-
-  try {
-    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
-      window.requestAnimationFrame(() => {
-        const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-        document.documentElement.removeAttribute('data-pending-filter-scroll');
-      });
-      window.sessionStorage.removeItem(scrollStorageKey);
-    } else {
-      document.documentElement.removeAttribute('data-pending-filter-scroll');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-    document.documentElement.removeAttribute('data-pending-filter-scroll');
-  }
-
-  if (!filterForm || !roleFilter) {
-    return;
-  }
-
-  roleFilter.addEventListener('change', () => {
-    try {
-      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
-    } catch (error) {
-      // Ignore session storage failures and continue with submit.
-    }
-    if (filterForm.requestSubmit) {
-      filterForm.requestSubmit();
-      return;
-    }
-    filterForm.submit();
-  });
-})();
-</script>
+<?php $adminAjaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
+<script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($adminAjaxPanelVersion); ?>"></script>
 </body>
 </html>
 

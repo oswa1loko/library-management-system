@@ -68,22 +68,6 @@ $penalties = $stmt->get_result();
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
 <script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
-<script>
-(() => {
-  try {
-    if (window.sessionStorage.getItem('admin-penalties-filter-scroll') === 'filter-panel') {
-      document.documentElement.setAttribute('data-pending-filter-scroll', '1');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-  }
-})();
-</script>
-<style>
-html[data-pending-filter-scroll="1"] body {
-  opacity: 0;
-}
-</style>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
 <body>
@@ -183,7 +167,7 @@ html[data-pending-filter-scroll="1"] body {
       </div>
     </div>
 
-    <div class="panel" data-filter-panel>
+    <div class="panel" data-filter-panel data-ajax-panel-shell="admin-penalties-records">
       <div class="toolbar toolbar-top">
         <div class="grow">
           <div class="card-head card-head-tight">
@@ -195,11 +179,11 @@ html[data-pending-filter-scroll="1"] body {
             </div>
           </div>
         </div>
-        <form method="get" class="toolbar grow admin-record-filters penalties-record-filters">
+        <form method="get" class="toolbar grow admin-record-filters penalties-record-filters" data-ajax-filter-form>
           <div>
             <label for="status_filter">Status</label>
             <div class="ui-select-shell">
-              <select id="status_filter" name="status" class="ui-select">
+              <select id="status_filter" name="status" class="ui-select" data-ajax-filter-control>
                 <option value="">All statuses</option>
                 <?php foreach ($statusOptions as $status): ?>
                   <option value="<?php echo h($status); ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>><?php echo h(ucfirst($status)); ?></option>
@@ -211,7 +195,7 @@ html[data-pending-filter-scroll="1"] body {
           <div>
             <label for="role_filter">Role</label>
             <div class="ui-select-shell">
-              <select id="role_filter" name="role" class="ui-select">
+              <select id="role_filter" name="role" class="ui-select" data-ajax-filter-control>
                 <option value="">All roles</option>
                 <?php foreach ($rolesAllowed as $role): ?>
                   <option value="<?php echo h($role); ?>" <?php echo $roleFilter === $role ? 'selected' : ''; ?>><?php echo h(role_label($role)); ?></option>
@@ -221,7 +205,7 @@ html[data-pending-filter-scroll="1"] body {
             </div>
           </div>
           <div class="inline-actions">
-            <a class="button secondary" href="penalties_records.php">Reset</a>
+            <a class="button secondary" href="penalties_records.php" data-ajax-filter-link>Reset</a>
           </div>
         </form>
       </div>
@@ -269,56 +253,8 @@ html[data-pending-filter-scroll="1"] body {
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
-<script>
-(() => {
-  const scrollStorageKey = 'admin-penalties-filter-scroll';
-  const filterForm = document.querySelector('.penalties-record-filters');
-  const statusFilter = document.getElementById('status_filter');
-  const roleFilter = document.getElementById('role_filter');
-  const filterPanel = document.querySelector('[data-filter-panel]');
-
-  try {
-    if (window.sessionStorage.getItem(scrollStorageKey) === 'filter-panel' && filterPanel) {
-      window.requestAnimationFrame(() => {
-        const top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-        document.documentElement.removeAttribute('data-pending-filter-scroll');
-      });
-      window.sessionStorage.removeItem(scrollStorageKey);
-    } else {
-      document.documentElement.removeAttribute('data-pending-filter-scroll');
-    }
-  } catch (error) {
-    // Ignore session storage failures.
-    document.documentElement.removeAttribute('data-pending-filter-scroll');
-  }
-
-  if (!filterForm) {
-    return;
-  }
-
-  const submitFilters = () => {
-    try {
-      window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
-    } catch (error) {
-      // Ignore session storage failures and continue with submit.
-    }
-    if (filterForm.requestSubmit) {
-      filterForm.requestSubmit();
-      return;
-    }
-    filterForm.submit();
-  };
-
-  if (statusFilter) {
-    statusFilter.addEventListener('change', submitFilters);
-  }
-
-  if (roleFilter) {
-    roleFilter.addEventListener('change', submitFilters);
-  }
-})();
-</script>
+<?php $adminAjaxPanelVersion = (string) filemtime(__DIR__ . '/../assets/admin_ajax_panel.js'); ?>
+<script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($adminAjaxPanelVersion); ?>"></script>
 </body>
 </html>
 
