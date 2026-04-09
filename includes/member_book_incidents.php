@@ -193,6 +193,7 @@ $incidents = get_member_incidents($conn, $userId);
                   <input id="incident_photo" type="file" name="incident_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                 </div>
                 <div class="muted">Required only for damaged reports. Upload a clear photo so the librarian can assess the issue faster.</div>
+                <div class="muted">Damaged books should still be returned to the library for inspection whenever possible. The photo helps the review, but it does not replace the physical return.</div>
               </div>
               <div>
                 <label for="description">What happened?</label>
