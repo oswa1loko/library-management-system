@@ -1990,6 +1990,10 @@ tbody td > .label-block + .muted{
   background:var(--brand);
 }
 
+.status-dot.idle{
+  background:#8ea4c4;
+}
+
 .review-state{
   display:inline-flex;
   align-items:center;

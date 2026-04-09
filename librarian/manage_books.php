@@ -516,7 +516,10 @@ $printTitle = manage_books_print_title($printScope, $selectedCatalogName);
                         <?php echo $borrowedCount; ?> borrowed
                       </span>
                     <?php else: ?>
-                      <span class="muted">0 borrowed</span>
+                      <span class="badge">
+                        <span class="status-dot idle"></span>
+                        0 borrowed
+                      </span>
                     <?php endif; ?>
                   </div>
                 </td>
