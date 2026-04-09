@@ -363,6 +363,9 @@ function initBorrowSelection() {
 
   searchInput.addEventListener('input', () => {
     exactBookId = '';
+    if (searchInput.value.trim() === '' && categorySelect) {
+      categorySelect.value = '';
+    }
     applyFilter();
     renderSearchSuggestions();
     queueFilterUrlSync();
