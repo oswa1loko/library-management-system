@@ -92,6 +92,7 @@ while ($categoryRows && ($categoryRow = $categoryRows->fetch_assoc())) {
     $bookCategories[] = (string) $categoryRow['category'];
 }
 $initialSearchFilter = trim((string) ($_GET['search'] ?? ''));
+$initialBookFilter = max(0, (int) ($_GET['book'] ?? 0));
 $catalogScopeFilter = normalize_member_book_category((string) ($_GET['catalog'] ?? ''));
 $normalizedBookCategories = array_map('normalize_member_book_category', $bookCategories);
 $initialCategoryFilter = normalize_member_book_category((string) ($_GET['category'] ?? ''));
@@ -387,7 +388,14 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                     <p class="member-book-group-title" data-book-group-title>Unavailable right now</p>
                     <div class="member-book-group-grid">
                       <?php foreach ($unavailableBooks as $book): ?>
-                        <div class="member-book-option member-book-option-static is-unavailable" data-book-option data-book-category-value="<?php echo h(normalize_member_book_category((string) $book['category'])); ?>" data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
+                        <div class="member-book-option member-book-option-static is-unavailable"
+                             data-book-option
+                             data-book-id="<?php echo (int) $book['id']; ?>"
+                             data-book-title="<?php echo h($book['title']); ?>"
+                             data-book-author="<?php echo h($book['author']); ?>"
+                             data-book-category-label="<?php echo h($book['category']); ?>"
+                             data-book-category-value="<?php echo h(normalize_member_book_category((string) $book['category'])); ?>"
+                             data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>">
                           <?php if (!empty($book['cover_path'])): ?>
                             <img class="member-book-option-cover" src="<?php echo h(app_url((string) $book['cover_path'])); ?>" alt="<?php echo h($book['title']); ?>">
                           <?php else: ?>
@@ -471,6 +479,9 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
 <script src="/librarymanage/assets/member_borrow_return.js?v=<?php echo urlencode($memberBorrowReturnVersion); ?>"></script>
 <script>
 window.memberBookSearchOptions = <?php echo json_encode($bookSearchSuggestions, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+window.memberBookInitialFilter = <?php echo json_encode([
+    'bookId' => $initialBookFilter,
+], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 </script>
 </body>
 </html>

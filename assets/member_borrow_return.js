@@ -11,6 +11,9 @@ function initBorrowSelection() {
 
   const searchSuggestions = document.querySelector('[data-book-search-suggestions]');
   const searchOptions = Array.isArray(window.memberBookSearchOptions) ? window.memberBookSearchOptions : [];
+  const initialFilterState = window.memberBookInitialFilter && typeof window.memberBookInitialFilter === 'object'
+    ? window.memberBookInitialFilter
+    : {};
   const options = Array.from(document.querySelectorAll('[data-book-option]'));
   const emptyState = document.querySelector('[data-book-empty]');
   const categorySelect = document.querySelector('[data-book-category]');
@@ -31,6 +34,7 @@ function initBorrowSelection() {
   const resultsPanel = document.querySelector('[data-book-results-panel]');
   let activeSuggestionIndex = -1;
   let syncUrlTimer = null;
+  let exactBookId = String(initialFilterState.bookId || '').trim();
 
   const normalizeSearchValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const normalizeCategoryValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -42,11 +46,12 @@ function initBorrowSelection() {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-  const buildFilterUrl = () => {
+  const buildFilterUrl = (nextExactBookId = '') => {
     const url = new URL(window.location.href);
     const query = searchInput.value.trim();
     const selectedCategory = categorySelect ? normalizeCategoryValue(categorySelect.value) : '';
     const hasFixedCategoryScope = categorySelect && categorySelect.hasAttribute('data-book-fixed-category');
+    const exactBookValue = String(nextExactBookId || '').trim();
 
     if (query !== '') {
       url.searchParams.set('search', query);
@@ -64,11 +69,17 @@ function initBorrowSelection() {
       url.searchParams.delete('category');
     }
 
+    if (exactBookValue !== '') {
+      url.searchParams.set('book', exactBookValue);
+    } else {
+      url.searchParams.delete('book');
+    }
+
     return `${url.pathname}${url.search}${url.hash}`;
   };
 
   const syncFiltersInUrl = () => {
-    const nextUrl = buildFilterUrl();
+    const nextUrl = buildFilterUrl(exactBookId);
     const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
     if (nextUrl !== currentUrl && window.history && typeof window.history.replaceState === 'function') {
@@ -238,22 +249,31 @@ function initBorrowSelection() {
     if (matchedOption && categorySelect) {
       categorySelect.value = normalizeCategoryValue(matchedOption.getAttribute('data-book-category-value') || '');
     }
+    exactBookId = matchedOption ? String(matchedOption.getAttribute('data-book-id') || '').trim() : '';
     applyFilter();
     hideSearchSuggestions();
+    if (matchedOption) {
+      window.location.assign(buildFilterUrl(exactBookId));
+      return;
+    }
+
     syncFiltersInUrl();
   };
 
   const applyFilter = () => {
     const query = normalizeSearchValue(searchInput.value);
     const selectedCategory = categorySelect ? normalizeCategoryValue(categorySelect.value) : '';
+    const exactBookValue = String(exactBookId || '').trim();
     let visibleCount = 0;
 
     options.forEach((option) => {
       const haystack = (option.getAttribute('data-book-search-text') || '').toLowerCase();
       const categoryValue = (option.getAttribute('data-book-category-value') || '').toLowerCase();
+      const optionBookId = String(option.getAttribute('data-book-id') || '').trim();
       const matchesQuery = query === '' || haystack.includes(query);
       const matchesCategory = selectedCategory === '' || categoryValue === selectedCategory;
-      const isVisible = matchesQuery && matchesCategory;
+      const matchesExactBook = exactBookValue === '' || optionBookId === exactBookValue;
+      const isVisible = matchesQuery && matchesCategory && matchesExactBook;
       option.hidden = !isVisible;
 
       if (isVisible) {
@@ -342,6 +362,7 @@ function initBorrowSelection() {
   };
 
   searchInput.addEventListener('input', () => {
+    exactBookId = '';
     applyFilter();
     renderSearchSuggestions();
     queueFilterUrlSync();
@@ -422,8 +443,9 @@ function initBorrowSelection() {
 
   if (categorySelect) {
     categorySelect.addEventListener('change', () => {
+      exactBookId = '';
       hideSearchSuggestions();
-      window.location.assign(buildFilterUrl());
+      window.location.assign(buildFilterUrl(''));
     });
   }
 
