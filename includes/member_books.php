@@ -272,7 +272,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
       <?php endif; ?>
 
       <div class="grid cards member-workspace-grid member-workspace-grid-borrow">
-        <div class="panel member-workspace-main">
+        <div class="panel member-workspace-main" data-book-results-panel>
           <div class="card-head">
             <div class="dashboard-icon icon-books" aria-hidden="true"></div>
             <div>

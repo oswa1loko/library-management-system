@@ -27,6 +27,7 @@ function initBorrowSelection() {
   const modalCover = document.querySelector('[data-book-modal-cover]');
   const modalCoverPlaceholder = document.querySelector('[data-book-modal-cover-placeholder]');
   const modalQty = document.querySelector('[data-book-modal-qty]');
+  const resultsPanel = document.querySelector('[data-book-results-panel]');
   let activeSuggestionIndex = -1;
   let syncUrlTimer = null;
 
@@ -71,6 +72,15 @@ function initBorrowSelection() {
   const queueFilterUrlSync = () => {
     window.clearTimeout(syncUrlTimer);
     syncUrlTimer = window.setTimeout(syncFiltersInUrl, 120);
+  };
+
+  const focusResultsPanel = () => {
+    if (!resultsPanel) {
+      return;
+    }
+
+    const panelTop = resultsPanel.getBoundingClientRect().top + window.scrollY - 24;
+    window.scrollTo({ top: Math.max(0, panelTop), behavior: 'auto' });
   };
 
   const hideSearchSuggestions = () => {
@@ -392,6 +402,10 @@ function initBorrowSelection() {
   });
 
   applyFilter();
+
+  if ((categorySelect && categorySelect.value.trim() !== '') || searchInput.value.trim() !== '') {
+    window.requestAnimationFrame(focusResultsPanel);
+  }
 }
 
 function initReturnBatchSelection() {
