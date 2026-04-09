@@ -28,6 +28,7 @@ function initBorrowSelection() {
   const modalCoverPlaceholder = document.querySelector('[data-book-modal-cover-placeholder]');
   const modalQty = document.querySelector('[data-book-modal-qty]');
   let activeSuggestionIndex = -1;
+  let syncUrlTimer = null;
 
   const normalizeSearchValue = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -58,13 +59,18 @@ function initBorrowSelection() {
     return `${url.pathname}${url.search}${url.hash}`;
   };
 
-  const navigateWithFilters = () => {
+  const syncFiltersInUrl = () => {
     const nextUrl = buildFilterUrl();
     const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
-    if (nextUrl !== currentUrl) {
-      window.location.assign(nextUrl);
+    if (nextUrl !== currentUrl && window.history && typeof window.history.replaceState === 'function') {
+      window.history.replaceState({}, '', nextUrl);
     }
+  };
+
+  const queueFilterUrlSync = () => {
+    window.clearTimeout(syncUrlTimer);
+    syncUrlTimer = window.setTimeout(syncFiltersInUrl, 120);
   };
 
   const hideSearchSuggestions = () => {
@@ -185,7 +191,7 @@ function initBorrowSelection() {
     }
     applyFilter();
     hideSearchSuggestions();
-    navigateWithFilters();
+    syncFiltersInUrl();
   };
 
   const applyFilter = () => {
@@ -287,6 +293,7 @@ function initBorrowSelection() {
   searchInput.addEventListener('input', () => {
     applyFilter();
     renderSearchSuggestions();
+    queueFilterUrlSync();
   });
 
   searchInput.addEventListener('keydown', (event) => {
@@ -366,7 +373,7 @@ function initBorrowSelection() {
     categorySelect.addEventListener('change', () => {
       applyFilter();
       hideSearchSuggestions();
-      navigateWithFilters();
+      syncFiltersInUrl();
     });
   }
 
