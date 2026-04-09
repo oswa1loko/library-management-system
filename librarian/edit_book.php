@@ -171,6 +171,7 @@ $pendingAddedCopies = max(0, (int) ($_POST['qty_add'] ?? 0));
 $pendingRemovedCopies = max(0, (int) ($_POST['qty_remove'] ?? 0));
 $displayTotal = max(0, $currentTotal + $pendingAddedCopies - $pendingRemovedCopies);
 $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRemovedCopies);
+$displayOffShelf = max(0, $displayTotal - $displayAvailable);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -325,9 +326,14 @@ $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRem
                   <span class="muted">Shelf stock ready for borrowing after your pending changes.</span>
                 </div>
                 <div class="empty-state librarian-edit-book-stock-card">
-                  <span class="code-pill">Borrowed</span>
+                  <span class="code-pill">Currently Borrowed</span>
                   <strong><?php echo $borrowedCopies; ?></strong>
-                  <span class="muted">Copies currently outside the shelf and protected from removal.</span>
+                  <span class="muted">Copies actively borrowed or waiting for return confirmation.</span>
+                </div>
+                <div class="empty-state librarian-edit-book-stock-card">
+                  <span class="code-pill">Off Shelf</span>
+                  <strong><?php echo $displayOffShelf; ?></strong>
+                  <span class="muted">All copies not currently available, including borrowed and other unavailable stock.</span>
                 </div>
               </div>
               <div class="grid form librarian-edit-book-stock-controls">
@@ -349,7 +355,8 @@ $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRem
               <a class="button secondary" href="manage_books.php">Back to Books</a>
             </div>
             <div class="inline-actions librarian-edit-book-chips">
-              <span class="chip">Borrowed out: <?php echo $borrowedCopies; ?></span>
+              <span class="chip">Currently borrowed: <?php echo $borrowedCopies; ?></span>
+              <span class="chip">Off shelf: <?php echo $displayOffShelf; ?></span>
               <span class="chip">Available now: <?php echo $displayAvailable; ?></span>
               <span class="chip">Catalog: <?php echo h($book['category']); ?></span>
               <?php if (!empty($book['isbn'])): ?>
@@ -372,7 +379,8 @@ $displayAvailable = max(0, $currentAvailable + $pendingAddedCopies - $pendingRem
             <div class="empty-state">Book ID: <strong>#<?php echo (int) $book['id']; ?></strong></div>
             <div class="empty-state">Total copies: <strong><?php echo $displayTotal; ?></strong></div>
             <div class="empty-state">Available copies: <strong><?php echo $displayAvailable; ?></strong></div>
-            <div class="empty-state">Borrowed out: <strong><?php echo $borrowedCopies; ?></strong></div>
+            <div class="empty-state">Currently borrowed: <strong><?php echo $borrowedCopies; ?></strong></div>
+            <div class="empty-state">Off shelf: <strong><?php echo $displayOffShelf; ?></strong></div>
             <div class="empty-state">Catalog: <strong><?php echo h((string) (($book['category'] ?? '') !== '' ? $book['category'] : '-')); ?></strong></div>
             <div class="empty-state">ISBN: <strong><?php echo h((string) (($book['isbn'] ?? '') !== '' ? $book['isbn'] : '-')); ?></strong></div>
           </div>
