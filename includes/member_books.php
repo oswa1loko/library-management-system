@@ -97,37 +97,49 @@ $booksSql = "
     FROM books b
 ";
 
-$booksParams = [];
-$booksTypes = '';
-if ($initialCategoryFilter !== '') {
-    $booksSql .= " WHERE LOWER(b.category) = ? ";
-    $booksParams[] = $initialCategoryFilter;
-    $booksTypes .= 's';
-}
-
 $booksSql .= "
     ORDER BY b.title ASC
 ";
 
-$books = false;
-if ($booksParams !== []) {
-    $booksStmt = $conn->prepare($booksSql);
-    if ($booksStmt) {
-        $booksStmt->bind_param($booksTypes, ...$booksParams);
-        $booksStmt->execute();
-        $books = $booksStmt->get_result();
-    }
-} else {
-    $books = $conn->query($booksSql);
-}
+$books = $conn->query($booksSql);
 
 $blockedBookIds = [];
 $blockedBooksSql = "
     SELECT DISTINCT br.book_id
     FROM penalties p
     JOIN borrows br ON br.id = p.borrow_id
+    LEFT JOIN (
+        SELECT
+            linked.penalty_id,
+            pay.status,
+            pay.id
+        FROM payments pay
+        JOIN (
+            SELECT payment_id, penalty_id FROM payment_penalty_links
+            UNION ALL
+            SELECT id AS payment_id, penalty_id
+            FROM payments
+            WHERE penalty_id IS NOT NULL
+        ) linked ON linked.payment_id = pay.id
+    ) penalty_payments ON penalty_payments.penalty_id = p.id
     WHERE p.user_id = ?
       AND p.status = 'unpaid'
+      AND (
+        penalty_payments.id IS NULL
+        OR penalty_payments.id = (
+            SELECT latest_pay.id
+            FROM payments latest_pay
+            LEFT JOIN payment_penalty_links latest_link ON latest_link.payment_id = latest_pay.id
+            WHERE latest_pay.user_id = p.user_id
+              AND (
+                latest_pay.penalty_id = p.id
+                OR latest_link.penalty_id = p.id
+              )
+            ORDER BY latest_pay.id DESC
+            LIMIT 1
+        )
+      )
+      AND COALESCE(penalty_payments.status, '') <> 'approved'
 ";
 $blockedBooksStmt = $conn->prepare($blockedBooksSql);
 if ($blockedBooksStmt) {
