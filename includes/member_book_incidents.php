@@ -34,7 +34,6 @@ $incidents = get_member_incidents($conn, $userId);
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<?php $memberDropdownFormsVersion = (string) filemtime(__DIR__ . '/../assets/member_dropdown_forms.js'); ?>
 <script src="<?php echo h(app_url('assets/theme.js?v=' . urlencode($themeVersion))); ?>"></script>
 <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css?v=' . urlencode($assetVersion))); ?>">
 </head>
@@ -152,18 +151,20 @@ $incidents = get_member_incidents($conn, $userId);
                       <?php
                       $openIncidentCount = (int) ($borrow['open_incident_count'] ?? 0);
                       $isDisabled = $openIncidentCount > 0;
-                      $borrowLabel = $borrow['title'];
-                      $copyId = trim((string) ($borrow['copy_id'] ?? ''));
-                      if ($copyId !== '') {
-                          $borrowLabel .= ' | Copy ' . $copyId;
-                      }
-                      $borrowLabel .= ' | Due ' . format_display_date((string) ($borrow['due_date'] ?? ''), '-');
-                      if ($isDisabled) {
-                          $borrowLabel .= ' | Already has active report';
-                      }
                       ?>
-                      <option value="<?php echo (int) $borrow['id']; ?>" data-borrow-display="<?php echo h($borrowLabel); ?>" <?php echo $isDisabled ? 'disabled' : ''; ?>>
-                        <?php echo h($borrowLabel); ?>
+                      <option value="<?php echo (int) $borrow['id']; ?>" <?php echo $isDisabled ? 'disabled' : ''; ?>>
+                        <?php
+                        $borrowLabel = $borrow['title'];
+                        $copyId = trim((string) ($borrow['copy_id'] ?? ''));
+                        if ($copyId !== '') {
+                            $borrowLabel .= ' | Copy ' . $copyId;
+                        }
+                        $borrowLabel .= ' | Due ' . format_display_date((string) ($borrow['due_date'] ?? ''), '-');
+                        if ($isDisabled) {
+                            $borrowLabel .= ' | Already has active report';
+                        }
+                        echo h($borrowLabel);
+                        ?>
                       </option>
                     <?php endforeach; ?>
                   </select>
@@ -178,11 +179,6 @@ $incidents = get_member_incidents($conn, $userId);
                   </select>
                 </div>
               </div>
-              <div class="empty-state" data-incident-selection-summary hidden>
-                <strong class="label-block-gap">Selected report setup</strong>
-                <span class="muted" data-incident-selected-borrow>No borrowed book selected yet.</span><br>
-                <span class="muted" data-incident-selected-type>No incident type selected yet.</span>
-              </div>
               <div class="empty-state">
                 <strong class="label-block-gap">Workflow note</strong>
                 Report the issue here first. The librarian will inspect the book and assign the severity during review.
@@ -195,7 +191,7 @@ $incidents = get_member_incidents($conn, $userId);
                 <textarea id="description" name="description" rows="5" placeholder="State when it happened, what condition the book is in, and whether the item can still be physically returned." required></textarea>
               </div>
               <div class="inline-actions">
-                <button type="submit" name="submit_incident" value="1" data-incident-submit disabled>Submit Incident Report</button>
+                <button type="submit" name="submit_incident" value="1">Submit Incident Report</button>
               </div>
             </form>
           <?php endif; ?>
@@ -304,6 +300,5 @@ $incidents = get_member_incidents($conn, $userId);
   </div>
 </div>
 <script src="<?php echo h(app_url('assets/member_sidebar.js?v=' . urlencode($memberSidebarVersion))); ?>"></script>
-<script src="<?php echo h(app_url('assets/member_dropdown_forms.js?v=' . urlencode($memberDropdownFormsVersion))); ?>"></script>
 </body>
 </html>

@@ -489,7 +489,6 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
 <?php $assetVersion = (string) filemtime(__DIR__ . '/../assets/app.css'); ?>
 <?php $themeVersion = (string) filemtime(__DIR__ . '/../assets/theme.js'); ?>
 <?php $memberSidebarVersion = (string) filemtime(__DIR__ . '/../assets/member_sidebar.js'); ?>
-<?php $memberDropdownFormsVersion = (string) filemtime(__DIR__ . '/../assets/member_dropdown_forms.js'); ?>
 <script src="/librarymanage/assets/theme.js?v=<?php echo urlencode($themeVersion); ?>"></script>
 <link rel="stylesheet" href="/librarymanage/assets/app.css?v=<?php echo urlencode($assetVersion); ?>">
 </head>
@@ -613,11 +612,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
                 <?php if (count($payablePenaltyOptions) > 0): ?>
                   <option value="" disabled selected>Select a grouped penalty</option>
                   <?php foreach ($payablePenaltyOptions as $option): ?>
-                    <option
-                      value="<?php echo (int) $option['book_id']; ?>"
-                      data-payment-amount="<?php echo h(number_format((float) $option['amount'], 2, '.', '')); ?>"
-                      data-payment-label="<?php echo h($option['title'] . ' - ' . (int) $option['copy_count'] . ' cop' . ((int) $option['copy_count'] === 1 ? 'y' : 'ies') . ' - ' . format_currency($option['amount'])); ?>"
-                    >
+                    <option value="<?php echo (int) $option['book_id']; ?>">
                       <?php echo h($option['title']); ?> - <?php echo (int) $option['copy_count']; ?> cop<?php echo (int) $option['copy_count'] === 1 ? 'y' : 'ies'; ?> - <?php echo h(format_currency($option['amount'])); ?>
                     </option>
                   <?php endforeach; ?>
@@ -630,7 +625,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
           </div>
           <div>
             <label for="penalty_amount">Amount</label>
-            <input id="penalty_amount" type="number" step="0.01" name="penalty_amount" placeholder="Auto-filled from grouped penalty" readonly <?php echo count($payablePenaltyOptions) > 0 ? 'required' : 'disabled'; ?>>
+            <input id="penalty_amount" type="number" step="0.01" name="penalty_amount" placeholder="Enter grouped penalty amount" <?php echo count($payablePenaltyOptions) > 0 ? 'required' : 'disabled'; ?>>
           </div>
           <div>
             <label for="penalty_proof">Proof of payment</label>
@@ -639,10 +634,6 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
           <div class="inline-actions member-workspace-actions">
             <button type="submit" name="pay_penalty" value="1" <?php echo count($payablePenaltyOptions) > 0 ? '' : 'disabled'; ?>>Submit Penalty Payment</button>
             <span class="muted">Accepted files: JPG, JPEG, PNG, PDF up to 5MB.</span>
-          </div>
-          <div class="empty-state" data-penalty-selection-summary hidden>
-            <strong class="label-block-gap">Selected grouped penalty</strong>
-            <span class="muted" data-penalty-selection-value>No grouped penalty selected yet.</span>
           </div>
           <?php if (count($payablePenaltyOptions) === 0): ?>
             <div class="notice warning">No grouped penalties are currently eligible for payment.</div>
@@ -666,11 +657,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
                 <?php if (count($payableIncidentOptions) > 0): ?>
                   <option value="" disabled selected>Select a payable incident</option>
                   <?php foreach ($payableIncidentOptions as $option): ?>
-                    <option
-                      value="<?php echo (int) $option['incident_id']; ?>"
-                      data-payment-amount="<?php echo h(number_format((float) $option['amount'], 2, '.', '')); ?>"
-                      data-payment-label="<?php echo h('Incident #' . (int) $option['incident_id'] . ' - ' . $option['title'] . ' - ' . book_incident_type_label((string) $option['incident_type']) . ' - ' . format_currency($option['amount'])); ?>"
-                    >
+                    <option value="<?php echo (int) $option['incident_id']; ?>">
                       Incident #<?php echo (int) $option['incident_id']; ?> - <?php echo h($option['title']); ?> - <?php echo h(book_incident_type_label((string) $option['incident_type'])); ?> - <?php echo h(format_currency($option['amount'])); ?>
                     </option>
                   <?php endforeach; ?>
@@ -683,7 +670,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
           </div>
           <div>
             <label for="incident_amount">Amount</label>
-            <input id="incident_amount" type="number" step="0.01" name="incident_amount" placeholder="Auto-filled from incident fee" readonly <?php echo count($payableIncidentOptions) > 0 ? 'required' : 'disabled'; ?>>
+            <input id="incident_amount" type="number" step="0.01" name="incident_amount" placeholder="Enter incident fee amount" <?php echo count($payableIncidentOptions) > 0 ? 'required' : 'disabled'; ?>>
           </div>
           <div>
             <label for="incident_proof">Proof of payment</label>
@@ -692,10 +679,6 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
           <div class="inline-actions member-workspace-actions">
             <button type="submit" name="pay_incident" value="1" <?php echo count($payableIncidentOptions) > 0 ? '' : 'disabled'; ?>>Submit Incident Payment</button>
             <span class="muted">Use this only for librarian-assessed lost or damaged fees.</span>
-          </div>
-          <div class="empty-state" data-incident-payment-summary hidden>
-            <strong class="label-block-gap">Selected incident payment</strong>
-            <span class="muted" data-incident-payment-value>No incident fee selected yet.</span>
           </div>
           <?php if (count($payableIncidentOptions) === 0): ?>
             <div class="notice warning">No incident fees are currently eligible for payment.</div>
@@ -897,7 +880,6 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
-<script src="/librarymanage/assets/member_dropdown_forms.js?v=<?php echo urlencode($memberDropdownFormsVersion); ?>"></script>
 </body>
 </html>
 
