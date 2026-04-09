@@ -330,7 +330,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                   <div class="member-book-search-suggestions" data-book-search-suggestions hidden></div>
                 </div>
                 <div class="ui-select-shell member-book-category-shell">
-                  <select class="ui-select" data-book-category<?php echo $catalogScopeFilter !== '' ? ' data-book-fixed-category="1" disabled' : ''; ?>>
+                  <select class="ui-select" data-book-category<?php echo $catalogScopeFilter !== '' ? ' data-book-fixed-category="1"' : ''; ?>>
                     <option value="">All categories</option>
                     <?php foreach ($bookCategories as $bookCategory): ?>
                       <?php $normalizedBookCategory = normalize_member_book_category($bookCategory); ?>
@@ -341,7 +341,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                 </div>
               </div>
               <?php if ($catalogScopeFilter !== ''): ?>
-                <p class="muted meta-top-sm">Showing books from the selected catalog only. Return to Catalog to open a different section.</p>
+                <p class="muted meta-top-sm">Showing books from the selected catalog first. You can still switch categories using the dropdown.</p>
               <?php endif; ?>
               <div class="member-book-picker" id="book_ids">
                 <?php if ($availableBooks !== []): ?>

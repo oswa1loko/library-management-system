@@ -46,11 +46,16 @@ function initBorrowSelection() {
     const url = new URL(window.location.href);
     const query = searchInput.value.trim();
     const selectedCategory = categorySelect ? normalizeCategoryValue(categorySelect.value) : '';
+    const hasFixedCategoryScope = categorySelect && categorySelect.hasAttribute('data-book-fixed-category');
 
     if (query !== '') {
       url.searchParams.set('search', query);
     } else {
       url.searchParams.delete('search');
+    }
+
+    if (hasFixedCategoryScope) {
+      url.searchParams.delete('catalog');
     }
 
     if (selectedCategory !== '') {
@@ -417,6 +422,11 @@ function initBorrowSelection() {
 
   if (categorySelect) {
     categorySelect.addEventListener('change', () => {
+      if (categorySelect.hasAttribute('data-book-fixed-category')) {
+        window.location.assign(buildFilterUrl());
+        return;
+      }
+
       applyFilter();
       hideSearchSuggestions();
       syncFiltersInUrl();
