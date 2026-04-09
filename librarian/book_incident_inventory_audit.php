@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/helpers.php';
 require_role('librarian');
 
 $hasBookCopies = table_exists($conn, 'book_copies');
+$noticeItems = [];
 $auditRows = [];
 $summary = [
     'total' => 0,
@@ -16,6 +17,62 @@ $summary = [
 ];
 
 if ($hasBookCopies) {
+    if (isset($_POST['apply_safe_fixes'])) {
+        library_enforce_csrf_for_post();
+
+        $fixQuery = "
+            SELECT
+                bi.id,
+                COALESCE(bi.book_copy_id, br.book_copy_id) AS effective_book_copy_id,
+                bi.resolution_action,
+                bi.workflow_status,
+                bi.inventory_applied_at,
+                bc.status AS effective_copy_status
+            FROM book_incidents bi
+            LEFT JOIN borrows br ON br.id = bi.borrow_id
+            LEFT JOIN book_copies bc ON bc.id = COALESCE(bi.book_copy_id, br.book_copy_id)
+            WHERE bi.resolution_action IN ('write_off_lost', 'write_off_damaged')
+        ";
+        $fixResult = $conn->query($fixQuery);
+        $fixedCount = 0;
+        $skippedCount = 0;
+
+        while ($fixResult && ($fixRow = $fixResult->fetch_assoc())) {
+            $resolutionAction = (string) ($fixRow['resolution_action'] ?? '');
+            $expectedStatus = $resolutionAction === 'write_off_lost' ? 'lost' : 'damaged';
+            $workflowStatus = trim((string) ($fixRow['workflow_status'] ?? ''));
+            $inventoryAppliedAt = trim((string) ($fixRow['inventory_applied_at'] ?? ''));
+            $effectiveCopyId = (int) ($fixRow['effective_book_copy_id'] ?? 0);
+            $effectiveCopyStatus = trim((string) ($fixRow['effective_copy_status'] ?? ''));
+
+            $inventoryShouldBeApplied = $inventoryAppliedAt !== ''
+                || in_array($workflowStatus, ['for_payment', 'closed', 'resolved', 'awaiting_settlement'], true);
+
+            if (!$inventoryShouldBeApplied || $effectiveCopyId <= 0 || $effectiveCopyStatus === $expectedStatus) {
+                $skippedCount++;
+                continue;
+            }
+
+            if (set_book_copy_status($conn, $effectiveCopyId, $expectedStatus)) {
+                $fixedCount++;
+            } else {
+                $skippedCount++;
+            }
+        }
+
+        if ($fixedCount > 0) {
+            $noticeItems[] = [
+                'type' => 'success',
+                'message' => 'Safe fixes applied: ' . $fixedCount . '. Skipped: ' . $skippedCount . '. Only linked mismatched copies were updated.',
+            ];
+        } else {
+            $noticeItems[] = [
+                'type' => 'warning',
+                'message' => 'No safe fixes were applied. The remaining rows likely need manual review because they are already correct, still pending, or missing a copy link.',
+            ];
+        }
+    }
+
     $auditSql = "
         SELECT
             bi.id,
@@ -115,6 +172,7 @@ if ($hasBookCopies) {
   ?>
 
   <div class="stack">
+    <?php require __DIR__ . '/partials/notices.php'; ?>
     <div class="panel">
       <div class="toolbar toolbar-top">
         <div class="grow">
@@ -123,6 +181,11 @@ if ($hasBookCopies) {
           <p class="muted">This page only reports whether old incident resolutions are already reflected in `book_copies`. It does not change data.</p>
         </div>
         <div class="inline-actions">
+          <?php if ($hasBookCopies): ?>
+            <form method="post" class="inline-form">
+              <button type="submit" name="apply_safe_fixes" value="1">Apply Safe Fixes</button>
+            </form>
+          <?php endif; ?>
           <a class="button secondary" href="<?php echo h(app_url('librarian/manage_book_incidents.php')); ?>">Back to Book Incidents</a>
         </div>
       </div>
