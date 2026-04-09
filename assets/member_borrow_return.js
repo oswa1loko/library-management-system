@@ -365,6 +365,9 @@ function initBorrowSelection() {
     exactBookId = '';
     if (searchInput.value.trim() === '' && categorySelect) {
       categorySelect.value = '';
+      hideSearchSuggestions();
+      window.location.assign(buildFilterUrl(''));
+      return;
     }
     applyFilter();
     renderSearchSuggestions();
