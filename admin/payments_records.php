@@ -495,7 +495,7 @@ $summaryLabels = match ($paymentScope) {
     require __DIR__ . '/partials/notices.php';
     ?>
 
-    <div class="panel" data-filter-panel>
+    <div class="panel">
       <div class="card-head">
         <div class="dashboard-icon icon-payments" aria-hidden="true"></div>
         <div>
@@ -533,7 +533,7 @@ $summaryLabels = match ($paymentScope) {
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-filter-panel>
       <div class="toolbar toolbar-top">
         <div class="grow">
           <div class="card-head card-head-tight">

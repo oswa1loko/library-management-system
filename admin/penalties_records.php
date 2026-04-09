@@ -85,7 +85,7 @@ $penalties = $stmt->get_result();
   ?>
 
   <div class="stack">
-    <div class="panel" data-filter-panel>
+    <div class="panel">
       <div class="card-head">
         <div class="dashboard-icon icon-penalties" aria-hidden="true"></div>
         <div>
@@ -167,7 +167,7 @@ $penalties = $stmt->get_result();
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-filter-panel>
       <div class="toolbar toolbar-top">
         <div class="grow">
           <div class="card-head card-head-tight">
