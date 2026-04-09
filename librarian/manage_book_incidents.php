@@ -84,6 +84,10 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <p class="muted">Review the report, choose the inventory action, then move the case to payment or close it.</p>
         </div>
       </div>
+      <div class="inline-actions meta-top">
+        <a class="button secondary" href="<?php echo h(app_url('librarian/book_incident_inventory_audit.php')); ?>">Open Inventory Audit</a>
+        <span class="muted">Check which old lost or damaged resolutions are already reflected in `book_copies` before any backfill.</span>
+      </div>
       <div class="stat-grid">
         <div class="stat-card">
           <span class="code-pill">All cases</span>
