@@ -209,6 +209,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
 </div>
 <?php if ($selectedIncident): ?>
   <?php $isLocked = book_incident_normalize_workflow_status((string) ($selectedIncident['workflow_status'] ?? 'open')) === 'closed'; ?>
+  <?php $selectedResolutionAction = book_incident_default_resolution_action((string) ($selectedIncident['incident_type'] ?? ''), (string) ($selectedIncident['resolution_action'] ?? 'none')); ?>
   <div class="desk-modal" data-desk-modal>
     <a class="desk-modal-backdrop" href="<?php echo h($baseHref); ?>" aria-label="Close incident review"></a>
     <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="incident-review-modal-title">
@@ -258,8 +259,8 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <div>
             <label for="resolution_action_selected">Inventory action</label>
             <select id="resolution_action_selected" name="resolution_action" <?php echo $isLocked ? 'disabled' : ''; ?>>
-              <?php foreach (book_incident_resolution_form_options((string) ($selectedIncident['resolution_action'] ?? '')) as $value => $label): ?>
-                <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['resolution_action'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
+              <?php foreach (book_incident_resolution_form_options($selectedResolutionAction) as $value => $label): ?>
+                <option value="<?php echo h($value); ?>" <?php echo $selectedResolutionAction === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
               <?php endforeach; ?>
             </select>
           </div>

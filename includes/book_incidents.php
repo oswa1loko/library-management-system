@@ -123,6 +123,21 @@ function book_incident_resolution_form_options(?string $currentValue = null): ar
     return $options;
 }
 
+function book_incident_default_resolution_action(?string $incidentType, ?string $currentValue = null): string
+{
+    $currentValue = trim((string) $currentValue);
+    if ($currentValue !== '' && $currentValue !== 'none') {
+        return $currentValue;
+    }
+
+    $incidentType = trim((string) $incidentType);
+    return match ($incidentType) {
+        'lost' => 'write_off_lost',
+        'damaged' => 'write_off_damaged',
+        default => $currentValue !== '' ? $currentValue : 'none',
+    };
+}
+
 function book_incident_settlement_form_options(?string $currentValue = null): array
 {
     $options = book_incident_settlement_options();
