@@ -65,7 +65,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
   <div class="stack">
     <?php require __DIR__ . '/partials/notices.php'; ?>
 
-    <div class="panel">
+    <div class="panel" data-filter-panel>
       <div class="card-head">
         <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
         <div>
@@ -201,6 +201,31 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  var scrollStorageKey = 'admin-book-incidents-filter-scroll';
+  var savedScrollTarget = '';
+
+  try {
+    savedScrollTarget = window.sessionStorage.getItem(scrollStorageKey) || '';
+  } catch (error) {
+    savedScrollTarget = '';
+  }
+
+  if (savedScrollTarget === 'filter-panel') {
+    var filterPanel = document.querySelector('[data-filter-panel]');
+    if (filterPanel) {
+      window.requestAnimationFrame(function () {
+        var top = filterPanel.getBoundingClientRect().top + window.scrollY - 24;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      });
+    }
+
+    try {
+      window.sessionStorage.removeItem(scrollStorageKey);
+    } catch (error) {
+      // Ignore session storage cleanup failures.
+    }
+  }
+
   document.querySelectorAll('[data-auto-submit-filter]').forEach(function (form) {
     var control = form.querySelector('[data-auto-submit-control]');
     if (!control || control.dataset.autoSubmitBound === '1') {
@@ -209,6 +234,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     control.dataset.autoSubmitBound = '1';
     control.addEventListener('change', function () {
+      try {
+        window.sessionStorage.setItem(scrollStorageKey, 'filter-panel');
+      } catch (error) {
+        // Ignore session storage failures and continue with submit.
+      }
+
       if (typeof form.requestSubmit === 'function') {
         form.requestSubmit();
         return;
