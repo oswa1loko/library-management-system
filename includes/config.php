@@ -1160,8 +1160,32 @@ function ensure_library_schema(mysqli $conn): void
         $conn->query("CREATE INDEX idx_payments_incident_id ON payments (incident_id)");
     }
 
+    if (!index_exists($conn, 'payments', 'idx_payments_status')) {
+        $conn->query("CREATE INDEX idx_payments_status ON payments (status)");
+    }
+
+    if (!index_exists($conn, 'payments', 'idx_payments_user_id')) {
+        $conn->query("CREATE INDEX idx_payments_user_id ON payments (user_id)");
+    }
+
     if (!index_exists($conn, 'payment_penalty_links', 'idx_payment_penalty_links_penalty')) {
         $conn->query("CREATE INDEX idx_payment_penalty_links_penalty ON payment_penalty_links (penalty_id)");
+    }
+
+    if (!index_exists($conn, 'penalties', 'idx_penalties_status')) {
+        $conn->query("CREATE INDEX idx_penalties_status ON penalties (status)");
+    }
+
+    if (!index_exists($conn, 'penalties', 'idx_penalties_user_id')) {
+        $conn->query("CREATE INDEX idx_penalties_user_id ON penalties (user_id)");
+    }
+
+    if (!index_exists($conn, 'complaints', 'idx_complaints_status')) {
+        $conn->query("CREATE INDEX idx_complaints_status ON complaints (status)");
+    }
+
+    if (!index_exists($conn, 'users', 'idx_users_role')) {
+        $conn->query("CREATE INDEX idx_users_role ON users (role)");
     }
 
     if (!column_exists($conn, 'book_incidents', 'reported_by_role')) {
