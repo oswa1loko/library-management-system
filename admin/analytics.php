@@ -290,14 +290,15 @@ foreach ($allBooksShareSegments as $index => $segment) {
         continue;
     }
 
-    $offset = (int) ($segmentOffsets[$index]['offset'] ?? 0);
+    $offset = (float) ($segmentOffsets[$index]['offset'] ?? 0);
     $midAngle = -90 + (($offset + ($percent / 2)) * 3.6);
     $angleRad = deg2rad($midAngle);
-    // Place percent labels at the midpoint of the visible ring,
-    // so each value aligns with its corresponding arc segment.
-    $labelRadius = 86;
-    $x = (int) round(cos($angleRad) * $labelRadius);
-    $y = (int) round(sin($angleRad) * $labelRadius);
+    // Match the label anchor to the exact midpoint of the visible donut ring.
+    $outerRadius = 188 / 2;
+    $innerRadius = 188 * 0.43;
+    $labelRadius = ($outerRadius + $innerRadius) / 2;
+    $x = round(cos($angleRad) * $labelRadius, 2);
+    $y = round(sin($angleRad) * $labelRadius, 2);
 
     $donutLabels[] = [
         'percent' => $percent,
