@@ -1748,6 +1748,48 @@ tbody td > .label-block + .muted{
   display:none;
 }
 
+.analytics-print-modal-dialog{
+  width:min(1120px, calc(100vw - 32px));
+  max-height:min(88vh, 980px);
+  padding:20px;
+  overflow:hidden;
+}
+
+.analytics-print-modal-head{
+  align-items:flex-start;
+  gap:16px;
+}
+
+.analytics-print-preview-frame{
+  padding:16px;
+  border-radius:24px;
+  border:1px solid rgba(143,211,255,0.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01)),
+    rgba(6,18,31,0.72);
+  overflow:auto;
+}
+
+.analytics-print-preview-sheet{
+  width:min(980px, 100%);
+  margin:0 auto;
+  padding:22px;
+  border-radius:22px;
+  border:1px solid rgba(143,211,255,0.08);
+  background:
+    linear-gradient(180deg, rgba(12,31,52,0.98), rgba(7,21,37,0.94)),
+    rgba(10,25,43,0.92);
+  box-shadow:0 22px 36px rgba(0,0,0,0.18);
+}
+
+.analytics-print-preview-sheet .panel{
+  box-shadow:none;
+}
+
+.analytics-print-preview-sheet .analytics-print-actions{
+  display:none !important;
+}
+
 .analytics-layout{
   display:grid;
   grid-template-columns:minmax(0, 1.35fr) minmax(280px, 0.9fr);
@@ -9055,6 +9097,10 @@ body.modal-open{
 }
 
 @media print{
+  .analytics-print-modal{
+    display:none !important;
+  }
+
   .js-member-sidebar .member-sidebar,
   .topbar,
   .analytics-print-actions,

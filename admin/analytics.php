@@ -347,7 +347,7 @@ try {
                 <span class="ui-select-caret" aria-hidden="true"></span>
               </div>
             </form>
-            <button type="button" class="button secondary" onclick="window.print()">Print Report</button>
+            <button type="button" class="button secondary" data-analytics-print-open>Print Report</button>
           </div>
         </div>
 
@@ -619,6 +619,25 @@ try {
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+<div class="desk-modal analytics-print-modal" data-analytics-print-modal hidden>
+  <button type="button" class="desk-modal-backdrop" data-analytics-print-close aria-label="Close print preview"></button>
+  <div class="desk-modal-dialog panel analytics-print-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analytics-print-preview-title">
+    <div class="desk-modal-head analytics-print-modal-head">
+      <div>
+        <p class="muted eyebrow-compact stack-copy">Print Preview</p>
+        <h3 id="analytics-print-preview-title" class="heading-card">Analytics Report Preview</h3>
+        <p class="muted copy-bottom">Review the current analytics layout before opening the browser print dialog.</p>
+      </div>
+      <div class="inline-actions">
+        <button type="button" class="button secondary" data-analytics-print-close>Close</button>
+        <button type="button" class="button" data-analytics-print-now>Print Now</button>
+      </div>
+    </div>
+    <div class="analytics-print-preview-frame">
+      <div class="analytics-print-preview-sheet" data-analytics-print-preview></div>
     </div>
   </div>
 </div>

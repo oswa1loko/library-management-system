@@ -83,8 +83,80 @@ function initAdminAnalytics(root) {
       }, 140 + (index * 110));
     });
   });
+
+  root.querySelectorAll('[data-analytics-print-open]').forEach(function (button) {
+    if (button.dataset.analyticsPrintBound === '1') {
+      return;
+    }
+
+    button.dataset.analyticsPrintBound = '1';
+    button.addEventListener('click', function () {
+      var modal = document.querySelector('[data-analytics-print-modal]');
+      var previewHost = modal ? modal.querySelector('[data-analytics-print-preview]') : null;
+      var panel = document.querySelector('[data-filter-panel][data-ajax-panel-shell="admin-analytics-year"]');
+
+      if (!modal || !previewHost || !panel) {
+        window.print();
+        return;
+      }
+
+      var previewClone = panel.cloneNode(true);
+      previewClone.removeAttribute('data-filter-panel');
+      previewClone.removeAttribute('data-ajax-panel-shell');
+      previewClone.querySelectorAll('[data-ajax-filter-form], .analytics-print-actions').forEach(function (element) {
+        element.remove();
+      });
+      previewClone.querySelectorAll('[data-ajax-filter-link], [data-preserve-scroll]').forEach(function (link) {
+        link.removeAttribute('href');
+      });
+
+      previewHost.innerHTML = '';
+      previewHost.appendChild(previewClone);
+      modal.hidden = false;
+      document.body.classList.add('modal-open');
+    });
+  });
+}
+
+function closeAnalyticsPrintModal() {
+  var modal = document.querySelector('[data-analytics-print-modal]');
+  var previewHost = modal ? modal.querySelector('[data-analytics-print-preview]') : null;
+
+  if (!modal) {
+    return;
+  }
+
+  modal.hidden = true;
+  if (previewHost) {
+    previewHost.innerHTML = '';
+  }
+  document.body.classList.remove('modal-open');
 }
 
 document.addEventListener('DOMContentLoaded', function () {
   initAdminAnalytics(document);
+
+  document.querySelectorAll('[data-analytics-print-close]').forEach(function (button) {
+    if (button.dataset.analyticsPrintBound === '1') {
+      return;
+    }
+
+    button.dataset.analyticsPrintBound = '1';
+    button.addEventListener('click', closeAnalyticsPrintModal);
+  });
+
+  var printNowButton = document.querySelector('[data-analytics-print-now]');
+  if (printNowButton && printNowButton.dataset.analyticsPrintBound !== '1') {
+    printNowButton.dataset.analyticsPrintBound = '1';
+    printNowButton.addEventListener('click', function () {
+      closeAnalyticsPrintModal();
+      window.print();
+    });
+  }
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      closeAnalyticsPrintModal();
+    }
+  });
 });
