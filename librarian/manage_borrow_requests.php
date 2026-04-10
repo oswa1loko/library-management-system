@@ -9,7 +9,6 @@ require_role('librarian');
 $workflowNotice = handle_librarian_borrow_workflow($conn);
 $msg = (string) ($workflowNotice['message'] ?? '');
 $msgType = (string) ($workflowNotice['type'] ?? 'success');
-$fromNotification = trim((string) ($_GET['from_notification'] ?? '')) === '1';
 $search = trim((string) ($_GET['search'] ?? ''));
 $selectedRequestBatch = trim((string) ($_GET['request_batch'] ?? ''));
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -145,9 +144,6 @@ foreach ($pendingBatches as $batch) {
 
 $pageQuery = $_GET;
 $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selectedRequestBatch] ?? null) : null;
-if (!$selectedPendingBatch && $fromNotification && count($pendingBatches) === 1) {
-    $selectedPendingBatch = reset($pendingBatches) ?: null;
-}
 
 ?>
 <!DOCTYPE html>
