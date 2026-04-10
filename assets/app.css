@@ -1521,7 +1521,6 @@ tbody td > .label-block + .muted{
   justify-content:center;
   box-shadow:0 22px 36px rgba(0,0,0,0.18);
   position:relative;
-  transition:transform .22s ease, box-shadow .22s ease;
 }
 
 .analytics-donut-center{
@@ -1601,36 +1600,11 @@ tbody td > .label-block + .muted{
 .analytics-donut-legend-item{
   display:flex;
   align-items:center;
-  width:100%;
   gap:10px;
   padding:10px 12px;
   border-radius:16px;
   border:1px solid rgba(143,211,255,0.08);
   background:rgba(255,255,255,0.02);
-  color:var(--text);
-  text-align:left;
-  cursor:pointer;
-  transition:border-color .2s ease, background .2s ease, transform .2s ease, box-shadow .2s ease;
-}
-
-.analytics-donut-legend-item:hover,
-.analytics-donut-legend-item:focus-visible,
-.analytics-donut-legend-item.is-active{
-  border-color:rgba(143,211,255,0.22);
-  background:linear-gradient(180deg, rgba(143,211,255,0.12), rgba(143,211,255,0.04));
-  transform:translateY(-1px);
-  box-shadow:0 12px 24px rgba(0,0,0,0.16);
-}
-
-.analytics-donut-legend-item:focus-visible{
-  outline:2px solid rgba(103,198,255,0.55);
-  outline-offset:2px;
-}
-
-.analytics-donut-panel:hover .analytics-donut,
-.analytics-donut-panel:focus-within .analytics-donut{
-  transform:translateY(-2px) scale(1.01);
-  box-shadow:0 28px 42px rgba(0,0,0,0.24);
 }
 
 .analytics-donut-legend-item strong{
