@@ -1749,6 +1749,8 @@ tbody td > .label-block + .muted{
 }
 
 .analytics-print-modal{
+  position:fixed;
+  inset:0;
   background:
     radial-gradient(circle at top left, rgba(103, 198, 255, 0.06), transparent 24%),
     radial-gradient(circle at bottom right, rgba(103, 198, 255, 0.04), transparent 28%),
@@ -1759,8 +1761,10 @@ tbody td > .label-block + .muted{
 
 .analytics-print-modal .desk-modal-backdrop{
   background:
-    rgba(7, 18, 32, 0.72);
-  backdrop-filter:blur(16px) saturate(0.72) brightness(0.44);
+    radial-gradient(circle at top left, rgba(103, 198, 255, 0.05), transparent 22%),
+    linear-gradient(180deg, rgba(9, 21, 37, 0.98), rgba(7, 18, 32, 0.99)),
+    rgba(7, 18, 32, 0.99) !important;
+  backdrop-filter:blur(10px) saturate(0.7) brightness(0.4);
 }
 
 .analytics-print-modal-dialog{
