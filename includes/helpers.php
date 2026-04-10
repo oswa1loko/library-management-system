@@ -2533,7 +2533,11 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
         }
     } elseif ($viewerRole === 'admin') {
         if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+            $incidentId = notification_lookup_incident_id($notification);
             $url = '/librarymanage/admin/book_incidents_records.php';
+            if ($incidentId > 0) {
+                $url .= '?incident=' . $incidentId;
+            }
             $label = 'Open book incidents';
         } elseif (strpos($titleLower, 'payment') !== false) {
             $url = '/librarymanage/admin/payments_records.php';
