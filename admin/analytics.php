@@ -225,7 +225,7 @@ $topBookSharePercent = $currentBorrowCount > 0 && $topTitleThisMonth
     : 0;
 $topBookInsight = $topTitleThisMonth
     ? sprintf(
-        '%s led this month with %d%% of all borrows.',
+        '%s accounted for %d%% of all borrows this month.',
         (string) ($topTitleThisMonth['title'] ?? 'This title'),
         $topBookSharePercent
     )
@@ -504,11 +504,11 @@ try {
               <div class="analytics-donut-legend">
                 <?php foreach ($allBooksShareSegments as $index => $segment): ?>
                   <?php $count = (int) ($segment['count'] ?? 0); ?>
-                  <div class="analytics-donut-legend-item">
+                  <div class="analytics-donut-legend-item<?php echo (($segment['color'] ?? '') === 'others') ? ' is-muted' : ''; ?>">
                     <span class="analytics-donut-swatch analytics-donut-swatch-<?php echo h((string) ($segment['color'] ?? 'others')); ?>"></span>
                     <div class="analytics-donut-legend-copy">
                       <strong title="<?php echo h((string) ($segment['label'] ?? 'Unknown')); ?>">#<?php echo $index + 1; ?> <?php echo h((string) ($segment['label'] ?? 'Unknown')); ?></strong>
-                      <div class="muted"><?php echo $count; ?> borrow<?php echo $count === 1 ? '' : 's'; ?> | <?php echo (int) ($segment['percent'] ?? 0); ?> share</div>
+                      <div class="muted"><?php echo $count; ?> borrow<?php echo $count === 1 ? '' : 's'; ?> | <?php echo (int) ($segment['percent'] ?? 0); ?>% share</div>
                     </div>
                   </div>
                 <?php endforeach; ?>
