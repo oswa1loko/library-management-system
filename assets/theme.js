@@ -285,29 +285,6 @@
     return panel;
   }
 
-  function focusCurrentNotificationsContent() {
-    var target = document.querySelector('[data-notifications-anchor]');
-    if (!target) {
-      target = document.querySelector('.activity-feed');
-    }
-    if (!target) {
-      target = document.querySelector('.student-notification-section');
-    }
-    if (!target) {
-      target = document.querySelector('.heading-card');
-    }
-    if (!target) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    try {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (error) {
-      target.scrollIntoView();
-    }
-  }
-
   function setStudentNotificationPanelOpen(panel, open) {
     if (!panel) {
       return;
@@ -574,12 +551,6 @@
     var panel = ensureStudentNotificationPanel();
     shortcut.addEventListener('click', function (event) {
       event.preventDefault();
-      if (isFullMemberNotificationsPage()) {
-        setStudentNotificationPanelOpen(panel, false);
-        focusCurrentNotificationsContent();
-        return;
-      }
-
       var shouldOpen = panel.hidden;
       setStudentNotificationPanelOpen(panel, shouldOpen);
       if (shouldOpen) {
