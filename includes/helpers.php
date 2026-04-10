@@ -2511,7 +2511,7 @@ function notification_actor_username(array $notification): string
     $body = trim((string) ($notification['body'] ?? ''));
     $combinedText = $title . ' ' . $body;
 
-    if ($combinedText !== '' && preg_match('/\b(?:student|faculty)\s+([a-z0-9._-]+)\s+requested return\b/i', $combinedText, $matches) === 1) {
+    if ($combinedText !== '' && preg_match('/\b(?:student|faculty)\s+([a-z0-9._-]+)\s+requested\b/i', $combinedText, $matches) === 1) {
         return trim((string) ($matches[1] ?? ''));
     }
 
