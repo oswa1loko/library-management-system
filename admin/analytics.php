@@ -225,11 +225,11 @@ $topBookSharePercent = $currentBorrowCount > 0 && $topTitleThisMonth
     : 0;
 $topBookInsight = $topTitleThisMonth
     ? sprintf(
-        '%s led this month with %d%% of all borrows.',
+        '%s accounted for %d%% of all borrows this month.',
         (string) ($topTitleThisMonth['title'] ?? 'This title'),
         $topBookSharePercent
     )
-    : 'No borrow share data is available for this month yet.';
+    : 'Borrow share details will appear once this month has recorded activity.';
 
 $roleBreakdownStmt = $conn->prepare("
     SELECT
@@ -268,7 +268,7 @@ foreach ($topBooksShare as $index => $shareRow) {
 }
 if ($otherBooksShareCount > 0 || count($allBooksShareSegments) === 0) {
     $allBooksShareSegments[] = [
-        'label' => 'Other books',
+        'label' => 'All other titles',
         'count' => $otherBooksShareCount,
         'percent' => $currentBorrowCount > 0 ? max(0, 100 - array_sum(array_column($allBooksShareSegments, 'percent'))) : 0,
         'color' => 'others',
@@ -494,7 +494,7 @@ try {
               <div class="inline-actions inline-actions-spread analytics-section-head">
                 <div>
                   <p class="muted eyebrow-compact stack-copy">Book Share</p>
-                  <h3 class="heading-top-md">Borrowed books mix</h3>
+                  <h3 class="heading-top-md">Borrow Share by Title</h3>
                 </div>
                 <span class="code-pill"><?php echo h(date('M Y', strtotime($currentBorrowMonth . '-01'))); ?></span>
               </div>
@@ -502,18 +502,20 @@ try {
               <div class="analytics-donut-wrap">
                 <div
                   class="analytics-donut"
+                  data-donut-chart
                   style="<?php foreach ($segmentOffsets as $index => $segmentMeta): ?>--donut-segment-<?php echo $index + 1; ?>: <?php echo (int) $segmentMeta['offset']; ?>%; --donut-segment-<?php echo $index + 1; ?>-end: <?php echo (int) ($segmentMeta['offset'] + $segmentMeta['percent']); ?>%; <?php endforeach; ?>"
                 >
-                  <div class="analytics-donut-center">
+                  <div class="analytics-donut-center" data-donut-center>
                     <?php if ($topTitleThisMonth): ?>
-                      <p class="analytics-donut-center-label">Top book</p>
-                      <strong title="<?php echo h((string) ($topTitleThisMonth['title'] ?? '')); ?>">
+                      <p class="analytics-donut-center-label" data-donut-center-label>Leading title</p>
+                      <strong data-donut-center-title title="<?php echo h((string) ($topTitleThisMonth['title'] ?? '')); ?>">
                         <?php echo h((string) ($topTitleThisMonth['title'] ?? '')); ?>
                       </strong>
-                      <span><?php echo (int) ($topTitleThisMonth['borrow_count'] ?? 0); ?> borrows | <?php echo $topBookSharePercent; ?>%</span>
+                      <span data-donut-center-meta><?php echo (int) ($topTitleThisMonth['borrow_count'] ?? 0); ?> borrows • <?php echo $topBookSharePercent; ?>% of monthly total</span>
                     <?php else: ?>
-                      <strong><?php echo $currentBorrowCount; ?></strong>
-                      <span>total</span>
+                      <p class="analytics-donut-center-label" data-donut-center-label>Monthly total</p>
+                      <strong data-donut-center-title><?php echo $currentBorrowCount; ?></strong>
+                      <span data-donut-center-meta>Total borrows recorded</span>
                     <?php endif; ?>
                   </div>
                   <?php foreach ($donutLabels as $label): ?>
@@ -526,18 +528,39 @@ try {
                   <?php endforeach; ?>
                 </div>
               </div>
-              <p class="analytics-donut-insight"><?php echo h($topBookInsight); ?></p>
+              <p class="analytics-donut-insight" data-donut-insight><?php echo h($topBookInsight); ?></p>
 
               <div class="analytics-donut-legend">
                 <?php foreach ($allBooksShareSegments as $index => $segment): ?>
                   <?php $count = (int) ($segment['count'] ?? 0); ?>
-                  <div class="analytics-donut-legend-item">
+                  <?php
+                    $isSelectedSegment = $topTitleThisMonth
+                      ? ((string) ($segment['label'] ?? '') === (string) ($topTitleThisMonth['title'] ?? ''))
+                      : $index === 0;
+                    $segmentLabel = (string) ($segment['label'] ?? 'Unknown');
+                    $segmentPercent = (int) ($segment['percent'] ?? 0);
+                    $segmentInsight = $segmentPercent > 0
+                      ? sprintf('%s contributed %d%% of all borrows in %s.', $segmentLabel, $segmentPercent, date('F Y', strtotime($currentBorrowMonth . '-01')))
+                      : sprintf('%s did not record a borrow share for %s.', $segmentLabel, date('F Y', strtotime($currentBorrowMonth . '-01')));
+                  ?>
+                  <button
+                    type="button"
+                    class="analytics-donut-legend-item<?php echo $isSelectedSegment ? ' is-active' : ''; ?>"
+                    data-donut-segment
+                    data-segment-label="<?php echo h($segmentLabel); ?>"
+                    data-segment-count="<?php echo $count; ?>"
+                    data-segment-percent="<?php echo $segmentPercent; ?>"
+                    data-segment-insight="<?php echo h($segmentInsight); ?>"
+                    data-segment-rank="<?php echo $index + 1; ?>"
+                    data-segment-default-label="<?php echo $isSelectedSegment ? 'Leading title' : 'Selected title'; ?>"
+                    aria-pressed="<?php echo $isSelectedSegment ? 'true' : 'false'; ?>"
+                  >
                     <span class="analytics-donut-swatch analytics-donut-swatch-<?php echo h((string) ($segment['color'] ?? 'others')); ?>"></span>
                     <div>
-                      <strong title="<?php echo h((string) ($segment['label'] ?? 'Unknown')); ?>">#<?php echo $index + 1; ?> <?php echo h((string) ($segment['label'] ?? 'Unknown')); ?></strong>
-                      <div class="muted"><?php echo $count; ?> borrow<?php echo $count === 1 ? '' : 's'; ?> | <?php echo (int) ($segment['percent'] ?? 0); ?>%</div>
+                      <strong title="<?php echo h($segmentLabel); ?>">#<?php echo $index + 1; ?> <?php echo h($segmentLabel); ?></strong>
+                      <div class="muted"><?php echo $count; ?> borrow<?php echo $count === 1 ? '' : 's'; ?> • <?php echo $segmentPercent; ?>%</div>
                     </div>
-                  </div>
+                  </button>
                 <?php endforeach; ?>
               </div>
             </div>
@@ -548,8 +571,8 @@ try {
           <div class="panel analytics-panel">
             <div class="inline-actions inline-actions-spread analytics-section-head">
               <div>
-                <p class="muted eyebrow-compact stack-copy">Top Books</p>
-                <h3 class="heading-top-md">Most borrowed titles in <?php echo h(date('F Y', strtotime($currentBorrowMonth . '-01'))); ?></h3>
+                <p class="muted eyebrow-compact stack-copy">Top Titles</p>
+                <h3 class="heading-top-md">Most Borrowed Titles in <?php echo h(date('F Y', strtotime($currentBorrowMonth . '-01'))); ?></h3>
               </div>
               <span class="code-pill"><?php echo count($topBooksThisMonth); ?> ranked title<?php echo count($topBooksThisMonth) === 1 ? '' : 's'; ?></span>
             </div>
