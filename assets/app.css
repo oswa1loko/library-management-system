@@ -9203,6 +9203,13 @@ body.modal-open{
   .js-member-sidebar .member-sidebar,
   .topbar,
   .analytics-print-actions,
+  .member-mobile-header,
+  .member-mobile-nav-actions,
+  .student-header-notification-shortcut,
+  .student-mobile-notification-shortcut,
+  .student-notification-panel,
+  .student-header-notification-badge,
+  body > .theme-toggle,
   .member-sidebar-toggle,
   .member-sidebar-section,
   .member-sidebar-utilities{
