@@ -283,29 +283,6 @@ foreach ($allBooksShareSegments as $segment) {
     ];
     $runningOffset += (int) ($segment['percent'] ?? 0);
 }
-$donutLabels = [];
-foreach ($allBooksShareSegments as $index => $segment) {
-    $percent = (int) ($segment['percent'] ?? 0);
-    if ($percent <= 0) {
-        continue;
-    }
-
-    $offset = (float) ($segmentOffsets[$index]['offset'] ?? 0);
-    $midAngle = -90 + (($offset + ($percent / 2)) * 3.6);
-    $angleRad = deg2rad($midAngle);
-    // Match the label anchor to the exact midpoint of the visible donut ring.
-    $outerRadius = 188 / 2;
-    $innerRadius = 188 * 0.43;
-    $labelRadius = ($outerRadius + $innerRadius) / 2;
-    $x = round(cos($angleRad) * $labelRadius, 2);
-    $y = round(sin($angleRad) * $labelRadius, 2);
-
-    $donutLabels[] = [
-        'percent' => $percent,
-        'x' => $x,
-        'y' => $y,
-    ];
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -520,14 +497,6 @@ try {
                       <span>monthly total</span>
                     <?php endif; ?>
                   </div>
-                  <?php foreach ($donutLabels as $label): ?>
-                    <span
-                      class="analytics-donut-label"
-                      style="--label-x: <?php echo (int) ($label['x'] ?? 0); ?>px; --label-y: <?php echo (int) ($label['y'] ?? 0); ?>px;"
-                    >
-                      <?php echo (int) ($label['percent'] ?? 0); ?>%
-                    </span>
-                  <?php endforeach; ?>
                 </div>
               </div>
               <p class="analytics-donut-insight"><?php echo h($topBookInsight); ?></p>
