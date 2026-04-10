@@ -156,6 +156,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
       <?php endif; ?>
       <?php foreach ($incidents as $incident): ?>
         <?php $isLocked = book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? 'open')) === 'closed'; ?>
+        <?php $copyLabel = trim((string) ($incident['copy_id'] ?? '')); ?>
         <div class="panel member-return-batch-card">
           <div class="member-return-batch-head">
             <div>
@@ -187,6 +188,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <div class="grid cards">
             <div class="empty-state">
               <strong class="label-block-gap">Borrow context</strong>
+              Copy ID: <?php echo h($copyLabel !== '' ? $copyLabel : '-'); ?><br>
               Status: <?php echo h(ucfirst((string) ($incident['borrow_status'] ?? 'n/a'))); ?><br>
               Borrowed: <?php echo h(format_display_date((string) ($incident['borrow_date'] ?? ''), '-')); ?><br>
               Due: <?php echo h(format_display_date((string) ($incident['due_date'] ?? ''), '-')); ?>
@@ -210,6 +212,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
 <?php if ($selectedIncident): ?>
   <?php $isLocked = book_incident_normalize_workflow_status((string) ($selectedIncident['workflow_status'] ?? 'open')) === 'closed'; ?>
   <?php $selectedResolutionAction = book_incident_default_resolution_action((string) ($selectedIncident['incident_type'] ?? ''), (string) ($selectedIncident['resolution_action'] ?? 'none')); ?>
+  <?php $selectedCopyLabel = trim((string) ($selectedIncident['copy_id'] ?? '')); ?>
   <div class="desk-modal" data-desk-modal>
     <a class="desk-modal-backdrop" href="<?php echo h($baseHref); ?>" aria-label="Close incident review"></a>
     <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="incident-review-modal-title">
@@ -228,6 +231,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           Incident #<?php echo (int) $selectedIncident['id']; ?><br>
           Borrower: <?php echo h($selectedIncident['fullname']); ?> (<?php echo h(role_label((string) ($selectedIncident['role'] ?? ''))); ?>)<br>
           Borrow #<?php echo (int) $selectedIncident['borrow_id']; ?><br>
+          Copy ID: <?php echo h($selectedCopyLabel !== '' ? $selectedCopyLabel : '-'); ?><br>
           Status: <?php echo h(ucfirst((string) ($selectedIncident['borrow_status'] ?? 'n/a'))); ?><br>
           Borrowed: <?php echo h(format_display_date((string) ($selectedIncident['borrow_date'] ?? ''), '-')); ?><br>
           Due: <?php echo h(format_display_date((string) ($selectedIncident['due_date'] ?? ''), '-')); ?>
