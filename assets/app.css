@@ -1772,6 +1772,13 @@ tbody td > .label-block + .muted{
   align-items:flex-start;
 }
 
+.analytics-section-note{
+  margin:-8px 0 0;
+  font-size:12px;
+  line-height:1.45;
+  color:var(--muted);
+}
+
 .analytics-ranking-list,
 .analytics-leader-list,
 .analytics-breakdown-list{
@@ -1790,6 +1797,7 @@ tbody td > .label-block + .muted{
     linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)),
     rgba(8,19,34,0.52);
   padding:16px 18px;
+  box-shadow:0 10px 18px rgba(0,0,0,0.1);
 }
 
 .analytics-ranking-item{
@@ -1814,6 +1822,7 @@ tbody td > .label-block + .muted{
 .analytics-ranking-copy strong,
 .analytics-leader-item strong{
   display:block;
+  line-height:1.25;
 }
 
 .analytics-ranking-rank{
@@ -1876,6 +1885,7 @@ tbody td > .label-block + .muted{
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012)),
     rgba(8,19,34,0.4);
   overflow:hidden;
+  box-shadow:0 10px 18px rgba(0,0,0,0.08);
 }
 
 .analytics-breakdown-summary{
