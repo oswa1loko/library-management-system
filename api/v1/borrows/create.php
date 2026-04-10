@@ -175,7 +175,7 @@ create_notification(
     $conn,
     'librarian',
     'New Borrow Request',
-    role_label((string) $user['role']) . ' ' . $user['username'] . ' requested ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '.',
+    role_label((string) $user['role']) . ' ' . $user['username'] . ' requested ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '. Request Ref ' . $requestBatch . '.',
     'warning'
 );
 
