@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $notificationsStmt = $conn->prepare("
-    SELECT id, title, body, severity, is_read, created_at
+    SELECT id, kind, entity_type, entity_id, batch_ref, title, body, severity, is_read, created_at
     FROM notifications
     WHERE role = 'faculty' AND user_id = ?
     ORDER BY id DESC
@@ -149,13 +149,16 @@ while ($notificationsResult && ($row = $notificationsResult->fetch_assoc())) {
     $destination = notification_destination_for_viewer('faculty', $row);
     $storedNotifications[] = [
         'id' => (int) ($row['id'] ?? 0),
+        'kind' => (string) ($row['kind'] ?? 'notification'),
+        'entity_type' => (string) ($row['entity_type'] ?? ''),
+        'entity_id' => (int) ($row['entity_id'] ?? 0),
+        'batch_ref' => (string) ($row['batch_ref'] ?? ''),
         'title' => (string) ($row['title'] ?? ''),
         'body' => (string) ($row['body'] ?? ''),
         'severity' => (string) ($row['severity'] ?? 'info'),
         'is_read' => (int) ($row['is_read'] ?? 0) === 1,
         'created_at' => format_display_datetime((string) ($row['created_at'] ?? ''), '-'),
         'created_at_raw' => (string) ($row['created_at'] ?? ''),
-        'kind' => 'notification',
         'destination_url' => (string) ($destination['url'] ?? ''),
         'destination_label' => (string) ($destination['label'] ?? ''),
     ];

@@ -44,7 +44,7 @@ if (isset($_POST['mark_all_read'])) {
 }
 
 $notificationsStmt = $conn->prepare("
-    SELECT id, title, body, severity, is_read, created_at
+    SELECT id, kind, entity_type, entity_id, batch_ref, title, body, severity, is_read, created_at
     FROM notifications
     WHERE role = 'student' AND user_id = ?
     ORDER BY id DESC

@@ -552,14 +552,26 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
         'librarian',
         'New Book Incident Report',
         'Incident #' . $incidentId . ': ' . role_label($normalizedRole) . ' reported a ' . book_incident_type_label($incidentType) . ' incident for ' . ($bookTitle !== '' ? $bookTitle : 'a borrowed book') . '.',
-        'warning'
+        'warning',
+        null,
+        [
+            'kind' => 'book_incident_reported',
+            'entity_type' => 'book_incident',
+            'entity_id' => $incidentId,
+        ]
     );
     create_notification(
         $conn,
         'admin',
         'New Book Incident Report',
         'Incident #' . $incidentId . ' for ' . ($bookTitle !== '' ? $bookTitle : 'a borrowed book') . ' is waiting for review.',
-        'warning'
+        'warning',
+        null,
+        [
+            'kind' => 'book_incident_reported',
+            'entity_type' => 'book_incident',
+            'entity_id' => $incidentId,
+        ]
     );
     audit_log($conn, 'book_incident.reported', [
         'incident_id' => $incidentId,

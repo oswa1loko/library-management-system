@@ -711,6 +711,10 @@ function ensure_library_schema(mysqli $conn): void
             id INT AUTO_INCREMENT PRIMARY KEY,
             role VARCHAR(30) NOT NULL,
             user_id INT DEFAULT NULL,
+            kind VARCHAR(80) DEFAULT NULL,
+            entity_type VARCHAR(80) DEFAULT NULL,
+            entity_id INT DEFAULT NULL,
+            batch_ref VARCHAR(80) DEFAULT NULL,
             title VARCHAR(160) NOT NULL,
             body TEXT NOT NULL,
             severity ENUM('info','warning','critical') NOT NULL DEFAULT 'info',
@@ -828,6 +832,22 @@ function ensure_library_schema(mysqli $conn): void
     if (!column_exists($conn, 'notifications', 'user_id')) {
         $conn->query("ALTER TABLE notifications ADD COLUMN user_id INT DEFAULT NULL AFTER role");
         $conn->query("ALTER TABLE notifications ADD INDEX idx_notifications_user_id (user_id)");
+    }
+
+    if (!column_exists($conn, 'notifications', 'kind')) {
+        $conn->query("ALTER TABLE notifications ADD COLUMN kind VARCHAR(80) DEFAULT NULL AFTER user_id");
+    }
+
+    if (!column_exists($conn, 'notifications', 'entity_type')) {
+        $conn->query("ALTER TABLE notifications ADD COLUMN entity_type VARCHAR(80) DEFAULT NULL AFTER kind");
+    }
+
+    if (!column_exists($conn, 'notifications', 'entity_id')) {
+        $conn->query("ALTER TABLE notifications ADD COLUMN entity_id INT DEFAULT NULL AFTER entity_type");
+    }
+
+    if (!column_exists($conn, 'notifications', 'batch_ref')) {
+        $conn->query("ALTER TABLE notifications ADD COLUMN batch_ref VARCHAR(80) DEFAULT NULL AFTER entity_id");
     }
 
     if (!column_exists($conn, 'books', 'category')) {

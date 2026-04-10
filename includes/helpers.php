@@ -2361,7 +2361,7 @@ function audit_log(mysqli $conn, string $eventName, array $context = [], ?int $a
     $stmt->close();
 }
 
-function create_notification(mysqli $conn, string $role, string $title, string $body, string $severity = 'info', ?int $userId = null): void
+function create_notification(mysqli $conn, string $role, string $title, string $body, string $severity = 'info', ?int $userId = null, array $meta = []): void
 {
     $role = trim($role);
     $title = trim($title);
@@ -2375,11 +2375,28 @@ function create_notification(mysqli $conn, string $role, string $title, string $
         $severity = 'info';
     }
 
+    $kind = trim((string) ($meta['kind'] ?? ''));
+    $entityType = trim((string) ($meta['entity_type'] ?? ''));
+    $entityId = (int) ($meta['entity_id'] ?? 0);
+    $batchRef = trim((string) ($meta['batch_ref'] ?? ''));
+    if ($entityId <= 0) {
+        $entityId = null;
+    }
+    if ($kind === '') {
+        $kind = null;
+    }
+    if ($entityType === '') {
+        $entityType = null;
+    }
+    if ($batchRef === '') {
+        $batchRef = null;
+    }
+
     $stmt = $conn->prepare("
-        INSERT INTO notifications (role, user_id, title, body, severity, is_read)
-        VALUES (?, ?, ?, ?, ?, 0)
+        INSERT INTO notifications (role, user_id, kind, entity_type, entity_id, batch_ref, title, body, severity, is_read)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     ");
-    $stmt->bind_param('sisss', $role, $userId, $title, $body, $severity);
+    $stmt->bind_param('sississss', $role, $userId, $kind, $entityType, $entityId, $batchRef, $title, $body, $severity);
     $stmt->execute();
     $stmt->close();
 }
@@ -2406,6 +2423,12 @@ function admin_notification_inbox_where_sql(string $alias = ''): string
 
 function notification_incident_id(array $notification): int
 {
+    $entityType = trim((string) ($notification['entity_type'] ?? ''));
+    $entityId = (int) ($notification['entity_id'] ?? 0);
+    if ($entityId > 0 && ($entityType === '' || $entityType === 'book_incident')) {
+        return $entityId;
+    }
+
     $title = trim((string) ($notification['title'] ?? ''));
     $body = trim((string) ($notification['body'] ?? ''));
     $combinedText = $title . ' ' . $body;
@@ -2494,6 +2517,11 @@ function notification_lookup_incident_id(array $notification): int
 
 function notification_return_batch(array $notification): string
 {
+    $batchRef = trim((string) ($notification['batch_ref'] ?? ''));
+    if ($batchRef !== '') {
+        return $batchRef;
+    }
+
     $title = trim((string) ($notification['title'] ?? ''));
     $body = trim((string) ($notification['body'] ?? ''));
     $combinedText = $title . ' ' . $body;
@@ -2584,6 +2612,11 @@ function notification_lookup_return_batch(array $notification): string
 
 function notification_request_batch(array $notification): string
 {
+    $batchRef = trim((string) ($notification['batch_ref'] ?? ''));
+    if ($batchRef !== '') {
+        return $batchRef;
+    }
+
     $title = trim((string) ($notification['title'] ?? ''));
     $body = trim((string) ($notification['body'] ?? ''));
     $combinedText = $title . ' ' . $body;
@@ -2665,6 +2698,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     $title = trim((string) ($notification['title'] ?? ''));
     $body = trim((string) ($notification['body'] ?? ''));
     $kind = trim((string) ($notification['kind'] ?? 'notification'));
+    $entityType = trim((string) ($notification['entity_type'] ?? ''));
     $titleLower = strtolower($title);
     $bodyLower = strtolower($body);
     $url = '';
@@ -2723,21 +2757,25 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $label = 'Open notifications';
         }
     } elseif ($viewerRole === 'librarian') {
-        if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+        if ($kind === 'book_incident_reported' || $entityType === 'book_incident' || $titleLower === 'new book incident report' || strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
             $incidentId = notification_lookup_incident_id($notification);
             $url = '/librarymanage/librarian/manage_book_incidents.php';
             if ($incidentId > 0) {
                 $url .= '?incident=' . $incidentId;
             }
             $label = 'Open book incidents';
-        } elseif (strpos($titleLower, 'new return request') !== false || strpos($bodyLower, 'requested return') !== false) {
+        } elseif ($kind === 'return_request_created' || $titleLower === 'new return request' || strpos($bodyLower, 'requested return') !== false) {
             $returnBatch = notification_lookup_return_batch($notification);
-            $url = '/librarymanage/librarian/manage_borrows.php';
+            $params = [];
+            $url = '/librarymanage/librarian/manage_return_requests.php';
             if ($returnBatch !== '') {
-                $url .= '?return_batch=' . rawurlencode($returnBatch);
+                $params['search'] = $returnBatch;
+            }
+            if ($params !== []) {
+                $url .= '?' . http_build_query($params);
             }
             $label = 'Open return requests';
-        } elseif (strpos($titleLower, 'new borrow request') !== false || (strpos($bodyLower, ' requested ') !== false && strpos($bodyLower, 'requested return') === false)) {
+        } elseif ($kind === 'borrow_request_created' || $titleLower === 'new borrow request' || (strpos($bodyLower, ' requested ') !== false && strpos($bodyLower, 'requested return') === false)) {
             $requestBatch = notification_lookup_request_batch($notification);
             $params = ['from_notification' => '1'];
             $url = '/librarymanage/librarian/manage_borrow_requests.php';

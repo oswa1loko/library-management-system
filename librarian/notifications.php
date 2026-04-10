@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('librarian');
 
+$notificationLimit = 60;
 $message = '';
 $messageType = 'success';
 
@@ -15,11 +16,11 @@ if (isset($_POST['mark_all_read'])) {
 }
 
 $notifications = $conn->query("
-    SELECT id, title, body, severity, is_read, created_at
+    SELECT id, kind, entity_type, entity_id, batch_ref, title, body, severity, is_read, created_at
     FROM notifications
     WHERE role = 'librarian'
     ORDER BY id DESC
-    LIMIT 60
+    LIMIT " . (int) $notificationLimit . "
 ");
 ?>
 <!DOCTYPE html>

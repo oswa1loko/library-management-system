@@ -68,8 +68,8 @@ if (isset($_POST['send_announcement'])) {
                 $announcementStmt->close();
 
                 $notificationStmt = $conn->prepare("
-                    INSERT INTO notifications (role, user_id, title, body, severity, is_read, created_at)
-                    VALUES (?, ?, ?, ?, ?, 0, ?)
+                    INSERT INTO notifications (role, user_id, kind, entity_type, entity_id, title, body, severity, is_read, created_at)
+                    VALUES (?, ?, 'announcement_sent', 'announcement', ?, ?, ?, ?, 0, ?)
                 ");
 
                 foreach ($recipientIds as $recipient) {
@@ -79,7 +79,7 @@ if (isset($_POST['send_announcement'])) {
                         continue;
                     }
 
-                    $notificationStmt->bind_param('sissss', $targetRole, $targetUserId, $title, $body, $severity, $announcementAt);
+                    $notificationStmt->bind_param('siissss', $targetRole, $targetUserId, $announcementId, $title, $body, $severity, $announcementAt);
                     $notificationStmt->execute();
                     $recipientCount++;
                 }

@@ -176,7 +176,13 @@ create_notification(
     'librarian',
     'New Borrow Request',
     role_label((string) $user['role']) . ' ' . $user['username'] . ' requested ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '. Request Ref ' . $requestBatch . '.',
-    'warning'
+    'warning',
+    null,
+    [
+        'kind' => 'borrow_request_created',
+        'entity_type' => 'borrow_request',
+        'batch_ref' => $requestBatch,
+    ]
 );
 
 api_json([

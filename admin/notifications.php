@@ -38,7 +38,7 @@ if (isset($_POST['mark_all_read'])) {
 }
 
 $notifications = $conn->query("
-    SELECT id, title, body, severity, is_read, created_at
+    SELECT id, kind, entity_type, entity_id, batch_ref, title, body, severity, is_read, created_at
     FROM notifications
     WHERE " . admin_notification_inbox_where_sql() . "
     ORDER BY id DESC

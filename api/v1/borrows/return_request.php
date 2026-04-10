@@ -142,7 +142,13 @@ create_notification(
     'librarian',
     'New Return Request',
     role_label((string) $user['role']) . ' ' . $user['username'] . ' requested return for ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '. Return Ref ' . $returnBatch . '.',
-    'warning'
+    'warning',
+    null,
+    [
+        'kind' => 'return_request_created',
+        'entity_type' => 'return_request',
+        'batch_ref' => $returnBatch,
+    ]
 );
 
 api_json([
