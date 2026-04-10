@@ -1748,13 +1748,19 @@ tbody td > .label-block + .muted{
   display:none;
 }
 
+.analytics-print-modal{
+  background:
+    radial-gradient(circle at top left, rgba(103, 198, 255, 0.06), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(103, 198, 255, 0.04), transparent 28%),
+    linear-gradient(180deg, rgba(11, 26, 45, 0.98), rgba(7, 18, 32, 0.98)),
+    rgba(7, 18, 32, 0.98);
+  isolation:isolate;
+}
+
 .analytics-print-modal .desk-modal-backdrop{
   background:
-    radial-gradient(circle at top left, rgba(103, 198, 255, 0.08), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(103, 198, 255, 0.05), transparent 28%),
-    linear-gradient(180deg, rgba(11, 26, 45, 0.9), rgba(7, 18, 32, 0.94)),
-    rgba(7, 18, 32, 0.94);
-  backdrop-filter:blur(14px) saturate(0.78) brightness(0.56);
+    rgba(7, 18, 32, 0.72);
+  backdrop-filter:blur(16px) saturate(0.72) brightness(0.44);
 }
 
 .analytics-print-modal-dialog{
