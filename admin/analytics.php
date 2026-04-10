@@ -536,7 +536,7 @@ try {
                   <?php $count = (int) ($segment['count'] ?? 0); ?>
                   <div class="analytics-donut-legend-item">
                     <span class="analytics-donut-swatch analytics-donut-swatch-<?php echo h((string) ($segment['color'] ?? 'others')); ?>"></span>
-                    <div>
+                    <div class="analytics-donut-legend-copy">
                       <strong title="<?php echo h((string) ($segment['label'] ?? 'Unknown')); ?>">#<?php echo $index + 1; ?> <?php echo h((string) ($segment['label'] ?? 'Unknown')); ?></strong>
                       <div class="muted"><?php echo $count; ?> borrow<?php echo $count === 1 ? '' : 's'; ?> | <?php echo (int) ($segment['percent'] ?? 0); ?> share</div>
                     </div>
@@ -567,9 +567,9 @@ try {
                 <div class="analytics-ranking-item<?php echo $index === 0 ? ' is-top' : ''; ?>">
                   <div class="analytics-ranking-copy">
                     <span class="analytics-ranking-rank">#<?php echo $index + 1; ?></span>
-                    <div>
+                    <div class="analytics-ranking-text">
                       <strong><?php echo h($row['title']); ?></strong>
-                      <div class="muted"><?php echo h($row['author']); ?> | <?php echo $share; ?>% share</div>
+                      <div class="analytics-ranking-meta muted"><?php echo h($row['author']); ?> | <?php echo $share; ?>% share</div>
                     </div>
                   </div>
                   <div class="analytics-ranking-meter">

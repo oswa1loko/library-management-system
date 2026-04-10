@@ -1594,25 +1594,34 @@ tbody td > .label-block + .muted{
 
 .analytics-donut-legend{
   display:grid;
-  gap:10px;
+  gap:12px;
 }
 
 .analytics-donut-legend-item{
   display:flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 12px;
-  border-radius:16px;
+  align-items:flex-start;
+  gap:14px;
+  padding:12px 14px;
+  border-radius:18px;
   border:1px solid rgba(143,211,255,0.08);
   background:rgba(255,255,255,0.02);
+  min-height:68px;
 }
 
 .analytics-donut-legend-item strong{
   display:block;
   max-width:100%;
+  margin-bottom:4px;
+  line-height:1.3;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+}
+
+.analytics-donut-legend-copy{
+  min-width:0;
+  display:grid;
+  gap:2px;
 }
 
 .analytics-donut-insight{
@@ -1629,6 +1638,7 @@ tbody td > .label-block + .muted{
 .analytics-donut-swatch{
   width:12px;
   height:12px;
+  margin-top:5px;
   border-radius:50%;
   flex:0 0 auto;
 }
@@ -1801,7 +1811,8 @@ tbody td > .label-block + .muted{
 }
 
 .analytics-ranking-item{
-  grid-template-columns:minmax(0, 1.1fr) minmax(120px, 1fr) auto;
+  grid-template-columns:minmax(0, 1.2fr) minmax(150px, .9fr) auto;
+  gap:16px;
 }
 
 .analytics-ranking-item.is-top{
@@ -1814,8 +1825,8 @@ tbody td > .label-block + .muted{
 
 .analytics-ranking-copy{
   display:flex;
-  align-items:center;
-  gap:12px;
+  align-items:flex-start;
+  gap:14px;
   min-width:0;
 }
 
@@ -1823,6 +1834,18 @@ tbody td > .label-block + .muted{
 .analytics-leader-item strong{
   display:block;
   line-height:1.25;
+}
+
+.analytics-ranking-text{
+  min-width:0;
+  display:grid;
+  gap:4px;
+}
+
+.analytics-ranking-meta{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .analytics-ranking-rank{
@@ -1852,6 +1875,7 @@ tbody td > .label-block + .muted{
   border-radius:999px;
   background:rgba(143,211,255,0.08);
   overflow:hidden;
+  align-self:center;
 }
 
 .analytics-ranking-fill{
