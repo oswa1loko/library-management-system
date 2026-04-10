@@ -2417,6 +2417,81 @@ function notification_incident_id(array $notification): int
     return 0;
 }
 
+function notification_copy_id(array $notification): string
+{
+    $title = trim((string) ($notification['title'] ?? ''));
+    $body = trim((string) ($notification['body'] ?? ''));
+    $combinedText = $title . ' ' . $body;
+
+    if ($combinedText !== '' && preg_match('/\(([A-Za-z0-9-]+)\)/', $combinedText, $matches) === 1) {
+        return trim((string) ($matches[1] ?? ''));
+    }
+
+    return '';
+}
+
+function notification_lookup_incident_id(array $notification): int
+{
+    $incidentId = notification_incident_id($notification);
+    if ($incidentId > 0) {
+        return $incidentId;
+    }
+
+    $conn = $GLOBALS['conn'] ?? null;
+    if (!$conn instanceof mysqli) {
+        return 0;
+    }
+
+    $copyId = notification_copy_id($notification);
+    if ($copyId === '') {
+        return 0;
+    }
+
+    $createdAt = trim((string) ($notification['created_at'] ?? ''));
+    if ($createdAt !== '') {
+        $stmt = $conn->prepare("
+            SELECT bi.id
+            FROM book_incidents bi
+            LEFT JOIN borrows br ON br.id = bi.borrow_id
+            LEFT JOIN book_copies bc ON bc.id = COALESCE(bi.book_copy_id, br.book_copy_id)
+            WHERE bc.copy_id = ?
+              AND bi.reported_at <= ?
+            ORDER BY bi.reported_at DESC, bi.id DESC
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param('ss', $copyId, $createdAt);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            $incidentId = (int) ($row['id'] ?? 0);
+            if ($incidentId > 0) {
+                return $incidentId;
+            }
+        }
+    }
+
+    $stmt = $conn->prepare("
+        SELECT bi.id
+        FROM book_incidents bi
+        LEFT JOIN borrows br ON br.id = bi.borrow_id
+        LEFT JOIN book_copies bc ON bc.id = COALESCE(bi.book_copy_id, br.book_copy_id)
+        WHERE bc.copy_id = ?
+        ORDER BY bi.reported_at DESC, bi.id DESC
+        LIMIT 1
+    ");
+    if (!$stmt) {
+        return 0;
+    }
+
+    $stmt->bind_param('s', $copyId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (int) ($row['id'] ?? 0);
+}
+
 function notification_destination_for_viewer(string $viewerRole, array $notification): array
 {
     $viewerRole = trim(strtolower($viewerRole));
@@ -2425,7 +2500,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     $kind = trim((string) ($notification['kind'] ?? 'notification'));
     $titleLower = strtolower($title);
     $bodyLower = strtolower($body);
-    $incidentId = notification_incident_id($notification);
+    $incidentId = notification_lookup_incident_id($notification);
 
     $url = '';
     $label = '';
