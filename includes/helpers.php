@@ -2505,6 +2505,83 @@ function notification_return_batch(array $notification): string
     return '';
 }
 
+function notification_actor_username(array $notification): string
+{
+    $title = trim((string) ($notification['title'] ?? ''));
+    $body = trim((string) ($notification['body'] ?? ''));
+    $combinedText = $title . ' ' . $body;
+
+    if ($combinedText !== '' && preg_match('/\b(?:student|faculty)\s+([a-z0-9._-]+)\s+requested return\b/i', $combinedText, $matches) === 1) {
+        return trim((string) ($matches[1] ?? ''));
+    }
+
+    return '';
+}
+
+function notification_lookup_return_batch(array $notification): string
+{
+    $returnBatch = notification_return_batch($notification);
+    if ($returnBatch !== '') {
+        return $returnBatch;
+    }
+
+    $conn = $GLOBALS['conn'] ?? null;
+    if (!$conn instanceof mysqli) {
+        return '';
+    }
+
+    $username = notification_actor_username($notification);
+    if ($username === '') {
+        return '';
+    }
+
+    $createdAt = trim((string) ($notification['created_at'] ?? ''));
+    if ($createdAt !== '') {
+        $stmt = $conn->prepare("
+            SELECT br.return_batch
+            FROM borrows br
+            JOIN users u ON u.id = br.user_id
+            WHERE u.username = ?
+              AND br.return_batch IS NOT NULL
+              AND br.return_batch <> ''
+              AND br.return_requested_at <= ?
+            ORDER BY br.return_requested_at DESC, br.id DESC
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param('ss', $username, $createdAt);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            $returnBatch = trim((string) ($row['return_batch'] ?? ''));
+            if ($returnBatch !== '') {
+                return $returnBatch;
+            }
+        }
+    }
+
+    $stmt = $conn->prepare("
+        SELECT br.return_batch
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        WHERE u.username = ?
+          AND br.return_batch IS NOT NULL
+          AND br.return_batch <> ''
+        ORDER BY br.return_requested_at DESC, br.id DESC
+        LIMIT 1
+    ");
+    if (!$stmt) {
+        return '';
+    }
+
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return trim((string) ($row['return_batch'] ?? ''));
+}
+
 function notification_destination_for_viewer(string $viewerRole, array $notification): array
 {
     $viewerRole = trim(strtolower($viewerRole));
@@ -2577,7 +2654,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             }
             $label = 'Open book incidents';
         } elseif (strpos($titleLower, 'new return request') !== false || strpos($bodyLower, 'requested return') !== false) {
-            $returnBatch = notification_return_batch($notification);
+            $returnBatch = notification_lookup_return_batch($notification);
             $url = '/librarymanage/librarian/manage_borrows.php';
             if ($returnBatch !== '') {
                 $url .= '?return_batch=' . rawurlencode($returnBatch);
