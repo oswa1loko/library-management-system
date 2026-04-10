@@ -2730,7 +2730,14 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
                 $url .= '?incident=' . $incidentId;
             }
             $label = 'Open book incidents';
-        } elseif (strpos($titleLower, 'new borrow request') !== false || strpos($bodyLower, ' requested ') !== false) {
+        } elseif (strpos($titleLower, 'new return request') !== false || strpos($bodyLower, 'requested return') !== false) {
+            $returnBatch = notification_lookup_return_batch($notification);
+            $url = '/librarymanage/librarian/manage_borrows.php';
+            if ($returnBatch !== '') {
+                $url .= '?return_batch=' . rawurlencode($returnBatch);
+            }
+            $label = 'Open return requests';
+        } elseif (strpos($titleLower, 'new borrow request') !== false || (strpos($bodyLower, ' requested ') !== false && strpos($bodyLower, 'requested return') === false)) {
             $requestBatch = notification_lookup_request_batch($notification);
             $params = ['from_notification' => '1'];
             $url = '/librarymanage/librarian/manage_borrow_requests.php';
@@ -2744,13 +2751,6 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             }
             $url .= '?' . http_build_query($params);
             $label = 'Open borrow requests';
-        } elseif (strpos($titleLower, 'new return request') !== false || strpos($bodyLower, 'requested return') !== false) {
-            $returnBatch = notification_lookup_return_batch($notification);
-            $url = '/librarymanage/librarian/manage_borrows.php';
-            if ($returnBatch !== '') {
-                $url .= '?return_batch=' . rawurlencode($returnBatch);
-            }
-            $label = 'Open return requests';
         } elseif (
             strpos($titleLower, 'borrow') !== false
             || strpos($titleLower, 'return') !== false
