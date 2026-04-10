@@ -3,7 +3,7 @@
 function approve_pending_borrow(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.book_copy_id, u.role, b.title
+        SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.book_copy_id, br.request_batch, u.role, b.title
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         JOIN books b ON b.id = br.book_id
@@ -12,7 +12,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $bookCopyId, $userRole, $bookTitle);
+    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $bookCopyId, $requestBatch, $userRole, $bookTitle);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -64,6 +64,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         'book_copy_id' => $assignedCopyId,
         'user_id' => $userId,
         'user_role' => (string) $userRole,
+        'request_batch' => (string) $requestBatch,
         'book_title' => (string) $bookTitle,
         'approved_at' => $approvedAt,
         'borrow_date' => $borrowDate,
@@ -260,7 +261,13 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                     'Borrow Request Approved',
                     'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
                     'info',
-                    $memberUserId
+                    $memberUserId,
+                    [
+                        'kind' => 'borrow_request_approved',
+                        'entity_type' => 'borrow',
+                        'entity_id' => (int) ($result['borrow_id'] ?? 0),
+                        'batch_ref' => (string) ($result['request_batch'] ?? ''),
+                    ]
                 );
             }
             audit_log($conn, 'librarian.borrow.approve', [
@@ -349,7 +356,13 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                                 'Borrow Request Approved',
                                 'Your borrow request for ' . ($requestedCopies === 1 ? '1 copy' : $requestedCopies . ' copies') . ' of ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
                                 'info',
-                                $memberUserId
+                                $memberUserId,
+                                [
+                                    'kind' => 'borrow_request_approved',
+                                    'entity_type' => 'borrow',
+                                    'entity_id' => (int) ($approved[0]['borrow_id'] ?? 0),
+                                    'batch_ref' => $requestBatch,
+                                ]
                             );
                         }
 
@@ -448,7 +461,13 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                                 'Borrow Request Approved',
                                 'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
                                 'info',
-                                $memberUserId
+                                $memberUserId,
+                                [
+                                    'kind' => 'borrow_request_approved',
+                                    'entity_type' => 'borrow',
+                                    'entity_id' => (int) ($result['borrow_id'] ?? 0),
+                                    'batch_ref' => $requestBatch,
+                                ]
                             );
                         }
 

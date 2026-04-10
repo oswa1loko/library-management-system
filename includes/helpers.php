@@ -2705,29 +2705,57 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     $label = '';
 
     if ($viewerRole === 'student') {
-        if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+        if ($entityType === 'book_incident' || strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
             $url = '/librarymanage/student/book_incidents.php';
             $label = 'Open book incidents';
-        } elseif ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
+        } elseif (
+            $kind === 'due_soon'
+            || $kind === 'overdue'
+            || strpos($titleLower, 'borrow request approved') !== false
+            || strpos($titleLower, 'return request approved') !== false
+        ) {
             $url = '/librarymanage/student/borrow_return.php';
+            if ($kind === 'borrow_request_approved') {
+                $requestBatch = notification_lookup_request_batch($notification);
+                if ($requestBatch !== '') {
+                    $url .= '?request_batch=' . rawurlencode($requestBatch) . '&from_notification=1';
+                }
+            }
             $label = 'Open borrow status';
-        } elseif (strpos($titleLower, 'payment') !== false) {
+        } elseif ($entityType === 'payment' || strpos($titleLower, 'payment') !== false) {
             $url = '/librarymanage/student/payment_upload.php';
             $label = 'Open payments';
+        } elseif ($entityType === 'announcement' || $kind === 'announcement_sent') {
+            $url = '/librarymanage/student/notifications.php';
+            $label = 'Open notifications';
         } else {
             $url = '/librarymanage/student/notifications.php';
             $label = 'Open notifications';
         }
     } elseif ($viewerRole === 'faculty') {
-        if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
+        if ($entityType === 'book_incident' || strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
             $url = '/librarymanage/faculty/book_incidents.php';
             $label = 'Open book incidents';
-        } elseif ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'return request approved') !== false) {
+        } elseif (
+            $kind === 'due_soon'
+            || $kind === 'overdue'
+            || strpos($titleLower, 'borrow request approved') !== false
+            || strpos($titleLower, 'return request approved') !== false
+        ) {
             $url = '/librarymanage/faculty/borrow_return.php';
+            if ($kind === 'borrow_request_approved') {
+                $requestBatch = notification_lookup_request_batch($notification);
+                if ($requestBatch !== '') {
+                    $url .= '?request_batch=' . rawurlencode($requestBatch) . '&from_notification=1';
+                }
+            }
             $label = 'Open borrow status';
-        } elseif (strpos($titleLower, 'payment') !== false) {
+        } elseif ($entityType === 'payment' || strpos($titleLower, 'payment') !== false) {
             $url = '/librarymanage/faculty/payment_upload.php';
             $label = 'Open payments';
+        } elseif ($entityType === 'announcement' || $kind === 'announcement_sent') {
+            $url = '/librarymanage/faculty/notifications.php';
+            $label = 'Open notifications';
         } else {
             $url = '/librarymanage/faculty/notifications.php';
             $label = 'Open notifications';

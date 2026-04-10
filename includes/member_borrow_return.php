@@ -10,6 +10,8 @@ $msg = '';
 $msgType = 'success';
 $role = (string) $_SESSION['role'];
 $today = date('Y-m-d');
+$focusRequestBatch = trim((string) ($_GET['request_batch'] ?? ''));
+$openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
 
 if (isset($_POST['return_book']) || isset($_POST['return_books'])) {
     $borrowIdsRaw = $_POST['borrow_ids'] ?? [];
@@ -170,6 +172,7 @@ foreach ($activeReturnGroups as &$group) {
     $group['items'] = array_values($group['items']);
 }
 unset($group);
+$hasFocusedRequestBatch = $focusRequestBatch !== '' && isset($activeReturnGroups[$focusRequestBatch]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -256,6 +259,14 @@ unset($group);
         <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
       <?php endif; ?>
 
+      <?php if ($openedFromNotification && $focusRequestBatch !== ''): ?>
+        <div class="notice <?php echo $hasFocusedRequestBatch ? 'success' : 'warning'; ?>">
+          <?php echo h($hasFocusedRequestBatch
+            ? 'Opened the approved borrow batch from your notification.'
+            : 'The approved borrow batch from your notification is not currently visible in this list.'); ?>
+        </div>
+      <?php endif; ?>
+
       <?php if ($dueSoonBooks->num_rows > 0): ?>
         <div class="notice warning member-workspace-alert">
           <strong class="label-block stack-copy">Upcoming Due Dates</strong>
@@ -307,7 +318,8 @@ unset($group);
             <div class="empty-state">No active borrowed items are available for return request right now.</div>
           <?php endif; ?>
           <?php foreach ($activeReturnGroups as $group): ?>
-            <div class="panel member-return-batch-card">
+            <?php $isFocusedBatch = $focusRequestBatch !== '' && $focusRequestBatch === (string) ($group['request_batch'] ?? ''); ?>
+            <div class="panel member-return-batch-card<?php echo $isFocusedBatch ? ' is-targeted' : ''; ?>"<?php echo $isFocusedBatch ? ' data-focused-request-batch="true"' : ''; ?>>
               <div class="member-return-batch-head">
                 <div>
                   <strong class="label-block"><?php echo h(format_batch_reference($group['request_batch'], 'Borrow Ref')); ?></strong>
@@ -368,5 +380,19 @@ unset($group);
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/member_borrow_return.js?v=<?php echo urlencode($memberBorrowReturnVersion); ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var focusedBatch = document.querySelector('[data-focused-request-batch="true"]');
+  if (!focusedBatch) {
+    return;
+  }
+
+  try {
+    focusedBatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (error) {
+    focusedBatch.scrollIntoView();
+  }
+});
+</script>
 </body>
 </html>

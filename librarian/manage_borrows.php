@@ -16,7 +16,7 @@ $today = date('Y-m-d');
 function approve_pending_borrow(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT br.user_id, br.book_id, br.borrow_days, br.status, u.role, b.title
+        SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.request_batch, u.role, b.title
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         JOIN books b ON b.id = br.book_id
@@ -25,7 +25,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $userRole, $bookTitle);
+    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $requestBatch, $userRole, $bookTitle);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -69,6 +69,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         'book_id' => $bookId,
         'user_id' => $userId,
         'user_role' => (string) $userRole,
+        'request_batch' => (string) $requestBatch,
         'book_title' => (string) $bookTitle,
         'approved_at' => $approvedAt,
         'borrow_date' => $borrowDate,
@@ -255,7 +256,13 @@ if (isset($_POST['approve_borrow'])) {
                 'Borrow Request Approved',
                 'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
                 'info',
-                $memberUserId
+                $memberUserId,
+                [
+                    'kind' => 'borrow_request_approved',
+                    'entity_type' => 'borrow',
+                    'entity_id' => (int) ($result['borrow_id'] ?? 0),
+                    'batch_ref' => (string) ($result['request_batch'] ?? ''),
+                ]
             );
         }
         audit_log($conn, 'librarian.borrow.approve', [
@@ -348,7 +355,13 @@ if (isset($_POST['approve_batch'])) {
                             'Borrow Request Approved',
                             'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
                             'info',
-                            $memberUserId
+                            $memberUserId,
+                            [
+                                'kind' => 'borrow_request_approved',
+                                'entity_type' => 'borrow',
+                                'entity_id' => (int) ($result['borrow_id'] ?? 0),
+                                'batch_ref' => $requestBatch,
+                            ]
                         );
                     }
 
