@@ -2732,7 +2732,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $label = 'Open book incidents';
         } elseif (strpos($titleLower, 'new borrow request') !== false || strpos($bodyLower, ' requested ') !== false) {
             $requestBatch = notification_lookup_request_batch($notification);
-            $url = '/librarymanage/librarian/manage_borrows.php';
+            $url = '/librarymanage/librarian/manage_borrow_requests.php';
             if ($requestBatch !== '') {
                 $url .= '?request_batch=' . rawurlencode($requestBatch);
             }

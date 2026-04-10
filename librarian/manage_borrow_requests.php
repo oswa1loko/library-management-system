@@ -10,6 +10,7 @@ $workflowNotice = handle_librarian_borrow_workflow($conn);
 $msg = (string) ($workflowNotice['message'] ?? '');
 $msgType = (string) ($workflowNotice['type'] ?? 'success');
 $search = trim((string) ($_GET['search'] ?? ''));
+$selectedRequestBatch = trim((string) ($_GET['request_batch'] ?? ''));
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 12;
 
@@ -142,6 +143,7 @@ foreach ($pendingBatches as $batch) {
 }
 
 $pageQuery = $_GET;
+$selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selectedRequestBatch] ?? null) : null;
 
 ?>
 <!DOCTYPE html>
@@ -323,6 +325,66 @@ $pageQuery = $_GET;
     </div>
   </div>
   </div>
+<?php if ($selectedPendingBatch): ?>
+  <div class="desk-modal" data-desk-modal>
+    <a class="desk-modal-backdrop" href="manage_borrow_requests.php" aria-label="Close borrow request details"></a>
+    <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="borrow-request-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact">Borrow Approval Batch</p>
+          <h3 id="borrow-request-modal-title" class="heading-card"><?php echo h(format_batch_reference($selectedPendingBatch['request_batch'], 'Request Ref')); ?></h3>
+          <p class="muted">Approve and release only the requests in this batch that still have enough stock available.</p>
+        </div>
+        <a class="button secondary" href="manage_borrow_requests.php">Close</a>
+      </div>
+
+      <div class="panel">
+        <div class="librarian-batch-head">
+          <div>
+            <strong class="label-block"><?php echo h($selectedPendingBatch['fullname']); ?></strong>
+            <span class="muted"><?php echo h($selectedPendingBatch['username']); ?> | <?php echo h(role_label($selectedPendingBatch['role'])); ?></span>
+          </div>
+          <div class="librarian-batch-meta">
+            <span class="chip"><?php echo (int) ($selectedPendingBatch['actionable_copies'] ?? 0); ?> ready to release</span>
+            <span class="chip"><?php echo (int) ($selectedPendingBatch['waiting_stock_copies'] ?? 0); ?> waiting for stock</span>
+            <span class="chip">Requested <?php echo h(format_display_datetime((string) ($selectedPendingBatch['created_at'] ?? ''), '-')); ?></span>
+          </div>
+        </div>
+        <div class="stack librarian-batch-list">
+          <?php foreach ($selectedPendingBatch['items'] as $item): ?>
+            <div class="empty-state librarian-batch-item<?php echo !empty($item['waiting_for_stock']) ? ' is-blocked' : ' is-actionable'; ?>">
+              <div>
+                <strong class="label-block meta-top-sm"><?php echo h($item['title']); ?></strong>
+                <span class="muted"><?php echo h($item['author']); ?> | <?php echo (int) ($item['copy_count'] ?? 0); ?> copie<?php echo (int) ($item['copy_count'] ?? 0) === 1 ? '' : 's'; ?> requested<?php echo !empty($item['waiting_for_stock']) ? ' | Waiting for enough stock' : ' | Ready to release'; ?></span>
+              </div>
+              <?php if (!empty($item['waiting_for_stock'])): ?>
+                <span class="badge">
+                  <span class="status-dot waiting_stock"></span>
+                  Waiting for stock
+                </span>
+              <?php else: ?>
+                <form method="post" class="inline-form" data-confirm="Approve all requested copies of this book and release them now?">
+                  <input type="hidden" name="request_batch" value="<?php echo h($selectedPendingBatch['request_batch']); ?>">
+                  <input type="hidden" name="book_id" value="<?php echo (int) $item['book_id']; ?>">
+                  <button type="submit" name="approve_borrow_group" value="1">Approve <?php echo (int) ($item['copy_count'] ?? 0); ?> Cop<?php echo (int) ($item['copy_count'] ?? 0) === 1 ? 'y' : 'ies'; ?></button>
+                </form>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <?php if ((int) ($selectedPendingBatch['actionable_items'] ?? 0) > 1): ?>
+          <form method="post" class="inline-form flow-top-md" data-confirm="Approve all available requests in this batch now?">
+            <input type="hidden" name="request_batch" value="<?php echo h($selectedPendingBatch['request_batch']); ?>">
+            <button type="submit" name="approve_batch" value="1">Approve <?php echo (int) $selectedPendingBatch['actionable_items']; ?> and Release</button>
+          </form>
+          <p class="muted meta-top-sm">Bulk approval releases all book groups in this batch that have enough stock for their requested copies.</p>
+        <?php elseif ((int) ($selectedPendingBatch['actionable_items'] ?? 0) === 0 && (int) ($selectedPendingBatch['waiting_stock_items'] ?? 0) > 0): ?>
+          <p class="muted meta-top-sm">This batch is still pending, but every remaining book group is waiting for enough stock.</p>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/shared_confirm.js"></script>
 <script src="/librarymanage/assets/email_queue_worker.js"></script>
