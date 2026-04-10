@@ -141,7 +141,7 @@ create_notification(
     $conn,
     'librarian',
     'New Return Request',
-    role_label((string) $user['role']) . ' ' . $user['username'] . ' requested return for ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '.',
+    role_label((string) $user['role']) . ' ' . $user['username'] . ' requested return for ' . $copyLabel . ' across ' . $titleLabel . ': ' . implode(', ', $bookLabels) . '. Return Ref ' . $returnBatch . '.',
     'warning'
 );
 

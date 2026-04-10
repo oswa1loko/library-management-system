@@ -2492,6 +2492,19 @@ function notification_lookup_incident_id(array $notification): int
     return (int) ($row['id'] ?? 0);
 }
 
+function notification_return_batch(array $notification): string
+{
+    $title = trim((string) ($notification['title'] ?? ''));
+    $body = trim((string) ($notification['body'] ?? ''));
+    $combinedText = $title . ' ' . $body;
+
+    if ($combinedText !== '' && preg_match('/\bret-[a-f0-9]+\b/i', $combinedText, $matches) === 1) {
+        return trim((string) ($matches[0] ?? ''));
+    }
+
+    return '';
+}
+
 function notification_destination_for_viewer(string $viewerRole, array $notification): array
 {
     $viewerRole = trim(strtolower($viewerRole));
@@ -2563,6 +2576,13 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
                 $url .= '?incident=' . $incidentId;
             }
             $label = 'Open book incidents';
+        } elseif (strpos($titleLower, 'new return request') !== false || strpos($bodyLower, 'requested return') !== false) {
+            $returnBatch = notification_return_batch($notification);
+            $url = '/librarymanage/librarian/manage_borrows.php';
+            if ($returnBatch !== '') {
+                $url .= '?return_batch=' . rawurlencode($returnBatch);
+            }
+            $label = 'Open return requests';
         } elseif (
             strpos($titleLower, 'borrow') !== false
             || strpos($titleLower, 'return') !== false
