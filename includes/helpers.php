@@ -2404,6 +2404,19 @@ function admin_notification_inbox_where_sql(string $alias = ''): string
     return $prefix . "role = 'admin' AND " . $prefix . 'title NOT IN (' . implode(', ', $excluded) . ')';
 }
 
+function notification_incident_id(array $notification): int
+{
+    $title = trim((string) ($notification['title'] ?? ''));
+    $body = trim((string) ($notification['body'] ?? ''));
+    $combinedText = $title . ' ' . $body;
+
+    if ($combinedText !== '' && preg_match('/\bincident\s*#\s*(\d+)\b/i', $combinedText, $matches) === 1) {
+        return (int) ($matches[1] ?? 0);
+    }
+
+    return 0;
+}
+
 function notification_destination_for_viewer(string $viewerRole, array $notification): array
 {
     $viewerRole = trim(strtolower($viewerRole));
@@ -2412,6 +2425,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     $kind = trim((string) ($notification['kind'] ?? 'notification'));
     $titleLower = strtolower($title);
     $bodyLower = strtolower($body);
+    $incidentId = notification_incident_id($notification);
 
     $url = '';
     $label = '';
@@ -2447,6 +2461,9 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     } elseif ($viewerRole === 'admin') {
         if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
             $url = '/librarymanage/admin/book_incidents_records.php';
+            if ($incidentId > 0) {
+                $url .= '?incident=' . $incidentId;
+            }
             $label = 'Open book incidents';
         } elseif (strpos($titleLower, 'payment') !== false) {
             $url = '/librarymanage/admin/payments_records.php';
@@ -2467,6 +2484,9 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     } elseif ($viewerRole === 'librarian') {
         if (strpos($titleLower, 'incident') !== false || strpos($bodyLower, 'incident') !== false) {
             $url = '/librarymanage/librarian/manage_book_incidents.php';
+            if ($incidentId > 0) {
+                $url .= '?incident=' . $incidentId;
+            }
             $label = 'Open book incidents';
         } elseif (
             strpos($titleLower, 'borrow') !== false

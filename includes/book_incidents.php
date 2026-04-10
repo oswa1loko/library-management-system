@@ -551,7 +551,7 @@ function create_member_book_incident(mysqli $conn, int $userId, string $userRole
         $conn,
         'librarian',
         'New Book Incident Report',
-        role_label($normalizedRole) . ' reported a ' . book_incident_type_label($incidentType) . ' incident for ' . ($bookTitle !== '' ? $bookTitle : 'a borrowed book') . '.',
+        'Incident #' . $incidentId . ': ' . role_label($normalizedRole) . ' reported a ' . book_incident_type_label($incidentType) . ' incident for ' . ($bookTitle !== '' ? $bookTitle : 'a borrowed book') . '.',
         'warning'
     );
     create_notification(
