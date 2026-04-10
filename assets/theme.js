@@ -551,6 +551,11 @@
     var panel = ensureStudentNotificationPanel();
     shortcut.addEventListener('click', function (event) {
       event.preventDefault();
+      if (isFullMemberNotificationsPage()) {
+        setStudentNotificationPanelOpen(panel, false);
+        return;
+      }
+
       var shouldOpen = panel.hidden;
       setStudentNotificationPanelOpen(panel, shouldOpen);
       if (shouldOpen) {
@@ -570,7 +575,7 @@
 
   function ensureStudentHeaderNotificationShortcut() {
     var config = getMemberNotificationConfig();
-    if (!config || isFullMemberNotificationsPage()) {
+    if (!config) {
       return;
     }
 
@@ -596,7 +601,13 @@
         '<span class="student-header-notification-badge" hidden>0</span>';
     }
 
-    notificationLink.classList.remove('is-active');
+    notificationLink.classList.toggle('is-active', isFullMemberNotificationsPage());
+    if (isFullMemberNotificationsPage()) {
+      notificationLink.setAttribute('aria-current', 'page');
+      notificationLink.setAttribute('data-tooltip', 'Notifications');
+    } else {
+      notificationLink.removeAttribute('aria-current');
+    }
 
     if (!actions.contains(notificationLink)) {
       actions.insertBefore(notificationLink, themeToggle);
@@ -606,7 +617,7 @@
 
   function ensureStudentMobileNotificationShortcut() {
     var config = getMemberNotificationConfig();
-    if (!config || isFullMemberNotificationsPage()) {
+    if (!config) {
       return;
     }
 
@@ -633,6 +644,13 @@
 
     if (!actions.contains(notificationButton)) {
       actions.insertBefore(notificationButton, themeToggle);
+    }
+
+    notificationButton.classList.toggle('is-active', isFullMemberNotificationsPage());
+    if (isFullMemberNotificationsPage()) {
+      notificationButton.setAttribute('aria-current', 'page');
+    } else {
+      notificationButton.removeAttribute('aria-current');
     }
 
     attachStudentNotificationShortcut(notificationButton);
