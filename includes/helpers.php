@@ -2732,10 +2732,17 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $label = 'Open book incidents';
         } elseif (strpos($titleLower, 'new borrow request') !== false || strpos($bodyLower, ' requested ') !== false) {
             $requestBatch = notification_lookup_request_batch($notification);
+            $params = ['from_notification' => '1'];
             $url = '/librarymanage/librarian/manage_borrow_requests.php';
             if ($requestBatch !== '') {
-                $url .= '?request_batch=' . rawurlencode($requestBatch);
+                $params['request_batch'] = $requestBatch;
+            } else {
+                $username = notification_actor_username($notification);
+                if ($username !== '') {
+                    $params['search'] = $username;
+                }
             }
+            $url .= '?' . http_build_query($params);
             $label = 'Open borrow requests';
         } elseif (strpos($titleLower, 'new return request') !== false || strpos($bodyLower, 'requested return') !== false) {
             $returnBatch = notification_lookup_return_batch($notification);
