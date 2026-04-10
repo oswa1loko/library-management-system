@@ -1748,6 +1748,11 @@ tbody td > .label-block + .muted{
   display:none;
 }
 
+.analytics-print-modal .desk-modal-backdrop{
+  background:rgba(7, 18, 33, 0.38);
+  backdrop-filter:blur(18px) saturate(0.82) brightness(0.72);
+}
+
 .analytics-print-modal-dialog{
   width:min(1120px, calc(100vw - 32px));
   max-height:min(88vh, 980px);
