@@ -242,20 +242,12 @@
     panel.className = 'student-notification-panel';
     panel.hidden = true;
     panel.dataset.panelOpen = 'false';
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-modal', 'true');
-    panel.setAttribute('aria-labelledby', 'student-notification-panel-title');
-    panel.setAttribute('tabindex', '-1');
     panel.innerHTML =
-      '<div class="student-notification-panel-backdrop" data-notification-dismiss></div>' +
-      '<div class="student-notification-panel-dialog">' +
-        '<div class="student-notification-panel-head">' +
-          '<strong id="student-notification-panel-title">Notifications</strong>' +
-          '<button type="button" class="student-notification-panel-close" aria-label="Close notifications" data-notification-dismiss>&times;</button>' +
-        '</div>' +
-        '<div class="student-notification-panel-body">' +
-          '<div class="student-notification-empty">Loading notifications...</div>' +
-        '</div>' +
+      '<div class="student-notification-panel-head">' +
+        '<strong>Notifications</strong>' +
+      '</div>' +
+      '<div class="student-notification-panel-body">' +
+        '<div class="student-notification-empty">Loading notifications...</div>' +
       '</div>';
     document.body.appendChild(panel);
 
@@ -266,12 +258,7 @@
 
       var shortcut = event.target.closest('.student-header-notification-shortcut');
       var themeToggle = event.target.closest('.theme-toggle');
-      if (event.target.closest('[data-notification-dismiss]')) {
-        setStudentNotificationPanelOpen(panel, false);
-        return;
-      }
-
-      if (panel.querySelector('.student-notification-panel-dialog').contains(event.target) || shortcut || themeToggle) {
+      if (panel.contains(event.target) || shortcut || themeToggle) {
         return;
       }
 
@@ -305,12 +292,6 @@
 
     panel.hidden = !open;
     panel.dataset.panelOpen = open ? 'true' : 'false';
-    document.body.classList.toggle('student-notification-modal-open', open);
-    if (open) {
-      window.setTimeout(function () {
-        panel.focus();
-      }, 0);
-    }
   }
 
   function isRecentNotificationItem(item) {
