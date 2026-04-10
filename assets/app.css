@@ -1775,19 +1775,118 @@ tbody td > .label-block + .muted{
   margin:0 auto;
   padding:22px;
   border-radius:22px;
-  border:1px solid rgba(143,211,255,0.08);
-  background:
-    linear-gradient(180deg, rgba(12,31,52,0.98), rgba(7,21,37,0.94)),
-    rgba(10,25,43,0.92);
-  box-shadow:0 22px 36px rgba(0,0,0,0.18);
+  border:1px solid #d8dee8;
+  background:#fff;
+  color:#162435;
+  box-shadow:0 22px 36px rgba(0,0,0,0.12);
 }
 
-.analytics-print-preview-sheet .panel{
-  box-shadow:none;
+.analytics-print-report-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding:0 0 18px;
+  margin:0 0 18px;
+  border-bottom:1px solid #d8dee8;
+}
+
+.analytics-print-report-kicker{
+  margin:0 0 6px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#5d6f85;
+}
+
+.analytics-print-report-title{
+  margin:0;
+  font-size:28px;
+  line-height:1.1;
+  letter-spacing:-0.03em;
+  color:#162435;
+}
+
+.analytics-print-report-meta{
+  display:grid;
+  gap:6px;
+  justify-items:end;
+  font-size:13px;
+  line-height:1.45;
+  color:#4a5b70;
+}
+
+.analytics-print-preview-sheet .panel,
+.analytics-print-preview-sheet .card,
+.analytics-print-preview-sheet .dashboard-chart,
+.analytics-print-preview-sheet .analytics-summary-card,
+.analytics-print-preview-sheet .analytics-ranking-item,
+.analytics-print-preview-sheet .analytics-leader-item,
+.analytics-print-preview-sheet .analytics-breakdown-item,
+.analytics-print-preview-sheet .analytics-weekly-chart,
+.analytics-print-preview-sheet .analytics-donut-panel,
+.analytics-print-preview-sheet .analytics-weekly-summary-item{
+  background:#fff !important;
+  color:#162435 !important;
+  box-shadow:none !important;
+  border:1px solid #d8dee8 !important;
 }
 
 .analytics-print-preview-sheet .analytics-print-actions{
   display:none !important;
+}
+
+.analytics-print-preview-sheet .muted,
+.analytics-print-preview-sheet .analytics-summary-meta,
+.analytics-print-preview-sheet .analytics-section-note,
+.analytics-print-preview-sheet .chart-label,
+.analytics-print-preview-sheet .analytics-week-range,
+.analytics-print-preview-sheet .analytics-week-share,
+.analytics-print-preview-sheet .analytics-donut-center span{
+  color:#627489 !important;
+}
+
+.analytics-print-preview-sheet .analytics-summary-label,
+.analytics-print-preview-sheet .analytics-donut-center-label{
+  color:#607286 !important;
+}
+
+.analytics-print-preview-sheet .code-pill,
+.analytics-print-preview-sheet .badge{
+  background:#f3f6fa !important;
+  border:1px solid #d8dee8 !important;
+  color:#243547 !important;
+}
+
+.analytics-print-preview-sheet .analytics-donut-insight{
+  background:#f7fafc !important;
+  border:1px solid #d8dee8 !important;
+  color:#243547 !important;
+}
+
+.analytics-print-preview-sheet .analytics-month-filter{
+  background:#f8fafc !important;
+  border:1px solid #d8dee8 !important;
+  color:#33465b !important;
+}
+
+.analytics-print-preview-sheet .analytics-month-filter.is-active{
+  background:#eaf4ff !important;
+  border-color:#b6d7f3 !important;
+  color:#18476f !important;
+}
+
+.analytics-print-preview-sheet .analytics-weekly-grid-lines span{
+  border-top-color:#e8edf3 !important;
+}
+
+.analytics-print-preview-sheet .analytics-ranking-meter{
+  background:#edf2f7 !important;
+}
+
+.analytics-print-preview-sheet .analytics-breakdown-summary{
+  background:#fbfcfd;
 }
 
 .analytics-layout{

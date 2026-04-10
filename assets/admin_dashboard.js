@@ -101,6 +101,28 @@ function initAdminAnalytics(root) {
       }
 
       var previewClone = panel.cloneNode(true);
+      var periodLabel = panel.querySelector('.analytics-print-head .code-pill');
+      var generatedAt = new Date().toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+      var reportHead = document.createElement('div');
+
+      reportHead.className = 'analytics-print-report-head';
+      reportHead.innerHTML =
+        '<div>' +
+          '<p class="analytics-print-report-kicker">Library Analytics Report</p>' +
+          '<h4 class="analytics-print-report-title">Borrowing Performance Summary</h4>' +
+        '</div>' +
+        '<div class="analytics-print-report-meta">' +
+          '<span><strong>Period:</strong> ' + (periodLabel ? periodLabel.textContent.trim() : 'Current selection') + '</span>' +
+          '<span><strong>Generated:</strong> ' + generatedAt + '</span>' +
+        '</div>';
+
+      previewClone.classList.add('analytics-print-report-body');
       previewClone.removeAttribute('data-filter-panel');
       previewClone.removeAttribute('data-ajax-panel-shell');
       previewClone.querySelectorAll('[data-ajax-filter-form], .analytics-print-actions').forEach(function (element) {
@@ -111,6 +133,7 @@ function initAdminAnalytics(root) {
       });
 
       previewHost.innerHTML = '';
+      previewHost.appendChild(reportHead);
       previewHost.appendChild(previewClone);
       modal.hidden = false;
       document.body.classList.add('modal-open');
