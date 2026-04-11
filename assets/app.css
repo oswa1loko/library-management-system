@@ -11153,7 +11153,6 @@ body.ebook-reader-screen {
   .member-dashboard-overview .stat-card,
   .member-workspace-overview .stat-card {
     min-height: 128px;
-    height: 128px;
     padding: 18px 16px;
   }
 
@@ -11515,6 +11514,27 @@ body.ebook-reader-screen {
   .ebook-grid {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  .grid.cards.member-catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .member-catalog-card .librarian-catalog-card-link {
+    padding: 16px 14px;
+  }
+
+  .member-dashboard-overview .stat-grid,
+  .member-workspace-overview .stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .member-dashboard-overview .stat-card,
+  .member-workspace-overview .stat-card {
+    min-height: 128px;
+    height: auto;
   }
 }
 
@@ -13156,7 +13176,7 @@ body.ebook-reader-screen {
   .member-dashboard-overview .stat-card,
   .member-workspace-overview .stat-card {
     min-height: 116px;
-    height: 116px;
+    height: auto;
   }
 
   .activity-item {
