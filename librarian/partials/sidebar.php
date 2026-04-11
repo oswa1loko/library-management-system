@@ -8,10 +8,12 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
     </div>
   </div>
   <nav class="member-sidebar-nav">
+    <p class="member-sidebar-group-label">Overview</p>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'dashboard' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/dashboard.php" data-tooltip="Dashboard">
       <span class="dashboard-icon icon-view" aria-hidden="true"></span>
       <span class="member-sidebar-label">Dashboard</span>
     </a>
+    <p class="member-sidebar-group-label">Circulation</p>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'borrow_requests' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_borrow_requests.php" data-tooltip="Pending Borrow Requests">
       <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
       <span class="member-sidebar-label">Borrow Requests</span>
@@ -24,6 +26,7 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-books" aria-hidden="true"></span>
       <span class="member-sidebar-label">Borrow Records</span>
     </a>
+    <p class="member-sidebar-group-label">Collection</p>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'books' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_books.php" data-tooltip="Books">
       <span class="dashboard-icon icon-books" aria-hidden="true"></span>
       <span class="member-sidebar-label">Books</span>
@@ -36,6 +39,7 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
       <span class="member-sidebar-label">eBooks</span>
     </a>
+    <p class="member-sidebar-group-label">Cases</p>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'penalties' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_penalties.php" data-tooltip="Penalties">
       <span class="dashboard-icon icon-penalties" aria-hidden="true"></span>
       <span class="member-sidebar-label">Penalties</span>
@@ -51,9 +55,9 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
   </nav>
   <p class="member-sidebar-section member-sidebar-label">Account</p>
   <div class="topbar-nav member-sidebar-utilities">
-    <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
+    <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Portal Home">
       <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
-      <span class="member-sidebar-label">Home</span>
+      <span class="member-sidebar-label">Portal Home</span>
     </a>
     <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
       <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
