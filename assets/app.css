@@ -4901,8 +4901,10 @@ button.catalog-search-suggestion{
 
 .member-catalog-card .librarian-catalog-card-link{
   min-height:100%;
+  grid-template-columns:minmax(0, 1fr);
   grid-template-rows:1fr;
   align-content:start;
+  justify-items:center;
 }
 
 .member-catalog-card{
