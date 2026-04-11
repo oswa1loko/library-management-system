@@ -1725,29 +1725,51 @@
           left: 0;
           right: 0;
           z-index: 120;
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
+          backdrop-filter: blur(22px);
+          -webkit-backdrop-filter: blur(22px);
           background:
-            linear-gradient(180deg, rgba(11, 26, 45, 0.97), rgba(7, 18, 32, 0.96)),
+            linear-gradient(180deg, rgba(16, 34, 56, 0.98), rgba(8, 18, 32, 0.97)),
             rgba(7, 18, 32, 0.96);
-          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+          border-bottom: 1px solid rgba(152, 213, 255, 0.12);
+          box-shadow: 0 22px 44px rgba(0, 0, 0, 0.24);
         }
 
         .nav {
-          gap: 10px;
-          padding: 14px 0;
+          gap: 12px;
+          padding: 12px 0 16px;
+          position: relative;
+        }
+
+        .nav::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: -1px;
+          height: 1px;
+          background: linear-gradient(90deg, rgba(122, 200, 255, 0), rgba(122, 200, 255, 0.18), rgba(122, 200, 255, 0));
         }
 
         .brand {
-          gap: 12px;
+          gap: 11px;
           min-width: 0;
           flex: 1 1 auto;
+          padding: 10px 12px 10px 10px;
+          border-radius: 20px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+            linear-gradient(135deg, rgba(61, 146, 199, 0.12), rgba(255, 255, 255, 0.02));
+          border: 1px solid rgba(147, 197, 253, 0.12);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 14px 26px rgba(0, 0, 0, 0.14);
         }
 
         .brand img {
-          width: 36px;
-          height: 36px;
-          border: 1px solid rgba(143, 211, 255, 0.22);
+          width: 40px;
+          height: 40px;
+          border: 1px solid rgba(196, 233, 255, 0.44);
+          box-shadow: 0 12px 24px rgba(18, 51, 82, 0.34);
           flex: 0 0 auto;
         }
 
@@ -1760,7 +1782,7 @@
         .brand-copy strong {
           font-size: 15px;
           line-height: 1.08;
-          font-weight: 700;
+          font-weight: 800;
           color: #f4f8ff;
           white-space: nowrap;
           overflow: hidden;
@@ -1768,10 +1790,10 @@
         }
 
         .brand-copy small {
-          font-size: 10px;
+          font-size: 9px;
           line-height: 1.1;
-          letter-spacing: 0.14em;
-          color: rgba(214, 226, 238, 0.72);
+          letter-spacing: 0.22em;
+          color: rgba(228, 238, 248, 0.86);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1780,6 +1802,7 @@
         .brand span {
           font-size: 11px;
           line-height: 1.1;
+          color: rgba(202, 216, 231, 0.7);
         }
 
         main#top {
@@ -1787,7 +1810,7 @@
         }
 
         .nav-actions {
-          gap: 6px;
+          gap: 8px;
           flex: 0 0 auto;
         }
 
@@ -1795,14 +1818,18 @@
           display: inline-flex;
           appearance: none;
           -webkit-appearance: none;
-          width: 40px;
-          height: 40px;
+          width: 42px;
+          height: 42px;
           padding: 0;
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(152, 213, 255, 0.22);
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.06);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+            rgba(255, 255, 255, 0.04);
           color: #eef6ff;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 12px 22px rgba(3, 10, 20, 0.2);
         }
 
         .mobile-nav-toggle,
@@ -1821,8 +1848,8 @@
         .mobile-theme-toggle:focus,
         .mobile-theme-toggle:focus-visible {
           transform: none;
-          background: rgba(255, 255, 255, 0.08);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06));
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 18px rgba(3, 10, 20, 0.18);
           outline: none;
         }
 
@@ -1832,13 +1859,16 @@
 
         .mobile-theme-toggle {
           display: inline-flex;
-          width: 40px !important;
-          height: 40px !important;
+          width: 42px !important;
+          height: 42px !important;
           padding: 0 !important;
-          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          border: 1px solid rgba(152, 213, 255, 0.22) !important;
           border-radius: 999px !important;
-          background: rgba(255, 255, 255, 0.06) !important;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08) !important,
+            0 12px 22px rgba(3, 10, 20, 0.2) !important;
           appearance: none !important;
           -webkit-appearance: none !important;
           justify-content: center !important;
@@ -1856,8 +1886,8 @@
           padding: 0;
           border: 0;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.08);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
           color: inherit;
           transition: transform .28s ease, opacity .24s ease, background .2s ease, box-shadow .2s ease;
         }
@@ -1893,7 +1923,7 @@
 
         .mobile-nav-panel {
           display: none;
-          padding: 10px 0 14px;
+          padding: 14px 0 18px;
           top: calc(100% + 1px);
         }
 
@@ -1903,30 +1933,58 @@
 
         .mobile-nav-panel .shell {
           display: grid;
-          gap: 10px;
+          gap: 12px;
+          padding: 16px;
+          border-radius: 26px;
+          background:
+            linear-gradient(180deg, rgba(16, 37, 59, 0.97), rgba(9, 22, 39, 0.99)),
+            rgba(9, 22, 39, 0.98);
+          border: 1px solid rgba(147, 197, 253, 0.16);
+          box-shadow:
+            0 26px 46px rgba(0, 0, 0, 0.24),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
 
         .mobile-nav-panel a {
           display: block;
-          padding: 12px 14px;
+          padding: 14px 16px;
           border-radius: 16px;
-          background: rgba(20, 40, 63, 0.92);
-          border: 1px solid rgba(117, 168, 219, 0.16);
+          background:
+            linear-gradient(180deg, rgba(23, 51, 78, 0.92), rgba(18, 39, 63, 0.96)),
+            rgba(18, 39, 63, 0.96);
+          border: 1px solid rgba(125, 174, 221, 0.2);
           color: var(--white);
           text-decoration: none;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.05),
+            0 10px 20px rgba(0, 0, 0, 0.08);
+          font-size: 0.93rem;
+          font-weight: 700;
+          letter-spacing: 0.01em;
         }
 
         .mobile-nav-panel a[aria-current="page"] {
-          background: rgba(34, 211, 238, 0.15);
-          color: #d7f6ff;
-          border-color: rgba(125, 211, 252, 0.24);
+          background: linear-gradient(180deg, rgba(17, 76, 97, 0.96), rgba(16, 61, 87, 0.98));
+          color: #effbff;
+          border-color: rgba(124, 218, 255, 0.34);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.06),
+            0 14px 24px rgba(8, 79, 108, 0.2);
         }
 
         .mobile-nav-panel a.cta {
           width: 100%;
           justify-content: center;
-          padding-top: 14px;
-          padding-bottom: 14px;
+          margin-top: 8px;
+          padding-top: 16px;
+          padding-bottom: 16px;
+          background: linear-gradient(135deg, #eaf7ff, #77d6ff 48%, #29a8df);
+          color: #082033;
+          border-color: rgba(186, 230, 253, 0.7);
+          box-shadow: 0 20px 38px rgba(24, 139, 191, 0.3);
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
         }
 
         .shell {
@@ -1960,6 +2018,39 @@
         .brand strong {
           font-size: 0.92rem;
           white-space: normal;
+        }
+
+        body.light .brand {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 248, 251, 0.94));
+          border-color: rgba(15, 23, 42, 0.12);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 14px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        body.light .mobile-nav-panel .shell {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 249, 253, 0.98));
+          border-color: rgba(15, 23, 42, 0.12);
+          box-shadow: 0 24px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        body.light .mobile-nav-panel a {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 247, 251, 0.98));
+          border-color: rgba(15, 23, 42, 0.12);
+          color: #163048;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 16px rgba(15, 23, 42, 0.04);
+        }
+
+        body.light .mobile-nav-panel a[aria-current="page"] {
+          background: linear-gradient(180deg, rgba(219, 244, 255, 0.98), rgba(202, 235, 249, 0.98));
+          color: #0f496d;
+          border-color: rgba(13, 136, 203, 0.24);
+          box-shadow: 0 12px 20px rgba(14, 116, 144, 0.08);
+        }
+
+        body.light .mobile-nav-panel a.cta {
+          background: linear-gradient(135deg, #0d88cb, #0a6ca3);
+          color: #ffffff;
+          border-color: rgba(13, 136, 203, 0.16);
+          box-shadow: 0 18px 30px rgba(14, 116, 144, 0.18);
         }
 
         .brand span {
