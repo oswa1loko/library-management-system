@@ -285,21 +285,24 @@ export default function LandingPage() {
       </div>
 
       <header className="fixed top-0 right-0 left-0 z-[120] border-b border-[#75a8db]/15 bg-[linear-gradient(180deg,rgba(11,26,45,0.97),rgba(7,18,32,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-[14px] dark:border-white/10 md:sticky md:z-50 md:bg-[#081422]/88 md:shadow-none md:backdrop-blur-xl">
-        <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-2.5 px-0 py-3.5 md:gap-3 md:py-4">
-          <a href="/" className={`group flex min-w-0 flex-1 flex-nowrap items-center gap-3.5 md:flex-none md:gap-4 ${focusBase}`}>
+        <nav className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-2.5 px-3 py-3 md:gap-3 md:px-0 md:py-4">
+          <a
+            href="/"
+            className={`group flex min-w-0 flex-1 flex-nowrap items-center gap-3 rounded-[1.35rem] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_-18px_rgba(0,0,0,0.42)] md:flex-none md:gap-4 md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none ${focusBase}`}
+          >
             <img
               src="/assets/images/RMLOGO.jfif"
               alt="Regis Marie College logo"
               className="h-11 w-11 rounded-full border border-[rgba(143,211,255,0.24)] object-cover shadow-[0_10px_24px_rgba(8,24,44,0.26)] transition-transform duration-300 group-hover:scale-[1.03] md:h-[54px] md:w-[54px] md:border-cyan-400/40 md:shadow-[0_14px_28px_rgba(34,83,126,0.24)]"
             />
-            <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-116px)]">
-              <p className="truncate text-[0.64rem] leading-none font-semibold uppercase tracking-[0.18em] text-cyan-300/88 [html[data-theme='light']_&]:text-sky-700 md:text-[0.76rem] md:tracking-[0.28em]">
+            <div className="flex min-w-0 shrink flex-col justify-center gap-0.5 max-md:max-w-[calc(100vw-142px)]">
+              <p className="truncate text-[0.6rem] leading-none font-semibold uppercase tracking-[0.2em] text-cyan-300/88 [html[data-theme='light']_&]:text-sky-700 md:text-[0.76rem] md:tracking-[0.28em]">
                 RMC
               </p>
-              <p className="truncate text-[1rem] leading-[1.08] font-semibold tracking-[-0.01em] text-[#f4f8ff] md:text-[1.1rem]">
+              <p className="truncate text-[0.92rem] leading-[1.05] font-semibold tracking-[-0.01em] text-[#f4f8ff] md:text-[1.1rem]">
                 Regis Marie College Library
               </p>
-              <p className="truncate text-[0.72rem] leading-[1.1] text-slate-400 md:text-[0.78rem]">
+              <p className="truncate text-[0.66rem] leading-[1.12] text-slate-400 md:text-[0.78rem]">
                 Learning resources and campus access
               </p>
             </div>
@@ -349,7 +352,7 @@ export default function LandingPage() {
           <div className="flex flex-none items-center gap-1.5 md:hidden">
             <button
               onClick={toggleTheme}
-              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
+              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-[1rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_20px_-16px_rgba(0,0,0,0.5)] transition-all duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_10px_20px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
               aria-label={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
               aria-pressed={isLightTheme}
             >
@@ -359,7 +362,7 @@ export default function LandingPage() {
             </button>
             <button
               onClick={() => setMenuOpen((value) => !value)}
-              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
+              className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-[1rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_20px_-16px_rgba(0,0,0,0.5)] transition-all duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_10px_20px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
               aria-label="Toggle menu"
             >
               {menuOpen ? <X className="h-[18px] w-[18px]" /> : <Menu className="h-[18px] w-[18px]" />}
@@ -368,30 +371,56 @@ export default function LandingPage() {
         </nav>
 
         {menuOpen && (
-          <div className="absolute left-0 right-0 top-full z-[60] border-t border-slate-200/70 bg-white/88 px-3 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#09131c]/96 md:hidden">
-            <div className="mx-auto flex w-full max-w-[1380px] flex-col gap-3">
+          <div className="absolute inset-x-0 top-full z-[60] px-3 pb-4 pt-2 md:hidden">
+            <div className="mx-auto flex w-full max-w-[1380px] flex-col gap-3 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,20,34,0.98),rgba(8,18,30,0.96))] p-3 shadow-[0_24px_44px_-20px_rgba(0,0,0,0.58)] ring-1 ring-cyan-300/8 backdrop-blur-xl [html[data-theme='light']_&]:border-slate-200 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.96))] [html[data-theme='light']_&]:shadow-[0_20px_34px_-18px_rgba(15,23,42,0.16)]">
+              <div className="flex items-start justify-between gap-3 rounded-[1.25rem] border border-white/6 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] px-3.5 py-3 [html[data-theme='light']_&]:border-sky-100 [html[data-theme='light']_&]:bg-[linear-gradient(135deg,rgba(248,252,255,1),rgba(236,245,255,0.96))]">
+                <div className="min-w-0">
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-cyan-300 [html[data-theme='light']_&]:text-sky-700">
+                    Portal Navigation
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white [html[data-theme='light']_&]:text-slate-900">
+                    Explore the school and library sections.
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 rounded-full border border-cyan-300/15 bg-cyan-300/10 px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-cyan-100 [html[data-theme='light']_&]:border-sky-200 [html[data-theme='light']_&]:bg-sky-50 [html[data-theme='light']_&]:text-sky-700">
+                  Mobile
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
               {navLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
                   onClick={(event) => handleNavClick(event, link.href)}
                   aria-current={activeSection === link.label ? "page" : undefined}
-                  className={`rounded-2xl px-3 py-2 text-sm ${focusBase} ${
+                  className={`group flex items-center justify-between rounded-[1rem] border px-3.5 py-3 text-sm font-medium transition-all duration-200 ${focusBase} ${
                     activeSection === link.label
-                      ? "bg-cyan-400/15 font-semibold text-cyan-700 ring-1 ring-cyan-500/20 dark:text-cyan-300"
-                      : "text-slate-700 dark:text-slate-100"
+                      ? "border-cyan-300/20 bg-[linear-gradient(135deg,rgba(50,184,241,0.22),rgba(17,94,137,0.14))] font-semibold text-cyan-100 shadow-[0_14px_28px_-20px_rgba(37,173,235,0.7)] [html[data-theme='light']_&]:border-sky-200 [html[data-theme='light']_&]:bg-[linear-gradient(135deg,rgba(224,242,255,0.95),rgba(236,245,255,0.92))] [html[data-theme='light']_&]:text-sky-800"
+                      : "border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] text-slate-100 hover:border-cyan-300/14 hover:bg-white/[0.08] [html[data-theme='light']_&]:border-slate-200 [html[data-theme='light']_&]:bg-white/80 [html[data-theme='light']_&]:text-slate-700"
                   }`}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  <ArrowRight className={`h-4 w-4 transition-transform duration-200 ${activeSection === link.label ? "translate-x-0 text-cyan-100 [html[data-theme='light']_&]:text-sky-700" : "text-slate-400 group-hover:translate-x-0.5 group-hover:text-cyan-300 [html[data-theme='light']_&]:text-slate-400 [html[data-theme='light']_&]:group-hover:text-sky-600"}`} />
                 </a>
               ))}
+              </div>
+
+              <div className="grid gap-2 rounded-[1.2rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] p-2.5 [html[data-theme='light']_&]:border-slate-200 [html[data-theme='light']_&]:bg-[linear-gradient(180deg,rgba(248,252,255,1),rgba(239,246,255,0.95))]">
               <a
                 href="/loginpage.php"
-                className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#32b8f1,#0ea5e9)] px-4 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_14px_28px_rgba(37,173,235,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-cyan-400 ${focusBase}`}
+                className={`inline-flex min-h-[50px] items-center justify-center gap-2 rounded-[1rem] border border-cyan-200/40 bg-[linear-gradient(135deg,#9be7ff,#32b8f1)] px-4 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#04111d] shadow-[0_18px_30px_-18px_rgba(37,173,235,0.7)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_36px_-18px_rgba(37,173,235,0.8)] ${focusBase}`}
               >
                 <LogIn className="h-4 w-4" />
                 Login
               </a>
+              <a
+                href="/feedback.php"
+                className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[1rem] border border-white/8 bg-white/[0.04] px-4 py-3 text-[0.82rem] font-semibold tracking-[0.02em] text-slate-100 transition-all duration-200 hover:border-cyan-300/14 hover:bg-white/[0.08] [html[data-theme='light']_&]:border-slate-200 [html[data-theme='light']_&]:bg-white [html[data-theme='light']_&]:text-slate-700 ${focusBase}`}
+              >
+                Send Feedback
+              </a>
+              </div>
             </div>
           </div>
         )}
