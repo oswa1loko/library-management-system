@@ -7,10 +7,2901 @@
     <link rel="icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />
     <link rel="shortcut icon" type="image/png" href="/librarymanage/assets/images/regismarielogo.png" />
     <link rel="apple-touch-icon" href="/librarymanage/assets/images/regismarielogo.png" />
-    <script type="module" crossorigin src="/assets/index-WycPuwC6.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-D-Tz-ZsM.css">
+    <style>
+      :root {
+        --bg: #071321;
+        --bg-2: #0b1b2d;
+        --ink: #e9f1fb;
+        --muted: #9caec4;
+        --card: rgba(17, 35, 56, 0.94);
+        --line: rgba(117, 168, 219, 0.16);
+        --brand: #7ac8ff;
+        --brand-2: #b9e7ff;
+        --deep: #0d1b28;
+        --white: #ffffff;
+        --shadow: 0 30px 80px -35px rgba(0, 0, 0, 0.6);
+      }
+
+      body.light {
+        --bg: #ffffff;
+        --bg-2: #ffffff;
+        --ink: #102033;
+        --muted: #5f6f81;
+        --card: rgba(255, 255, 255, 0.96);
+        --line: rgba(15, 23, 42, 0.2);
+        --brand: #0b84c6;
+        --brand-2: #0c6ea8;
+        --deep: #f4f8fb;
+        --shadow: 0 18px 42px -28px rgba(16, 32, 51, 0.18);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Poppins", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          linear-gradient(rgba(7, 19, 33, 0.78), rgba(11, 27, 45, 0.88)),
+          url("/librarymanage/assets/images/awitmo.jfif") center center / cover fixed no-repeat,
+          radial-gradient(circle at top left, rgba(122, 200, 255, 0.12), transparent 26%),
+          radial-gradient(circle at right, rgba(185, 231, 255, 0.08), transparent 22%),
+          linear-gradient(180deg, var(--bg), var(--bg-2));
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at center, rgba(7, 19, 33, 0.18), rgba(7, 19, 33, 0.58)),
+          linear-gradient(180deg, rgba(7, 19, 33, 0.24), rgba(11, 27, 45, 0.52));
+        z-index: -1;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: -3;
+        background: none;
+      }
+
+      @keyframes float-a {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-22px); }
+      }
+
+      @keyframes float-b {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-16px, -18px); }
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(32px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 20px 45px -24px rgba(6, 182, 212, 0.38); }
+        50% { box-shadow: 0 26px 60px -20px rgba(6, 182, 212, 0.55); }
+      }
+
+      .shell {
+        width: min(1380px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(18px);
+        background: rgba(8, 20, 34, 0.9);
+        border-bottom: 1px solid rgba(117, 168, 219, 0.14);
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 18px 0;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: nowrap;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .brand:hover img {
+        transform: scale(1.03);
+      }
+
+      .brand-copy {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        min-width: 0;
+        flex: 0 1 auto;
+      }
+
+      .brand img {
+        width: 54px;
+        height: 54px;
+        border-radius: 999px;
+        object-fit: cover;
+        border: 1px solid rgba(143, 211, 255, 0.24);
+        box-shadow: 0 14px 28px rgba(34, 83, 126, 0.24);
+        transition: transform 0.3s ease;
+      }
+
+      .brand small {
+        display: block;
+        letter-spacing: 0.28em;
+        color: var(--brand-2);
+        font-weight: 700;
+        line-height: 1;
+        font-size: 0.76rem;
+        text-transform: uppercase;
+      }
+
+      .brand strong {
+        display: block;
+        font-size: 1.08rem;
+        line-height: 1.1;
+        letter-spacing: -0.01em;
+      }
+
+      .brand span {
+        display: block;
+        font-size: 0.78rem;
+        line-height: 1;
+        color: #94a9bf;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.03);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .mobile-nav-toggle {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: #eef6ff;
+        font-size: 1rem;
+        appearance: none;
+        -webkit-appearance: none;
+        box-shadow: none;
+        -webkit-tap-highlight-color: transparent;
+        cursor: pointer;
+      }
+
+      .mobile-nav-panel {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 60;
+        border-top: 1px solid rgba(117, 168, 219, 0.14);
+        background: rgba(9, 19, 28, 0.96);
+        backdrop-filter: blur(18px);
+      }
+
+      .theme-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 38px;
+        padding: 6px 10px 6px 8px;
+        border: 1px solid rgba(117, 168, 219, 0.2);
+        border-radius: 999px;
+        background:
+          linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03)),
+          rgba(8,21,38,0.56);
+        color: #eef6ff;
+        font-size: 1rem;
+        font-weight: 700;
+        appearance: none;
+        -webkit-appearance: none;
+        box-shadow: none;
+        -webkit-tap-highlight-color: transparent;
+        cursor: pointer;
+        transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+      }
+
+      .theme-toggle:hover {
+        transform: translateY(-1px);
+        border-color: rgba(143, 211, 255, 0.22);
+      }
+
+      .theme-toggle:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(71,180,255,0.12);
+      }
+
+      .theme-toggle-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        min-height: 28px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+        color: #dbe8ff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        transition: transform .28s ease, background .24s ease, color .24s ease, box-shadow .24s ease;
+      }
+
+      .theme-toggle-icon svg {
+        width: 15px;
+        height: 15px;
+        display: block;
+        transition: transform .28s ease, opacity .24s ease;
+      }
+
+      .mobile-nav-toggle .nav-toggle-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        flex: 0 0 28px;
+      }
+
+      .mobile-nav-toggle .nav-toggle-icon svg,
+      .mobile-theme-toggle .theme-toggle-icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+        flex: 0 0 16px;
+      }
+
+      .mobile-nav-toggle .nav-toggle-icon svg {
+        color: inherit;
+      }
+
+      .theme-toggle-text {
+        min-width: 36px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .01em;
+        transition: transform .28s ease, opacity .24s ease, color .24s ease;
+      }
+
+      .theme-toggle[aria-pressed="true"] .theme-toggle-icon {
+        transform: translateX(2px);
+      }
+
+      .theme-toggle[aria-pressed="false"] .theme-toggle-icon {
+        transform: translateX(-2px);
+      }
+
+      .theme-toggle[aria-pressed="true"] .theme-toggle-icon svg {
+        transform: rotate(8deg);
+      }
+
+      .theme-toggle[aria-pressed="false"] .theme-toggle-icon svg {
+        transform: rotate(-7deg);
+      }
+
+      .theme-toggle[aria-pressed="true"] .theme-toggle-text {
+        transform: translateX(1px);
+      }
+
+      .theme-toggle[aria-pressed="false"] .theme-toggle-text {
+        transform: translateX(-1px);
+      }
+
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+        .mobile-theme-toggle {
+          display: none;
+        }
+
+        .nav-actions .cta {
+          display: none;
+        }
+
+      .nav-links a,
+      .footer-links a {
+        color: var(--muted);
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .nav-links a:hover,
+      .footer-links a:hover {
+        color: var(--brand);
+      }
+
+      .nav-links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 999px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .nav-links a[aria-current="page"] {
+        color: #d7f6ff;
+        background: rgba(34, 211, 238, 0.16);
+        box-shadow: 0 10px 22px rgba(34, 127, 167, 0.18);
+        outline: 1px solid rgba(125, 211, 252, 0.18);
+      }
+
+      .nav-links a:not(.cta):hover {
+        color: var(--white);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 24px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      }
+
+      .cta:hover {
+        transform: translateY(-2px);
+      }
+
+      .nav-actions .cta-primary:hover,
+      .mobile-nav-panel .cta-primary:hover {
+        transform: translateY(-2px) scale(1.01);
+        box-shadow: 0 22px 40px rgba(37, 173, 235, 0.42);
+      }
+
+      .cta-primary {
+        color: #06131f;
+        background: linear-gradient(135deg, #9be7ff, #32b8f1);
+        box-shadow: 0 16px 34px rgba(37, 173, 235, 0.34);
+        border: 1px solid rgba(186, 230, 253, 0.5);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .cta-secondary {
+        color: var(--ink);
+        background: rgba(22, 43, 67, 0.92);
+        border: 1px solid rgba(117, 168, 219, 0.18);
+      }
+
+      body.light {
+        background: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+      }
+
+      body.light::before {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.8));
+      }
+
+      body.light::after {
+        background: none;
+      }
+
+      body.light .topbar {
+        background: rgba(255, 255, 255, 0.98);
+        border-bottom-color: rgba(15, 23, 42, 0.2);
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      body.light .mobile-nav-panel {
+        background: rgba(255, 255, 255, 0.98);
+        border-top-color: rgba(15, 23, 42, 0.2);
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      body.light .mobile-nav-panel a,
+      body.light .cta-secondary,
+      body.light .mobile-nav-toggle,
+      body.light .theme-toggle {
+        background: rgba(255, 255, 255, 0.98);
+        color: #163048;
+        border-color: rgba(15, 23, 42, 0.18);
+      }
+
+      body.light .mobile-theme-toggle {
+        background: rgba(255, 255, 255, 0.98) !important;
+        color: #163048 !important;
+        border-color: rgba(15, 23, 42, 0.18) !important;
+        box-shadow: 0 8px 18px rgba(15,23,42,0.08) !important;
+      }
+
+      body.light .mobile-nav-toggle .nav-toggle-icon {
+        background: linear-gradient(180deg, #f8fafc, #dbe4ef);
+        color: #475569;
+        border: 1px solid rgb(203 213 225);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.98), 0 1px 3px rgba(15,23,42,0.14);
+      }
+
+      body.light .theme-toggle {
+        background: rgba(255, 255, 255, 0.98);
+        color: #163048;
+        border-color: rgba(15, 23, 42, 0.18);
+      }
+
+      body.light .theme-toggle-icon {
+        background: linear-gradient(180deg, #f8fafc, #dbe4ef);
+        color: #475569;
+        border: 1px solid rgb(203 213 225);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.98), 0 1px 3px rgba(15,23,42,0.14);
+      }
+
+      body.light .cta-primary {
+        background: linear-gradient(135deg, #0d88cb, #0a6ca3);
+        border-color: rgba(13, 136, 203, 0.18);
+        color: #ffffff;
+      }
+
+      body.light .brand strong,
+      body.light .hero-copy h1,
+      body.light .section-card h2,
+      body.light .contact-panel h2,
+      body.light .feature-card h3,
+      body.light .program-card h3,
+      body.light .contact-card h3,
+      body.light .stat strong,
+      body.light .footer-row strong {
+        color: #102033;
+      }
+
+      body.light .brand small {
+        color: #0369a1;
+      }
+
+      body.light .nav-links a,
+      body.light .footer-links a,
+      body.light .hero-copy p,
+      body.light .feature-card p,
+      body.light .program-card p,
+      body.light .contact-card p,
+      body.light .section-card p {
+        color: #55697f;
+      }
+
+      body.light .nav-links {
+        border-color: rgba(15, 23, 42, 0.2);
+        background: rgba(15, 23, 42, 0.03);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+      }
+
+      body.light .nav-links a[aria-current="page"] {
+        color: #0d5f8e;
+        background: rgba(34, 211, 238, 0.14);
+        outline-color: rgba(13, 136, 203, 0.18);
+      }
+
+      body.light .nav-links a:not(.cta):hover {
+        color: #0d5f8e;
+        background: rgba(34, 211, 238, 0.12);
+        box-shadow: 0 10px 18px rgba(14, 116, 144, 0.12);
+      }
+
+      body.light .section-card,
+      body.light .contact-panel,
+      body.light .feature-card,
+      body.light .program-card,
+      body.light .contact-card,
+      body.light .hero-frame,
+      body.light .image-panel,
+      body.light .quick-box,
+      body.light .stat {
+        background: rgba(255, 255, 255, 0.98);
+        border-color: rgba(15, 23, 42, 0.18);
+        box-shadow: 0 18px 42px -28px rgba(16, 32, 51, 0.16);
+      }
+
+      body.light .about-banner,
+      body.light .quick-box,
+      body.light .contact-panel {
+        background: #ffffff !important;
+        border-color: rgba(15, 23, 42, 0.2) !important;
+        box-shadow: 0 18px 42px -28px rgba(16, 32, 51, 0.16) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      body.light .about-banner,
+      body.light .about-banner h2,
+      body.light .about-banner p,
+      body.light .quick-box,
+      body.light .quick-box h2,
+      body.light .contact-panel,
+      body.light .contact-panel h2 {
+        color: #102033 !important;
+      }
+
+      body.light .eyebrow {
+        background: #ffffff;
+        color: #0b84c6;
+        border-color: rgba(15, 23, 42, 0.18);
+      }
+
+      body.light .section-note {
+        color: #0b84c6;
+      }
+
+      body.light .hero-stage::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.12));
+        pointer-events: none;
+      }
+
+      body.light .hero-frame,
+      body.light .image-panel,
+      body.light .stat,
+      body.light .feature-card,
+      body.light .program-card,
+      body.light .contact-card,
+      body.light .section-card,
+      body.light .contact-panel,
+      body.light .about-banner,
+      body.light .quick-box {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      body.light .hero-stage {
+        background: #f4f8fb;
+      }
+
+      body.light .hero-caption {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(239, 246, 255, 0.84));
+        border-color: rgba(186, 230, 253, 0.9);
+        box-shadow: 0 18px 34px -26px rgba(14, 116, 144, 0.24);
+        color: #102033;
+      }
+
+      body.light .hero-caption span,
+      body.light .image-chip span,
+      body.light .image-fact span {
+        color: #0369a1;
+      }
+
+      body.light .hero-caption strong,
+      body.light .image-fact strong {
+        color: #102033;
+      }
+
+      body.light .image-chip,
+      body.light .image-fact {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 246, 255, 0.86));
+        border-color: rgba(186, 230, 253, 0.88);
+        color: #163048;
+        box-shadow: 0 16px 30px -26px rgba(14, 116, 144, 0.24);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      body.light .mobile-nav-panel a {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+        border-color: rgba(15, 23, 42, 0.18);
+        color: #163048;
+        box-shadow: 0 12px 22px -22px rgba(15, 23, 42, 0.22);
+      }
+
+      body.light .footer-row {
+        border-top-color: rgba(15, 23, 42, 0.2);
+      }
+
+      body.light .footer-links a {
+        color: #51657c;
+      }
+
+      body.light .footer-links a:hover {
+        color: #0b84c6;
+      }
+
+      main {
+        padding: 42px 0 56px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+        gap: 40px;
+        align-items: center;
+        min-height: calc(100vh - 120px);
+      }
+
+      .hero-copy,
+      .hero-visual,
+      .section-card,
+      .contact-panel,
+      .about-banner {
+        animation: rise 0.8s ease both;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        font-size: 0.73rem;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--brand-2);
+        background: rgba(20, 40, 63, 0.88);
+        border: 1px solid rgba(117, 168, 219, 0.18);
+        margin-bottom: 12px;
+      }
+
+      h1 {
+        margin: 10px 0 0;
+        font-size: clamp(2.8rem, 5.2vw, 5rem);
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .hero-copy p {
+        max-width: 640px;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.75;
+        margin: 18px 0 0;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 26px;
+      }
+
+      .hero-actions .cta-primary {
+        padding: 16px 28px;
+        border-width: 1px;
+        border-style: solid;
+        border-color: rgba(186, 230, 253, 0.45);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        box-shadow: 0 18px 38px rgba(37, 173, 235, 0.34);
+      }
+
+      .hero-actions .cta-primary:hover {
+        transform: translateY(-4px) scale(1.01);
+        box-shadow: 0 24px 46px rgba(37, 173, 235, 0.42);
+      }
+
+      .hero-actions .cta-secondary {
+        border-color: rgba(255, 255, 255, 0.22);
+      }
+
+      body.light .hero-actions .cta-primary {
+        border-color: rgba(125, 211, 252, 0.42);
+        box-shadow: 0 18px 34px rgba(14, 116, 144, 0.18);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 36px;
+      }
+
+      .stat {
+        min-height: 124px;
+        padding: 20px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .stat span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 1rem;
+      }
+
+      .hero-visual {
+        position: relative;
+      }
+
+      .hero-frame {
+        padding: 14px;
+        border-radius: 34px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.12), rgba(8, 18, 30, 0.68));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .hero-stage {
+        position: relative;
+        min-height: 500px;
+        border-radius: 28px;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+        border: 1px solid rgba(59, 130, 246, 0.22);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .hero-stage::before {
+        content: none;
+      }
+
+      .hero-slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transform: scale(1.08);
+        transition: opacity 0.7s ease, transform 0.7s ease;
+        border-radius: 28px;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+      }
+
+      .hero-slide.active {
+        opacity: 1;
+        transform: scale(1);
+        z-index: 1;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+      }
+
+      .hero-slide img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .hero-slide.logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+      }
+
+      .hero-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(13, 27, 40, 0.03), rgba(13, 27, 40, 0.58));
+        z-index: 2;
+      }
+
+      .hero-caption {
+        position: absolute;
+        left: 24px;
+        right: 24px;
+        bottom: 24px;
+        z-index: 4;
+        color: var(--white);
+        padding: 18px 20px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        backdrop-filter: blur(8px);
+      }
+
+      .hero-caption span {
+        display: block;
+        color: var(--brand-2);
+        text-transform: uppercase;
+        letter-spacing: 0.28em;
+        font-size: 0.72rem;
+      }
+
+      .hero-caption strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 1.35rem;
+        line-height: 1.35;
+        max-width: 420px;
+      }
+
+      .feature-grid,
+      .program-grid,
+      .contact-grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      .feature-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 18px;
+      }
+
+      .section {
+        margin-top: 40px;
+      }
+
+      .section-split {
+        display: grid;
+        grid-template-columns: 0.95fr 1.05fr;
+        gap: 28px;
+      }
+
+      .about-banner {
+        padding: 34px;
+        border-radius: 32px;
+        color: var(--white);
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+        box-shadow: 0 28px 70px -28px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .about-banner h2,
+      .section-card h2,
+      .contact-panel h2 {
+        margin: 14px 0 0;
+        font-size: clamp(1.9rem, 3vw, 2.7rem);
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+      }
+
+      .about-banner p,
+      .section-card p,
+      .contact-panel p {
+        line-height: 1.9;
+        color: inherit;
+      }
+
+      .section-card,
+      .contact-panel,
+      .feature-card,
+      .program-card,
+      .contact-card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        box-shadow: var(--shadow);
+        transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .section-card::before,
+      .contact-panel::before,
+      .feature-card::before,
+      .program-card::before,
+      .contact-card::before,
+      .about-banner::before,
+      .quick-box::before,
+      .image-panel::before,
+      .stat::before {
+        content: none;
+      }
+
+      .feature-card::after,
+      .program-card::after,
+      .contact-card::after,
+      .section-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -24px -28px auto;
+        width: 120px;
+        height: 120px;
+        border-radius: 999px;
+        background: rgba(34, 211, 238, 0.08);
+        filter: blur(18px);
+        pointer-events: none;
+      }
+
+      .section-card,
+      .contact-panel {
+        padding: 32px;
+        border-radius: 32px;
+      }
+
+      .feature-card,
+      .program-card,
+      .contact-card {
+        min-height: 100%;
+        padding: 24px;
+        border-radius: 26px;
+      }
+
+      .feature-card {
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+      }
+
+      .program-card {
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+      }
+
+      .contact-card {
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+      }
+
+      .feature-card h3,
+      .program-card h3,
+      .contact-card h3 {
+        margin: 14px 0 0;
+        font-size: 1.1rem;
+      }
+
+      .feature-card p,
+      .program-card p,
+      .contact-card p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.8;
+      }
+
+      .symbol {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(34, 211, 238, 0.2), rgba(96, 165, 250, 0.14));
+        border: 1px solid rgba(167, 243, 255, 0.14);
+        color: #c9f7ff;
+        font-size: 1.35rem;
+        box-shadow: 0 10px 24px -14px rgba(34, 211, 238, 0.55);
+      }
+
+      body.light .symbol {
+        background: linear-gradient(145deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.12));
+        border-color: rgba(14, 116, 144, 0.16);
+        color: #0f5f79;
+        box-shadow: 0 12px 24px -16px rgba(14, 165, 233, 0.32);
+      }
+
+      .symbol svg {
+        width: 22px;
+        height: 22px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.8;
+      }
+
+      .team-showcase .team-intro-card h2 {
+        max-width: 14ch;
+        font-size: 2rem;
+      }
+
+      .team-summary-card {
+        margin-top: 24px;
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(186, 230, 253, 0.12);
+        background: linear-gradient(180deg, rgba(11, 25, 39, 0.78), rgba(7, 18, 30, 0.92));
+        box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.5);
+      }
+
+      .team-summary-note {
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #67e8f9;
+      }
+
+      .team-summary-card p {
+        margin-top: 12px;
+        color: rgba(226, 232, 240, 0.92);
+      }
+
+      .team-summary-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .team-summary-tags span {
+        display: inline-flex;
+        border-radius: 999px;
+        border: 1px solid rgba(186, 230, 253, 0.18);
+        background: rgba(186, 230, 253, 0.1);
+        padding: 6px 12px;
+        color: #d8f2ff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      body.light .team-summary-card {
+        border-color: rgba(186, 230, 253, 0.9);
+        background: linear-gradient(180deg, rgba(248, 252, 255, 0.98), rgba(232, 244, 255, 0.94));
+        box-shadow: 0 18px 30px -24px rgba(14, 116, 144, 0.2);
+      }
+
+      body.light .team-summary-note {
+        color: #0369a1;
+      }
+
+      body.light .team-summary-card p {
+        color: #475569;
+      }
+
+      body.light .team-summary-tags span {
+        border-color: #bae6fd;
+        background: #f0f9ff;
+        color: #075985;
+      }
+
+      .team-member-body p {
+        max-width: 62ch;
+      }
+
+      @media (min-width: 1180px) {
+        .team-showcase {
+          grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+          align-items: stretch;
+        }
+
+        .team-showcase .team-intro-card {
+          display: flex;
+          height: 100%;
+          flex-direction: column;
+          padding: 30px;
+        }
+
+        .team-showcase .team-member-grid {
+          gap: 18px;
+        }
+
+        .team-showcase .team-member-card {
+          display: grid;
+          min-height: 296px;
+          grid-template-columns: 220px minmax(0, 1fr);
+          align-items: stretch;
+        }
+
+        .team-showcase .team-member-media {
+          height: 100% !important;
+          min-height: 296px;
+        }
+
+        .team-showcase .team-member-body {
+          padding: 28px !important;
+        }
+
+        .team-showcase .team-summary-card {
+          margin-top: auto;
+        }
+      }
+
+      .section-note {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.24em;
+        color: var(--brand-2);
+      }
+
+      .snapshot {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 24px;
+        margin-top: 32px;
+      }
+
+      .quick-box {
+        padding: 30px;
+        border-radius: 32px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+        color: var(--white);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 28px 70px -28px rgba(16, 32, 45, 0.62);
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .quick-media {
+        position: relative;
+        overflow: hidden;
+        min-height: 180px;
+        border-radius: 24px;
+        margin-bottom: 22px;
+        background: #0b1623;
+      }
+
+      .quick-media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .quick-media::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.22), rgba(8, 18, 30, 0.82));
+      }
+
+      .quick-media-label {
+        position: absolute;
+        left: 18px;
+        right: 18px;
+        bottom: 16px;
+        z-index: 1;
+        color: var(--white);
+      }
+
+      .quick-media-label strong {
+        display: block;
+        font-size: 1rem;
+        line-height: 1.45;
+      }
+
+      .builder-stage {
+        position: relative;
+        overflow: hidden;
+        min-height: 420px;
+        border-radius: 32px;
+        padding: 12px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.12), rgba(8, 18, 30, 0.68));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .builder-photo {
+        position: absolute;
+        inset: 12px;
+        border-radius: 26px;
+        overflow: hidden;
+        opacity: 0;
+        transform: scale(1.08);
+        transition: opacity 0.7s ease, transform 0.7s ease;
+      }
+
+      .builder-photo.active {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .builder-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: radial-gradient(circle at top, rgba(255, 255, 255, 0.12), rgba(8, 18, 30, 0.92));
+        padding: 24px;
+      }
+
+      .builder-photo::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(9, 19, 28, 0.06), rgba(9, 19, 28, 0.74));
+      }
+
+      .builder-caption {
+        position: absolute;
+        left: 34px;
+        right: 34px;
+        bottom: 30px;
+        z-index: 2;
+        color: var(--white);
+      }
+
+      .builder-caption span {
+        display: block;
+        color: var(--brand-2);
+        text-transform: uppercase;
+        letter-spacing: 0.24em;
+        font-size: 0.72rem;
+      }
+
+      .builder-caption strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 1.4rem;
+        line-height: 1.25;
+      }
+
+      .builder-caption p {
+        margin-top: 10px;
+        max-width: 420px;
+        color: rgba(226, 232, 240, 0.92);
+        line-height: 1.7;
+      }
+
+      .mobile-hide-copy {
+        display: block;
+      }
+
+      .quick-box::after {
+        content: "";
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        right: -36px;
+        top: -36px;
+        border-radius: 999px;
+        background: rgba(122, 200, 255, 0.1);
+        filter: blur(16px);
+      }
+
+      .quick-links {
+        display: grid;
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .quick-links a {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        text-decoration: none;
+        color: var(--white);
+        padding: 16px 18px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.1), rgba(8, 18, 30, 0.68));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+      }
+
+      .quick-links a:hover {
+        border-color: rgba(185, 231, 255, 0.32);
+        transform: translateX(4px);
+      }
+
+      .quick-links a span:last-child {
+        color: #c9f7ff;
+        transition: transform 0.2s ease, color 0.2s ease;
+      }
+
+      .quick-links a:hover span:last-child {
+        transform: translateX(4px);
+      }
+
+      body.light .quick-links a {
+        color: #163048;
+        background: linear-gradient(180deg, rgba(240, 249, 255, 0.96), rgba(224, 242, 254, 0.92));
+        border-color: rgba(186, 230, 253, 0.88);
+        box-shadow: 0 14px 28px -22px rgba(14, 116, 144, 0.28);
+      }
+
+      body.light .quick-links a:hover {
+        border-color: rgba(125, 211, 252, 0.92);
+        background: linear-gradient(180deg, rgba(224, 242, 254, 0.98), rgba(186, 230, 253, 0.96));
+      }
+
+      body.light .quick-links a span:last-child {
+        color: #0284c7;
+      }
+
+      @media (hover: hover) {
+        .stat:hover,
+        .section-card:hover,
+        .feature-card:hover,
+        .program-card:hover,
+        .contact-card:hover,
+        .quick-box:hover,
+        .image-panel:hover {
+          transform: translateY(-4px);
+          border-color: rgba(152, 217, 255, 0.28);
+          box-shadow: 0 26px 60px -28px rgba(18, 54, 84, 0.82);
+        }
+      }
+
+      .library-grid {
+        display: grid;
+        grid-template-columns: 0.92fr 1.08fr;
+        gap: 24px;
+        margin-top: 32px;
+      }
+
+      .image-panel {
+        overflow: hidden;
+        border-radius: 32px;
+        padding: 12px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .image-panel .image-wrap {
+        position: relative;
+        min-height: 410px;
+        border-radius: 26px;
+        overflow: hidden;
+      }
+
+      .image-panel img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .image-panel .image-copy {
+        position: absolute;
+        left: 22px;
+        right: 22px;
+        bottom: 22px;
+        color: var(--white);
+        padding: 18px 20px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.1), rgba(8, 18, 30, 0.76));
+        border: 1px solid rgba(117, 168, 219, 0.12);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      }
+
+      .image-panel .image-copy h3,
+      .image-panel .image-copy p {
+        text-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+      }
+
+      body.light .image-panel .image-copy {
+        color: #102033;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(239, 246, 255, 0.82));
+        border-color: rgba(186, 230, 253, 0.86);
+        box-shadow: 0 18px 32px -24px rgba(14, 116, 144, 0.22);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      body.light .image-panel .image-copy h3,
+      body.light .image-panel .image-copy p {
+        text-shadow: none;
+      }
+
+      body.light .image-panel .image-copy .section-note {
+        color: #0369a1 !important;
+      }
+
+      .image-panel .course-tags {
+        display: grid;
+        gap: 10px;
+        margin-top: 28px;
+        padding: 0 8px 10px;
+      }
+
+      .image-panel .course-tags.course-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .image-panel .course-card {
+        padding: 14px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.18), rgba(8, 18, 30, 0.72));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .image-panel .course-card strong {
+        display: block;
+        color: rgba(240, 249, 255, 0.96);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .image-panel .course-card p {
+        margin-top: 8px;
+        color: rgba(226, 232, 240, 0.9);
+        font-size: 0.82rem;
+        line-height: 1.55;
+        text-shadow: none;
+      }
+
+      body.light .image-panel .course-card {
+        background: linear-gradient(180deg, rgba(248, 252, 255, 0.98), rgba(232, 244, 255, 0.94));
+        border-color: rgba(224, 242, 254, 0.96);
+        box-shadow: 0 16px 28px -24px rgba(14, 116, 144, 0.24);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      body.light .image-panel .course-card strong {
+        color: #0f3b5f;
+      }
+
+      body.light .image-panel .course-card p {
+        color: #5b6b80;
+      }
+
+      .image-chip {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.18), rgba(8, 18, 30, 0.72));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        color: var(--white);
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .image-facts {
+        position: absolute;
+        right: 18px;
+        top: 18px;
+        z-index: 2;
+        display: grid;
+        gap: 10px;
+        width: min(220px, calc(100% - 36px));
+      }
+
+      .image-fact {
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.18), rgba(8, 18, 30, 0.72));
+        border: 1px solid rgba(117, 168, 219, 0.14);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .image-fact span {
+        display: block;
+        color: var(--brand-2);
+        font-size: 0.68rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .image-fact strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--white);
+        font-size: 0.95rem;
+        line-height: 1.45;
+      }
+
+      .contact-panel {
+        margin-top: 32px;
+        background: linear-gradient(180deg, rgba(8, 18, 30, 0.14), rgba(8, 18, 30, 0.82));
+      }
+
+      .contact-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      footer {
+        padding: 24px 0 40px;
+        border-top: 1px solid rgba(117, 168, 219, 0.14);
+      }
+
+      .footer-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .footer-links {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+
+      .hero-copy,
+      .hero-visual,
+      .mobile-stats,
+      .section-card,
+      .about-banner,
+      .contact-panel,
+      .quick-box,
+      .image-panel {
+        min-width: 0;
+      }
+
+      .mobile-stats {
+        display: none;
+      }
+
+      .hero-copy h1 {
+        max-width: 13ch;
+      }
+
+      .about-banner h2,
+      .section-card h2,
+      .contact-panel h2 {
+        max-width: 14ch;
+      }
+
+      @media (max-width: 980px) {
+        .shell {
+          width: min(100%, calc(100% - 24px));
+        }
+
+        .hero,
+        .section-split,
+        .snapshot,
+        .library-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .feature-grid,
+        .program-grid,
+        .contact-grid,
+        .stats {
+          grid-template-columns: 1fr;
+        }
+
+        .nav {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .hero {
+          min-height: auto;
+          padding-top: 6px;
+        }
+
+        .hero-stage,
+        .image-panel .image-wrap {
+          min-height: 300px;
+        }
+
+        .footer-row {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .hero-copy h1 {
+          max-width: 14ch;
+        }
+      }
+
+      @media (max-width: 767px) {
+        body {
+          background: linear-gradient(180deg, #071321 0%, #0a1a2b 52%, #0d2136 100%);
+        }
+
+        body::before {
+          background:
+            radial-gradient(circle at top, rgba(122, 200, 255, 0.06), rgba(7, 19, 33, 0.76)),
+            linear-gradient(180deg, rgba(7, 19, 33, 0.18), rgba(11, 27, 45, 0.66));
+        }
+
+        body::after {
+          background: url("/librarymanage/assets/images/awitmo.jfif") center top / cover no-repeat;
+          opacity: 0.28;
+        }
+
+        body.light {
+          background: linear-gradient(180deg, #ffffff 0%, #ffffff 100%) !important;
+        }
+
+        body.light::before {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.88)) !important;
+        }
+
+        body.light::after {
+          background: none !important;
+          opacity: 0 !important;
+        }
+
+        .nav-links {
+          display: none;
+        }
+
+        .hero-frame {
+          padding: 10px;
+          border-radius: 28px;
+        }
+
+        .hero-stage {
+          border-radius: 22px;
+        }
+
+        .hero-slide img {
+          object-position: center 28%;
+        }
+
+        .hero-caption {
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          padding: 0;
+          border-radius: 0;
+          background: transparent;
+          border: 0;
+          backdrop-filter: none;
+        }
+
+        .hero-caption span {
+          font-size: 0.58rem;
+          letter-spacing: 0.2em;
+        }
+
+        .hero-caption strong {
+          margin-top: 8px;
+          max-width: none;
+          font-size: 1rem;
+          line-height: 1.4;
+        }
+
+        .hero-stage .hero-caption {
+          display: block;
+        }
+
+        .hero-mobile-caption {
+          display: none;
+        }
+
+        .hero-mobile-caption span {
+          display: block;
+          font-size: 0.58rem;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          color: var(--brand-2);
+        }
+
+        .hero-mobile-caption strong {
+          display: block;
+          margin-top: 8px;
+          font-size: 1rem;
+          line-height: 1.4;
+          color: var(--white);
+        }
+
+        .shell {
+          width: min(1380px, calc(100% - 28px));
+        }
+
+        .topbar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 120;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          background:
+            linear-gradient(180deg, rgba(11, 26, 45, 0.97), rgba(7, 18, 32, 0.96)),
+            rgba(7, 18, 32, 0.96);
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        }
+
+        .nav {
+          gap: 10px;
+          padding: 14px 0;
+        }
+
+        .brand {
+          gap: 12px;
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+
+        .brand img {
+          width: 36px;
+          height: 36px;
+          border: 1px solid rgba(143, 211, 255, 0.22);
+          flex: 0 0 auto;
+        }
+
+        .brand-copy {
+          gap: 3px;
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+
+        .brand-copy strong {
+          font-size: 15px;
+          line-height: 1.08;
+          font-weight: 700;
+          color: #f4f8ff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .brand-copy small {
+          font-size: 10px;
+          line-height: 1.1;
+          letter-spacing: 0.14em;
+          color: rgba(214, 226, 238, 0.72);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .brand span {
+          font-size: 11px;
+          line-height: 1.1;
+        }
+
+        main#top {
+          padding-top: 72px;
+        }
+
+        .nav-actions {
+          gap: 6px;
+          flex: 0 0 auto;
+        }
+
+        .mobile-nav-toggle {
+          display: inline-flex;
+          appearance: none;
+          -webkit-appearance: none;
+          width: 40px;
+          height: 40px;
+          padding: 0;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.06);
+          color: #eef6ff;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .mobile-nav-toggle,
+        .mobile-theme-toggle,
+        .mobile-nav-panel a,
+        .brand {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .mobile-nav-toggle:hover,
+        .mobile-nav-toggle:active,
+        .mobile-nav-toggle:focus,
+        .mobile-nav-toggle:focus-visible,
+        .mobile-theme-toggle:hover,
+        .mobile-theme-toggle:active,
+        .mobile-theme-toggle:focus,
+        .mobile-theme-toggle:focus-visible {
+          transform: none;
+          background: rgba(255, 255, 255, 0.08);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          outline: none;
+        }
+
+        .desktop-theme-toggle {
+          display: none;
+        }
+
+        .mobile-theme-toggle {
+          display: inline-flex;
+          width: 40px !important;
+          height: 40px !important;
+          padding: 0 !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          border-radius: 999px !important;
+          background: rgba(255, 255, 255, 0.06) !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+          appearance: none !important;
+          -webkit-appearance: none !important;
+          justify-content: center !important;
+          gap: 0 !important;
+        }
+
+        .mobile-theme-toggle .theme-toggle-text {
+          display: none !important;
+        }
+
+        .mobile-theme-toggle .theme-toggle-icon {
+          width: 28px;
+          height: 28px;
+          min-width: 28px;
+          padding: 0;
+          border: 0;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          color: inherit;
+          transition: transform .28s ease, opacity .24s ease, background .2s ease, box-shadow .2s ease;
+        }
+
+        .mobile-theme-toggle .theme-toggle-icon svg {
+          width: 16px;
+          height: 16px;
+        }
+
+        .mobile-theme-toggle[aria-pressed="true"] .theme-toggle-icon {
+          transform: translateX(1px) rotate(8deg);
+        }
+
+        .mobile-theme-toggle[aria-pressed="false"] .theme-toggle-icon {
+          transform: translateX(-1px) rotate(-7deg);
+        }
+
+        body.light .mobile-theme-toggle .theme-toggle-icon {
+          background: linear-gradient(180deg, #f3f6fa, #d7e0ea);
+          color: #475569;
+          border: 1px solid rgb(203 213 225);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.98), 0 0 0 1px rgba(255,255,255,0.9), 0 1px 3px rgba(15,23,42,0.16);
+        }
+
+        .mobile-nav-panel a:hover,
+        .mobile-nav-panel a:active,
+        .mobile-nav-panel a:focus,
+        .mobile-nav-panel a:focus-visible {
+          background: transparent;
+          box-shadow: none;
+          outline: none;
+        }
+
+        .mobile-nav-panel {
+          display: none;
+          padding: 10px 0 14px;
+          top: calc(100% + 1px);
+        }
+
+        .mobile-nav-panel.open {
+          display: block;
+        }
+
+        .mobile-nav-panel .shell {
+          display: grid;
+          gap: 10px;
+        }
+
+        .mobile-nav-panel a {
+          display: block;
+          padding: 12px 14px;
+          border-radius: 16px;
+          background: rgba(20, 40, 63, 0.92);
+          border: 1px solid rgba(117, 168, 219, 0.16);
+          color: var(--white);
+          text-decoration: none;
+        }
+
+        .mobile-nav-panel a[aria-current="page"] {
+          background: rgba(34, 211, 238, 0.15);
+          color: #d7f6ff;
+          border-color: rgba(125, 211, 252, 0.24);
+        }
+
+        .mobile-nav-panel a.cta {
+          width: 100%;
+          justify-content: center;
+          padding-top: 14px;
+          padding-bottom: 14px;
+        }
+
+        .shell {
+          width: min(100%, calc(100% - 18px));
+        }
+
+        .nav {
+          gap: 14px;
+          padding: 14px 0;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .brand {
+          gap: 12px;
+          flex-wrap: nowrap;
+          align-items: center;
+          max-width: calc(100% - 56px);
+        }
+
+        .brand img {
+          width: 42px;
+          height: 42px;
+        }
+
+        .brand small {
+          letter-spacing: 0.16em;
+          font-size: 0.68rem;
+        }
+
+        .brand strong {
+          font-size: 0.92rem;
+          white-space: normal;
+        }
+
+        .brand span {
+          font-size: 0.69rem;
+        }
+
+        main {
+          padding: 24px 0 42px;
+        }
+
+        .hero {
+          gap: 18px;
+        }
+
+        .hero-copy {
+          order: 1;
+        }
+
+        .hero-visual {
+          order: 2;
+        }
+
+        .eyebrow {
+          margin-bottom: 16px;
+          padding: 10px 15px;
+          font-size: 0.64rem;
+          letter-spacing: 0.2em;
+        }
+
+        .desktop-stats {
+          display: none;
+        }
+
+        .mobile-stats {
+          display: grid;
+          gap: 10px;
+          margin-top: 16px;
+        }
+
+        h1 {
+          margin-top: 0;
+          max-width: 12.8ch;
+          font-size: 1.72rem;
+          line-height: 1.1;
+          letter-spacing: -0.035em;
+        }
+
+        .hero-copy p {
+          max-width: 33ch;
+          font-size: 0.95rem;
+          line-height: 1.8;
+          margin-top: 16px;
+        }
+
+        .hero-actions {
+          gap: 8px;
+          margin-top: 18px;
+        }
+
+        .hero-actions .cta,
+        .nav-links .cta {
+          width: 100%;
+        }
+
+        .stats {
+          gap: 10px;
+          margin-top: 18px;
+        }
+
+        .stat,
+        .feature-card,
+        .program-card,
+        .contact-card {
+          min-height: unset;
+        }
+
+        .hero-frame,
+        .section-card,
+        .about-banner,
+        .contact-panel,
+        .quick-box {
+          border-radius: 24px;
+        }
+
+        .section-card,
+        .contact-panel,
+        .about-banner,
+        .quick-box {
+          padding: 18px;
+        }
+
+        .hero-stage,
+        .image-panel .image-wrap {
+          min-height: 230px;
+        }
+
+        .image-facts {
+          display: none;
+        }
+
+        .image-chip {
+          display: none;
+        }
+
+        .image-panel .course-tags.course-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-caption {
+          left: 14px;
+          right: 14px;
+          bottom: 14px;
+        }
+
+        .hero-caption strong {
+          font-size: 0.96rem;
+          max-width: 100%;
+        }
+
+        .hero-caption span {
+          font-size: 0.62rem;
+          letter-spacing: 0.22em;
+        }
+
+        .feature-grid {
+          margin-top: 10px;
+        }
+
+        .feature-grid,
+        .program-grid,
+        .contact-grid,
+        .stats {
+          grid-template-columns: 1fr;
+        }
+
+        .mobile-hide-copy {
+          display: none;
+        }
+
+        .snapshot,
+        .library-grid,
+        .section-split {
+          gap: 14px;
+          margin-top: 16px;
+        }
+
+        .contact-panel {
+          margin-top: 16px;
+        }
+
+        .image-panel .image-copy,
+        .hero-caption {
+          font-size: 0.92rem;
+        }
+
+        .eyebrow {
+          padding: 8px 12px;
+          font-size: 0.62rem;
+          letter-spacing: 0.18em;
+        }
+
+        .feature-card p,
+        .program-card p,
+        .contact-card p,
+        .about-banner p,
+        .section-card p,
+        .contact-panel p {
+          line-height: 1.65;
+        }
+
+        #about {
+          order: 3;
+        }
+
+        .snapshot {
+          order: 5;
+        }
+      }
+
+      body.light,
+      body.light::before,
+      body.light::after {
+        background-image: none !important;
+      }
+
+      body.light {
+        background: #ffffff !important;
+      }
+
+      body.light::before {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.92)) !important;
+      }
+
+      body.light::after {
+        opacity: 0 !important;
+      }
+
+      body.light .hero-overlay,
+      body.light .image-copy,
+      body.light .hero-caption {
+        background-image: none !important;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <header class="topbar">
+      <div class="shell nav">
+        <a class="brand" href="/librarymanage/">
+          <img src="/librarymanage/assets/images/RMLOGO.jfif" alt="Regis Marie College logo" />
+          <div class="brand-copy">
+            <small>RMC</small>
+            <strong>Regis Marie College Library</strong>
+            <span>Learning resources and campus access</span>
+          </div>
+        </a>
+
+        <nav class="nav-links">
+          <a href="#top" aria-current="page">Home</a>
+          <a href="#about">About</a>
+          <a href="#library">Library</a>
+          <a href="#contact">Contact</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a class="cta cta-primary" href="/librarymanage/loginpage.php">Login</a>
+          <button class="theme-toggle desktop-theme-toggle" id="themeToggleDesktop" aria-label="Switch to light mode">
+            <span class="theme-toggle-icon" aria-hidden="true"></span>
+            <span class="theme-toggle-text">Dark</span>
+          </button>
+          <button class="theme-toggle mobile-theme-toggle" id="themeToggleMobile" aria-label="Switch to light mode">
+            <span class="theme-toggle-icon" aria-hidden="true"></span>
+            <span class="theme-toggle-text">Dark</span>
+          </button>
+          <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle menu" aria-expanded="false"><span class="nav-toggle-icon" aria-hidden="true"></span></button>
+        </div>
+      </div>
+
+      <div class="mobile-nav-panel" id="mobileNavPanel">
+        <div class="shell">
+          <a href="#top" aria-current="page">Home</a>
+          <a href="#about">About</a>
+          <a href="#library">Library</a>
+          <a href="#contact">Contact</a>
+          <a class="cta cta-primary" href="/librarymanage/loginpage.php">Login</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="shell hero">
+        <div class="hero-copy">
+          <div class="eyebrow">Home of Educators</div>
+          <h1>Regis Marie College Library Management System for simpler access, borrowing, and support.</h1>
+          <p>
+            This homepage now presents the library system as part of the school experience, with a more polished design,
+            animated visuals, campus imagery, and public-facing information about Regis Marie College in Parañaque.
+          </p>
+
+          <div class="hero-actions">
+            <a class="cta cta-primary" href="/librarymanage/loginpage.php">Enter Library Portal</a>
+            <a class="cta cta-secondary" href="#about">Explore the School</a>
+          </div>
+
+          <div class="stats desktop-stats">
+            <article class="stat">
+              <span>Campus</span>
+              <strong>Parañaque City</strong>
+            </article>
+            <article class="stat">
+              <span>Identity</span>
+              <strong>Home of Educators</strong>
+            </article>
+            <article class="stat">
+              <span>Support Hours</span>
+              <strong>Mon-Sat 8:00 AM-5:00 PM</strong>
+            </article>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="hero-frame">
+            <div class="hero-stage">
+              <div class="hero-slide active">
+                <img src="/librarymanage/assets/images/rmc-wildcats.png" alt="RMC Wildcats graphic" />
+              </div>
+              <div class="hero-slide logo">
+                <img src="/librarymanage/assets/images/pikyur.jpg" alt="Regis Marie College image" />
+              </div>
+              <div class="hero-overlay"></div>
+              <div class="hero-caption">
+                <span>Regis Marie College</span>
+                <strong>Library access designed to feel like part of the school, not a separate tool.</strong>
+              </div>
+            </div>
+            <div class="feature-grid">
+              <article class="feature-card">
+                <div class="symbol">1</div>
+                <h3>Catalog access</h3>
+                <p>Browse titles, check availability, and get to the right materials faster.</p>
+              </article>
+              <article class="feature-card">
+                <div class="symbol">2</div>
+                <h3>Borrow tracking</h3>
+                <p>Keep requests, due dates, and return records organized in one place.</p>
+              </article>
+              <article class="feature-card">
+                <div class="symbol">3</div>
+                <h3>Role-based portal</h3>
+                <p>Built for students, faculty, librarians, and admin users with cleaner access.</p>
+              </article>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section id="about" class="shell section section-split">
+        <article class="about-banner">
+          <div class="eyebrow" style="color:#fff;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);">About the school</div>
+          <h2>Regis Marie College builds learning around values, growth, and academic direction.</h2>
+          <p>
+            Regis Marie College publicly presents itself as a learning community focused on character formation,
+            academic excellence, and practical student development.
+          </p>
+          <p>
+            This landing page brings that identity into the library system so the homepage feels more connected to
+            campus life, not just a login screen.
+          </p>
+          <p class="mobile-hide-copy">
+            By bringing school information, library access, and support details together in one homepage, the system
+            creates a more welcoming first impression for visitors and a more organized starting point for campus users.
+          </p>
+          <p class="mobile-hide-copy">
+            It also helps present the library as an active part of campus life by making important services, records,
+            and school-connected details easier to reach from the moment a user arrives on the page.
+          </p>
+        </article>
+
+        <div class="program-grid">
+          <article class="section-card">
+            <div class="symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"></path>
+                <path d="M9.5 12.5l1.7 1.7 3.3-4"></path>
+              </svg>
+            </div>
+            <h3>Character-centered learning</h3>
+            <p>A school atmosphere designed to support discipline, values, and academic confidence.</p>
+          </article>
+          <article class="section-card">
+            <div class="symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 19.5V5.5A1.5 1.5 0 0 1 5.5 4H20"></path>
+                <path d="M8 8h8"></path>
+                <path d="M8 12h8"></path>
+                <path d="M8 16h5"></path>
+              </svg>
+            </div>
+            <h3>Accessible quality education</h3>
+            <p>Public school information highlights a student-focused and practical learning approach in Parañaque.</p>
+          </article>
+          <article class="section-card">
+            <div class="symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 4h8a2 2 0 0 1 2 2v11"></path>
+                <path d="M7 20h10a2 2 0 0 0 2-2V9"></path>
+                <path d="M7 4a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h10"></path>
+                <path d="M9 9h6"></path>
+              </svg>
+            </div>
+            <h3>Library-supported study flow</h3>
+            <p>The portal complements the school by connecting search, borrowing, returns, and support in one experience.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell mobile-stats">
+        <article class="stat">
+          <span>Campus</span>
+          <strong>Parañaque City</strong>
+        </article>
+        <article class="stat">
+          <span>Identity</span>
+          <strong>Home of Educators</strong>
+        </article>
+        <article class="stat">
+          <span>Support Hours</span>
+          <strong>Mon-Sat 8:00 AM-5:00 PM</strong>
+        </article>
+      </section>
+
+      <section class="shell snapshot">
+        <article class="section-card">
+          <div class="section-note">School snapshot</div>
+          <h2>A landing page that feels closer to the school brand.</h2>
+          <div class="program-grid" style="margin-top:22px;">
+            <article class="program-card">
+              <div class="symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 19.5V5.5A1.5 1.5 0 0 1 5.5 4H20"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </div>
+              <h3>Basic Education</h3>
+              <p>Supports a stronger introduction to the school environment and student learning journey.</p>
+            </article>
+            <article class="program-card">
+              <div class="symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 10.5 12 5l9 5.5"></path>
+                  <path d="M6 12.5V16"></path>
+                  <path d="M12 12.5v6"></path>
+                  <path d="M18 12.5V16"></path>
+                  <path d="M8 19h8"></path>
+                </svg>
+              </div>
+              <h3>College Readiness</h3>
+              <p>Highlights academic excellence, practical skills, and preparation for the next stage.</p>
+            </article>
+            <article class="program-card">
+              <div class="symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M16 19v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="10" cy="7" r="3"></circle>
+                  <path d="M20 19v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 4.13a3 3 0 0 1 0 5.74"></path>
+                </svg>
+              </div>
+              <h3>Student Services</h3>
+              <p>The library system supports campus operations with better visibility and organized records.</p>
+            </article>
+          </div>
+        </article>
+
+        <aside class="quick-box">
+          <div class="quick-media">
+            <img src="/librarymanage/assets/images/MODERN COVER WEBSITE (2).png" alt="Regis Marie College promotional cover" />
+            <div class="quick-media-label">
+              <strong>A stronger first impression for visitors through a more polished school-centered landing page.</strong>
+            </div>
+          </div>
+          <div class="section-note" style="color:#67e8f9;">Quick access</div>
+          <h2 style="margin-top:12px;">Start with the portal, school page, and support links visitors need most.</h2>
+          <div class="quick-links">
+            <a href="/librarymanage/loginpage.php"><span>Open Library Portal</span><span>&rarr;</span></a>
+            <a href="https://www.regismariecollege.com/"><span>Visit Official School Page</span><span>&rarr;</span></a>
+            <a href="#contact"><span>Go to Contact Details</span><span>&rarr;</span></a>
+            <a href="/librarymanage/feedback.php"><span>Send Feedback</span><span>&rarr;</span></a>
+          </div>
+        </aside>
+      </section>
+
+      <section id="library" class="shell library-grid">
+        <article class="image-panel">
+          <div class="image-wrap">
+              <img src="/librarymanage/assets/images/rmc-logo.jpg" alt="Regis Marie College logo" />
+            <div class="hero-overlay"></div>
+            <div class="image-copy">
+              <div class="section-note" style="color:#67e8f9;">Offered course</div>
+              <h3 style="margin:10px 0 0;font-size:1.45rem;">Programs, student growth, and school identity can be introduced in one stronger visual section.</h3>
+            </div>
+          </div>
+          <div class="course-tags course-grid">
+            <div class="course-card">
+              <strong>BSCS</strong>
+              <p>Focuses on computing, programming, and problem-solving skills for digital systems.</p>
+            </div>
+            <div class="course-card">
+              <strong>BSOA</strong>
+              <p>Supports office administration, organization, communication, and practical business tasks.</p>
+            </div>
+            <div class="course-card">
+              <strong>BSED</strong>
+              <p>Prepares future educators through training in teaching, learning strategies, and student guidance.</p>
+            </div>
+            <div class="course-card">
+              <strong>Certificate of Proficiency</strong>
+              <p>Offers practical training that helps learners develop focused skills for specific career-related tasks.</p>
+            </div>
+            <div class="course-card">
+              <strong>College Readiness</strong>
+              <p>Helps learners prepare for higher study with stronger academic direction and practical readiness.</p>
+            </div>
+            <div class="course-card">
+              <strong>Student Services</strong>
+              <p>Connects students to organized support, records, and campus-related academic assistance.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="section-card">
+          <div class="section-note">Library portal</div>
+          <h2>Animated sections, stronger imagery, and clearer school information.</h2>
+          <p>
+            The live landing page now uses floating accents, reveal motion, large photo sections, richer cards,
+            and school-related copy so the homepage feels more modern and welcoming.
+          </p>
+          <div class="program-grid" style="margin-top:22px;">
+            <article class="program-card">
+              <div class="symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 19.5V5.5A1.5 1.5 0 0 1 5.5 4H20"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </div>
+              <h3>Catalog access</h3>
+              <p>Search titles and availability with fewer clicks.</p>
+            </article>
+            <article class="program-card">
+              <div class="symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 4h8a2 2 0 0 1 2 2v11"></path>
+                  <path d="M7 20h10a2 2 0 0 0 2-2V9"></path>
+                  <path d="M7 4a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h10"></path>
+                  <path d="M9 9h6"></path>
+                </svg>
+              </div>
+              <h3>Borrow monitoring</h3>
+              <p>Track requests, due dates, and returns in one place.</p>
+            </article>
+            <article class="program-card">
+              <div class="symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M16 19v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="10" cy="7" r="3"></circle>
+                  <path d="M20 19v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 4.13a3 3 0 0 1 0 5.74"></path>
+                </svg>
+              </div>
+              <h3>Multi-role portal</h3>
+              <p>Built for admin, faculty, students, and librarians.</p>
+            </article>
+          </div>
+        </article>
+      </section>
+
+      <section class="shell snapshot team-showcase" style="margin-top:24px;">
+        <article class="section-card team-intro-card">
+          <div class="section-note">Development Team</div>
+          <h2>Built by the development team behind the Regis Marie College Library Management System.</h2>
+          <p>
+            This project was designed and developed to support library operations through a more organized and user-friendly digital platform.
+          </p>
+          <p>
+            The team contributed across development, system analysis, interface design, and documentation to deliver a school-aligned solution for catalog access, borrowing, notifications, and record monitoring.
+          </p>
+          <p>
+            The finished system reflects a shared effort to make daily library processes easier to manage for administrators, librarians, students, and faculty members.
+          </p>
+          <p>
+            Beyond implementation, the team also focused on presentation quality, usability, and workflow clarity so the platform would be practical for deployment and strong enough for academic presentation.
+          </p>
+          <div class="team-summary-card">
+            <div class="team-summary-note">Project Summary</div>
+            <p>
+              A multi-role library platform built for catalog browsing, borrowing workflows, return monitoring, penalties, and school-aligned user access.
+            </p>
+            <div class="team-summary-tags">
+              <span>Admin</span>
+              <span>Librarian</span>
+              <span>Student</span>
+              <span>Faculty</span>
+            </div>
+          </div>
+        </article>
+
+        <div class="program-grid team-member-grid">
+          <article class="program-card team-member-card" style="padding:0;overflow:hidden;border:1px solid rgba(125,211,252,0.2);background:linear-gradient(135deg,rgba(7,16,28,0.96),rgba(10,24,40,0.9) 48%,rgba(8,18,30,0.96));">
+            <div class="team-member-media" style="height:240px;overflow:hidden;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;">
+              <img src="/librarymanage/assets/images/IMG_5307.jpeg" alt="Stromiles Vidal" style="width:100%;height:100%;object-fit:cover;object-position:center 40%;">
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,18,0.06),rgba(5,10,18,0.16) 38%,rgba(5,10,18,0.68));"></div>
+            </div>
+            <div class="team-member-body" style="padding:24px;position:relative;">
+              <div class="section-note" style="font-weight:700;letter-spacing:0.26em;color:#67e8f9;">Development Team</div>
+              <h3 style="margin-top:10px;color:#ffffff;font-size:1.4rem;letter-spacing:-0.02em;">Stromiles Vidal</h3>
+              <div style="margin-top:12px;display:inline-flex;border:1px solid rgba(186,230,253,0.35);background:rgba(186,230,253,0.16);border-radius:999px;padding:8px 14px;color:#f8fdff;font-size:0.72rem;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);">Lead Development</div>
+              <p style="margin-top:16px;color:#e0f2fe;font-weight:700;font-size:1rem;line-height:1.75;">Project Manager, Full Stack Developer, UI/UX Designer, Documentation</p>
+              <p style="font-size:0.95rem;line-height:1.8;color:rgba(241,245,249,0.95);">Led the project direction and contributed to full-stack development, interface planning, and project documentation for the platform.</p>
+            </div>
+          </article>
+          <article class="program-card team-member-card" style="padding:0;overflow:hidden;border:1px solid rgba(125,211,252,0.2);background:linear-gradient(135deg,rgba(7,16,28,0.96),rgba(10,24,40,0.9) 48%,rgba(8,18,30,0.96));">
+            <div class="team-member-media" style="height:240px;overflow:hidden;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;">
+              <img src="/librarymanage/assets/images/IMG_5309.jpeg" alt="Joshua Pasaporte" style="width:100%;height:100%;object-fit:cover;object-position:center 18%;">
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,18,0.06),rgba(5,10,18,0.16) 38%,rgba(5,10,18,0.68));"></div>
+            </div>
+            <div class="team-member-body" style="padding:24px;position:relative;">
+              <div class="section-note" style="font-weight:700;letter-spacing:0.26em;color:#67e8f9;">Development Team</div>
+              <h3 style="margin-top:10px;color:#ffffff;font-size:1.4rem;letter-spacing:-0.02em;">Joshua Pasaporte</h3>
+              <div style="margin-top:12px;display:inline-flex;border:1px solid rgba(186,230,253,0.35);background:rgba(186,230,253,0.16);border-radius:999px;padding:8px 14px;color:#f8fdff;font-size:0.72rem;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);">System Analysis</div>
+              <p style="margin-top:16px;color:#e0f2fe;font-weight:700;font-size:1rem;line-height:1.75;">System Analyst, Full Stack Developer, UI/UX Designer, Documentation</p>
+              <p style="font-size:0.95rem;line-height:1.8;color:rgba(241,245,249,0.95);">Contributed to system analysis, feature implementation, interface design, and technical documentation to support the overall development process.</p>
+            </div>
+          </article>
+          <article class="program-card team-member-card" style="padding:0;overflow:hidden;border:1px solid rgba(125,211,252,0.2);background:linear-gradient(135deg,rgba(7,16,28,0.96),rgba(10,24,40,0.9) 48%,rgba(8,18,30,0.96));">
+            <div class="team-member-media" style="height:240px;overflow:hidden;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;">
+              <img src="/librarymanage/assets/images/IMG_5308.jpeg" alt="Kyrus Tan" style="width:100%;height:100%;object-fit:cover;object-position:center 46%;">
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,18,0.06),rgba(5,10,18,0.16) 38%,rgba(5,10,18,0.68));"></div>
+            </div>
+            <div class="team-member-body" style="padding:24px;position:relative;">
+              <div class="section-note" style="font-weight:700;letter-spacing:0.26em;color:#67e8f9;">Development Team</div>
+              <h3 style="margin-top:10px;color:#ffffff;font-size:1.4rem;letter-spacing:-0.02em;">Kyrus Tan</h3>
+              <div style="margin-top:12px;display:inline-flex;border:1px solid rgba(186,230,253,0.35);background:rgba(186,230,253,0.16);border-radius:999px;padding:8px 14px;color:#f8fdff;font-size:0.72rem;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);">Documentation</div>
+              <p style="margin-top:16px;color:#e0f2fe;font-weight:700;font-size:1rem;line-height:1.75;">Documentation</p>
+              <p style="font-size:0.95rem;line-height:1.8;color:rgba(241,245,249,0.95);">Supported the project through clear and organized documentation for presentation, reference, and system understanding.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <script>
+        (function () {
+          const root = document.documentElement;
+          const body = document.body;
+
+          function syncTeamCardTheme() {
+            const isLight =
+              root.getAttribute("data-theme") === "light" ||
+              (body && body.classList.contains("light"));
+            document.querySelectorAll(".team-member-card").forEach((card) => {
+              const media = card.querySelector(".team-member-media");
+              const overlay = media ? media.querySelector("div") : null;
+              const sectionNote = card.querySelector(".section-note");
+              const name = card.querySelector("h3");
+              const badge = name ? name.nextElementSibling : null;
+              const role = badge ? badge.nextElementSibling : null;
+              const note = role ? role.nextElementSibling : null;
+
+              card.style.border = isLight
+                ? "1px solid rgba(191,219,254,0.9)"
+                : "1px solid rgba(125,211,252,0.2)";
+              card.style.background = isLight
+                ? "linear-gradient(135deg,rgba(255,255,255,0.998),rgba(246,250,255,0.995) 48%,rgba(236,245,255,0.99))"
+                : "linear-gradient(135deg,rgba(7,16,28,0.96),rgba(10,24,40,0.9) 48%,rgba(8,18,30,0.96))";
+              card.style.boxShadow = isLight
+                ? "0 18px 34px -24px rgba(14,116,144,0.12)"
+                : "";
+
+              if (media) {
+                media.style.borderBottom = isLight
+                  ? "1px solid rgba(191,219,254,0.8)"
+                  : "1px solid rgba(255,255,255,0.1)";
+              }
+
+              if (overlay) {
+                overlay.style.background = isLight
+                  ? "linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.08) 36%,rgba(233,244,255,0.24))"
+                  : "linear-gradient(180deg,rgba(5,10,18,0.06),rgba(5,10,18,0.16) 38%,rgba(5,10,18,0.68))";
+              }
+
+              if (sectionNote) {
+                sectionNote.style.color = isLight ? "#0284c7" : "#67e8f9";
+              }
+
+              if (name) {
+                name.style.color = isLight ? "#0f172a" : "#ffffff";
+              }
+
+              if (badge) {
+                badge.style.border = isLight
+                  ? "1px solid rgba(191,219,254,0.9)"
+                  : "1px solid rgba(186,230,253,0.35)";
+                badge.style.background = isLight
+                  ? "rgba(240,249,255,0.96)"
+                  : "rgba(186,230,253,0.16)";
+                badge.style.color = isLight ? "#0369a1" : "#f8fdff";
+                badge.style.boxShadow = isLight
+                  ? "inset 0 1px 0 rgba(255,255,255,0.75)"
+                  : "inset 0 1px 0 rgba(255,255,255,0.08)";
+              }
+
+              if (role) {
+                role.style.color = isLight ? "#1e293b" : "#e0f2fe";
+              }
+
+              if (note) {
+                note.style.color = isLight ? "#475569" : "rgba(241,245,249,0.95)";
+              }
+            });
+          }
+
+          syncTeamCardTheme();
+          new MutationObserver(syncTeamCardTheme).observe(root, {
+            attributes: true,
+            attributeFilter: ["data-theme"],
+          });
+          if (body) {
+            new MutationObserver(syncTeamCardTheme).observe(body, {
+              attributes: true,
+              attributeFilter: ["class"],
+            });
+          }
+        })();
+      </script>
+
+      <section id="contact" class="shell contact-panel">
+        <div class="section-note">Contact</div>
+        <h2>Reach the campus and library support team through the official public channels.</h2>
+        <p>
+          This section keeps the school location and support details visible for visitors before they sign in to the system.
+        </p>
+        <p>
+          <a class="cta cta-secondary" href="https://www.regismariecollege.com/" target="_blank" rel="noreferrer">Visit official school page</a>
+        </p>
+
+        <div class="contact-grid" style="margin-top:24px;">
+          <a class="contact-card" href="tel:+6386710199" style="color:inherit;text-decoration:none;">
+            <div class="symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6.6 10.8a15.5 15.5 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24c1.1.36 2.27.54 3.46.54a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.3 21 3 13.7 3 4.7a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.19.18 2.36.54 3.46a1 1 0 0 1-.24 1z"></path>
+              </svg>
+            </div>
+            <h3>Phone</h3>
+            <p>8671-0199 | 0961-437-6209</p>
+          </a>
+          <a class="contact-card" href="mailto:itsupport@regismarie-college.com" style="color:inherit;text-decoration:none;">
+            <div class="symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6h16v12H4z"></path>
+                <path d="m4 7 8 6 8-6"></path>
+              </svg>
+            </div>
+            <h3>Email</h3>
+            <p>itsupport@regismarie-college.com</p>
+          </a>
+          <a class="contact-card" href="https://www.google.com/maps/search/?api=1&amp;query=Villanueva+Village+Basketball+Court+Lire+Ln+Paranaque+1709+Metro+Manila" style="color:inherit;text-decoration:none;">
+            <div class="symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10z"></path>
+                <circle cx="12" cy="11" r="2.5"></circle>
+              </svg>
+            </div>
+            <h3>Address</h3>
+            <p>Villanueva Village Basketball Court, Lire Ln, Parañaque, 1709 Metro Manila</p>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell footer-row">
+        <div>
+          <strong>Regis Marie College Library Management System</strong>
+          <div style="color:var(--muted);margin-top:6px;font-size:0.92rem;">Designed to reflect the school identity and streamline library access.</div>
+        </div>
+        <div class="footer-links">
+          <a href="#top">Back to top</a>
+          <a href="/librarymanage/loginpage.php">Portal login</a>
+          <a href="/librarymanage/feedback.php">Feedback</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const slides = document.querySelectorAll(".hero-slide");
+      let slideIndex = 0;
+      const builderSlides = document.querySelectorAll(".builder-photo");
+      const builderCaptionName = document.querySelector(".builder-caption strong");
+      const builderCaptionRole = document.querySelector(".builder-caption div");
+      const builderCaptionText = document.querySelector(".builder-caption p");
+      let builderSlideIndex = 0;
+      const builderProfiles = [
+        {
+          name: "Stromiles Vidal",
+          role: "Project Manager, Full Stack Developer, UI/UX Designer, Documentation",
+          note: "Led the project direction and contributed to full-stack development, interface planning, and project documentation for the platform.",
+        },
+        {
+          name: "Joshua Pasaporte",
+          role: "System Analyst, Full Stack Developer, UI/UX Designer, Documentation",
+          note: "Contributed to system analysis, feature implementation, interface design, and technical documentation to support the overall development process.",
+        },
+        {
+          name: "Kyrus Tan",
+          role: "Documentation",
+          note: "Supported the project through clear and organized documentation for presentation, reference, and system understanding.",
+        },
+      ];
+      const mobileNavToggle = document.getElementById("mobileNavToggle");
+      const mobileNavPanel = document.getElementById("mobileNavPanel");
+      const navAnchors = document.querySelectorAll('.nav-links a[href^="#"], .mobile-nav-panel a[href^="#"]');
+      const themeButtons = [
+        document.getElementById("themeToggleDesktop"),
+        document.getElementById("themeToggleMobile"),
+      ].filter(Boolean);
+      const themeStorageKey = "librarymanage-theme";
+      const menuIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>';
+      const closeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
+
+      const syncActiveNav = () => {
+        const sections = [
+          { id: "about", label: "About" },
+          { id: "library", label: "Library" },
+          { id: "contact", label: "Contact" },
+        ];
+        const marker = window.scrollY + 160;
+        let current = "Home";
+
+        sections.forEach((section) => {
+          const node = document.getElementById(section.id);
+          if (node && node.offsetTop <= marker) {
+            current = section.label;
+          }
+        });
+
+        navAnchors.forEach((anchor) => {
+          if (anchor.textContent.trim() === current) {
+            anchor.setAttribute("aria-current", "page");
+          } else {
+            anchor.removeAttribute("aria-current");
+          }
+        });
+      };
+
+      syncActiveNav();
+      window.addEventListener("scroll", syncActiveNav, { passive: true });
+      if (slides.length > 1) {
+        setInterval(() => {
+          slides[slideIndex].classList.remove("active");
+          slideIndex = (slideIndex + 1) % slides.length;
+          slides[slideIndex].classList.add("active");
+        }, 3800);
+      }
+
+      if (builderSlides.length > 1 && builderCaptionName && builderCaptionRole && builderCaptionText) {
+        setInterval(() => {
+          builderSlides[builderSlideIndex].classList.remove("active");
+          builderSlideIndex = (builderSlideIndex + 1) % builderSlides.length;
+          builderSlides[builderSlideIndex].classList.add("active");
+          builderCaptionName.textContent = builderProfiles[builderSlideIndex].name;
+          builderCaptionRole.textContent = builderProfiles[builderSlideIndex].role;
+          builderCaptionText.textContent = builderProfiles[builderSlideIndex].note;
+        }, 3600);
+      }
+
+      if (mobileNavToggle && mobileNavPanel) {
+        const syncMobileNavIcon = (isOpen) => {
+          const icon = mobileNavToggle.querySelector(".nav-toggle-icon");
+          if (icon) icon.innerHTML = isOpen ? closeIcon : menuIcon;
+        };
+
+        syncMobileNavIcon(false);
+
+        mobileNavToggle.addEventListener("click", () => {
+          const isOpen = mobileNavPanel.classList.toggle("open");
+          mobileNavToggle.setAttribute("aria-expanded", String(isOpen));
+          syncMobileNavIcon(isOpen);
+        });
+
+        mobileNavPanel.querySelectorAll("a").forEach((link) => {
+          link.addEventListener("click", () => {
+            mobileNavPanel.classList.remove("open");
+            mobileNavToggle.setAttribute("aria-expanded", "false");
+            syncMobileNavIcon(false);
+          });
+        });
+      }
+
+      const sunIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.8"></circle><path d="M12 3.8v2M12 18.2v2M5.8 5.8l1.4 1.4M16.8 16.8l1.4 1.4M3.8 12h2M18.2 12h2M5.8 18.2l1.4-1.4M16.8 7.2l1.4-1.4"></path></svg>';
+      const moonIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.1 14.6a7.9 7.9 0 1 1-10.7-10.7a6.5 6.5 0 1 0 10.7 10.7z"></path></svg>';
+
+      const updateThemeButtons = () => {
+        const isLight = document.body.classList.contains("light");
+        themeButtons.forEach((button) => {
+          const text = button.querySelector(".theme-toggle-text");
+          const icon = button.querySelector(".theme-toggle-icon");
+          if (text) text.textContent = isLight ? "Light" : "Dark";
+          if (icon) icon.innerHTML = isLight ? sunIcon : moonIcon;
+          button.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
+          button.setAttribute("aria-pressed", isLight ? "true" : "false");
+        });
+      };
+
+      try {
+        const storedTheme = window.localStorage.getItem(themeStorageKey);
+        if (storedTheme === "light") {
+          document.body.classList.add("light");
+        } else if (storedTheme === "dark") {
+          document.body.classList.remove("light");
+        }
+      } catch (error) {
+        // Ignore storage failures and continue with the default theme.
+      }
+
+      themeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          document.body.classList.toggle("light");
+          try {
+            window.localStorage.setItem(
+              themeStorageKey,
+              document.body.classList.contains("light") ? "light" : "dark",
+            );
+          } catch (error) {
+            // Ignore storage failures and keep the current page state only.
+          }
+          updateThemeButtons();
+        });
+      });
+
+      const heroCopy = document.querySelector(".hero-copy p");
+      if (heroCopy) {
+        heroCopy.textContent = "A clearer homepage for students, faculty, and staff, bringing library access, school information, and support details into one more connected first screen.";
+      }
+
+      const heroCaption = document.querySelector(".hero-caption strong");
+      if (heroCaption) {
+        heroCaption.textContent = "Designed to make library access feel like a natural part of campus life.";
+      }
+
+      const snapshotHeading = document.querySelector(".snapshot .section-card h2");
+      if (snapshotHeading) {
+        snapshotHeading.textContent = "A homepage that feels more aligned with the school brand.";
+      }
+
+      const snapshotCards = document.querySelectorAll(".snapshot .program-card p");
+      if (snapshotCards[0]) snapshotCards[0].textContent = "Introduces students and visitors to a school-focused academic environment.";
+      if (snapshotCards[1]) snapshotCards[1].textContent = "Supports a more guided and organized path toward academic readiness.";
+      if (snapshotCards[2]) snapshotCards[2].textContent = "The library portal supports daily campus needs through clearer records and easier access.";
+
+      const quickHeading = document.querySelector(".quick-box h2");
+      if (quickHeading) {
+        quickHeading.textContent = "Start with the portal, school page, and support links visitors need most.";
+      }
+
+      const imageCopyHeading = document.querySelector(".image-copy h3");
+      if (imageCopyHeading) {
+        imageCopyHeading.textContent = "Campus identity and library services should feel connected from the first visit.";
+      }
+
+      const libraryHeading = document.querySelector("#library + .section-card h2, #library.section-card h2");
+      const librarySectionCard = document.querySelector("#library.section-card") || document.querySelector("section#library .section-card");
+      if (librarySectionCard) {
+        const heading = librarySectionCard.querySelector("h2");
+        const paragraph = librarySectionCard.querySelector("p");
+        if (heading) heading.textContent = "Library tools, school details, and support information in one cleaner experience.";
+        if (paragraph) paragraph.textContent = "The landing page now introduces the library system more clearly, with school-aligned visuals, easier access points, and a more organized first impression for visitors.";
+      }
+
+      updateThemeButtons();
+    </script>
   </body>
 </html>
