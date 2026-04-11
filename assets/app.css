@@ -12125,7 +12125,7 @@ body.ebook-reader-screen {
 
   .member-main {
     grid-column: 1;
-    padding-top: calc(var(--member-mobile-header-height) + env(safe-area-inset-top, 0px) + 20px);
+    padding-top: 18px;
   }
 
   .member-main > .topbar {
@@ -12174,7 +12174,7 @@ body.ebook-reader-screen {
   }
 
   .member-mobile-header {
-    position: fixed;
+    position: sticky;
     top: 0;
     left: 0;
     right: 0;
@@ -12186,6 +12186,7 @@ body.ebook-reader-screen {
     min-height: var(--member-mobile-header-height);
     box-sizing: border-box;
     padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
+    width: 100%;
     border: 0;
     border-bottom: 1px solid rgba(143, 211, 255, 0.14);
     border-radius: 0;
