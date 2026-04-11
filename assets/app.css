@@ -12116,7 +12116,7 @@ body.ebook-reader-screen {
   }
 
   :root{
-    --member-mobile-header-height: 72px;
+    --member-mobile-header-height: 76px;
   }
 
   .member-shell {
@@ -12125,7 +12125,7 @@ body.ebook-reader-screen {
 
   .member-main {
     grid-column: 1;
-    padding-top: calc(var(--member-mobile-header-height) + 18px);
+    padding-top: calc(var(--member-mobile-header-height) + env(safe-area-inset-top, 0px) + 20px);
   }
 
   .member-main > .topbar {
@@ -12137,6 +12137,40 @@ body.ebook-reader-screen {
   .member-main > .topbar > div:first-child {
     width: 100%;
     text-align: left;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar.topbar-member {
+    min-height: 0;
+    padding: 18px 18px 16px;
+    border-radius: 22px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar.topbar-member::before {
+    inset: 12px 12px auto 12px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar-kicker {
+    margin: 0 0 8px;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar-kicker::before {
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 0 4px rgba(123, 219, 255, 0.1);
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar.topbar-member h1 {
+    max-width: none;
+    font-size: clamp(1.5rem, 6vw, 1.95rem);
+    line-height: 1.08;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar.topbar-member p:last-child {
+    font-size: 13px;
+    line-height: 1.45;
   }
 
   .member-mobile-header {
@@ -12151,7 +12185,7 @@ body.ebook-reader-screen {
     gap: 12px;
     min-height: var(--member-mobile-header-height);
     box-sizing: border-box;
-    padding: 11px 14px;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
     border: 0;
     border-bottom: 1px solid rgba(143, 211, 255, 0.14);
     border-radius: 0;
@@ -12165,9 +12199,10 @@ body.ebook-reader-screen {
   .member-mobile-brand {
     min-width: 0;
     flex: 1 1 auto;
-    max-width: calc(100% - 138px);
+    max-width: calc(100% - 132px);
     display: flex;
     align-items: center;
+    align-self: center;
     gap: 10px;
     color: #eef6ff;
     text-decoration: none;
@@ -12214,8 +12249,10 @@ body.ebook-reader-screen {
   .member-mobile-nav-actions {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     flex: 0 0 auto;
     gap: 5px;
+    min-width: 110px;
   }
 
   .member-mobile-nav-toggle {
@@ -12351,7 +12388,7 @@ body.ebook-reader-screen {
   }
 
   .member-main > .topbar:first-child {
-    padding-right: 70px;
+    padding-right: 24px;
     min-height: 62px;
     display: flex;
     align-items: center;
@@ -13153,8 +13190,52 @@ body.ebook-reader-screen {
     font-size: 1.22rem;
   }
 
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar.topbar-member {
+    padding: 16px 16px 14px;
+    border-radius: 20px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar-kicker {
+    margin-bottom: 7px;
+    padding: 5px 9px;
+    font-size: 9.5px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar.topbar-member h1 {
+    font-size: clamp(1.34rem, 6.2vw, 1.72rem);
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .topbar.topbar-member p:last-child {
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
   .toolbar-top .grow {
     gap: 4px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .card-head {
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .card-head > .dashboard-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .heading-top-md,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-dashboard-grid .stack-copy-md {
+    font-size: 1rem;
+    line-height: 1.24;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .chip,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .inline-actions .chip {
+    min-height: 28px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
   }
 
   .heading-card {
@@ -13167,10 +13248,11 @@ body.ebook-reader-screen {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .member-dashboard-overview .stat-card,
-  .member-workspace-overview .stat-card,
-  .member-dashboard-grid .panel {
-    padding: 15px;
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-dashboard-overview .stat-card,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-workspace-overview .stat-card,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-dashboard-grid .panel,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-workspace-grid .panel {
+    padding: 14px;
   }
 
   .member-dashboard-overview .stat-card,
@@ -13224,6 +13306,58 @@ body.ebook-reader-screen {
   .member-mobile-brand-copy span {
     display: block;
     font-size: 10px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-grid {
+    gap: 8px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+    padding: 10px;
+    gap: 0.6rem;
+    border-radius: 16px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-cover {
+    width: 82px;
+    border-radius: 12px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-copy {
+    gap: 6px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-copy .label-block {
+    font-size: 0.94rem;
+    line-height: 1.22;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-copy .muted {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-description {
+    min-height: 2.5em;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-actions {
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-actions .button {
+    min-height: 34px;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.84rem;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .ebook-card-actions .chip {
+    min-height: 30px;
+    font-size: 0.68rem;
   }
 }
 
