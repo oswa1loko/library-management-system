@@ -41,10 +41,12 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
       </div>
     </div>
     <nav class="member-sidebar-nav">
+      <p class="member-sidebar-group-label">Overview</p>
       <a class="member-sidebar-link is-active" href="dashboard.php" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
+      <p class="member-sidebar-group-label">Library</p>
       <a class="member-sidebar-link" href="books.php" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
         <span class="member-sidebar-label">Books</span>
@@ -57,6 +59,7 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
+      <p class="member-sidebar-group-label">My Activity</p>
       <a class="member-sidebar-link" href="borrow_return.php" data-tooltip="Returns">
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
         <span class="member-sidebar-label">Returns</span>
@@ -80,9 +83,9 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
         <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
         <span class="member-sidebar-label">Profile</span>
       </a>
-      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
+      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Portal Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Home</span>
+        <span class="member-sidebar-label">Portal Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
         <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
@@ -92,8 +95,9 @@ $studentUnreadNotifications = (int) ($conn->query("SELECT COUNT(*) AS total FROM
   </aside>
 
   <div class="member-main">
-    <div class="topbar">
+    <div class="topbar topbar-member">
       <div>
+        <p class="topbar-kicker">Student Portal</p>
         <h1>Student Dashboard</h1>
         <p>Signed in as <?php echo h($_SESSION['username']); ?></p>
       </div>

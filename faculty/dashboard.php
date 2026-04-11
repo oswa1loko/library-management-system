@@ -41,10 +41,12 @@ $catalogHighlights = get_member_catalog_highlights($conn, 4);
       </div>
     </div>
     <nav class="member-sidebar-nav">
+      <p class="member-sidebar-group-label">Overview</p>
       <a class="member-sidebar-link is-active" href="dashboard.php" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
+      <p class="member-sidebar-group-label">Library</p>
       <a class="member-sidebar-link" href="books.php" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
         <span class="member-sidebar-label">Books</span>
@@ -57,9 +59,14 @@ $catalogHighlights = get_member_catalog_highlights($conn, 4);
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
+      <p class="member-sidebar-group-label">My Activity</p>
       <a class="member-sidebar-link" href="borrow_return.php" data-tooltip="Returns">
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
         <span class="member-sidebar-label">Returns</span>
+      </a>
+      <a class="member-sidebar-link" href="book_incidents.php" data-tooltip="Book Incidents">
+        <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
+        <span class="member-sidebar-label">Book Incidents</span>
       </a>
       <a class="member-sidebar-link" href="tracking.php" data-tooltip="Records Tracking">
         <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
@@ -76,9 +83,9 @@ $catalogHighlights = get_member_catalog_highlights($conn, 4);
         <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
         <span class="member-sidebar-label">Profile</span>
       </a>
-      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
+      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Portal Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Home</span>
+        <span class="member-sidebar-label">Portal Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
         <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
@@ -88,8 +95,9 @@ $catalogHighlights = get_member_catalog_highlights($conn, 4);
   </aside>
 
   <div class="member-main">
-    <div class="topbar">
+    <div class="topbar topbar-member">
       <div>
+        <p class="topbar-kicker">Faculty Portal</p>
         <h1>Faculty Dashboard</h1>
         <p>Signed in as <?php echo h($_SESSION['username']); ?></p>
       </div>

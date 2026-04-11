@@ -47,10 +47,12 @@ $incidents = get_member_incidents($conn, $userId);
       </div>
     </div>
     <nav class="member-sidebar-nav">
+      <p class="member-sidebar-group-label">Overview</p>
       <a class="member-sidebar-link" href="<?php echo h(app_url($role . '/dashboard.php')); ?>" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
+      <p class="member-sidebar-group-label">Library</p>
       <a class="member-sidebar-link" href="<?php echo h(app_url($role . '/books.php')); ?>" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
         <span class="member-sidebar-label">Books</span>
@@ -63,6 +65,7 @@ $incidents = get_member_incidents($conn, $userId);
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
+      <p class="member-sidebar-group-label">My Activity</p>
       <a class="member-sidebar-link" href="<?php echo h(app_url($role . '/borrow_return.php')); ?>" data-tooltip="Returns">
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
         <span class="member-sidebar-label">Returns</span>
@@ -86,9 +89,9 @@ $incidents = get_member_incidents($conn, $userId);
         <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
         <span class="member-sidebar-label">Profile</span>
       </a>
-      <a class="member-sidebar-link" href="<?php echo h(app_url('index.php')); ?>" data-tooltip="Home">
+      <a class="member-sidebar-link" href="<?php echo h(app_url('index.php')); ?>" data-tooltip="Portal Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Home</span>
+        <span class="member-sidebar-label">Portal Home</span>
       </a>
       <a class="member-sidebar-link" href="<?php echo h(app_url('logout.php')); ?>" data-tooltip="Logout">
         <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
@@ -98,8 +101,9 @@ $incidents = get_member_incidents($conn, $userId);
   </aside>
 
   <div class="member-main">
-    <div class="topbar">
+    <div class="topbar topbar-member">
       <div>
+        <p class="topbar-kicker"><?php echo h(role_label($role)); ?> Portal</p>
         <h1><?php echo h(role_label($role)); ?> Portal</h1>
         <p>Report lost or damaged borrowed books and monitor a simpler incident workflow</p>
       </div>

@@ -501,10 +501,12 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
       </div>
     </div>
     <nav class="member-sidebar-nav">
+      <p class="member-sidebar-group-label">Overview</p>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/dashboard.php" data-tooltip="Dashboard">
         <span class="dashboard-icon icon-view" aria-hidden="true"></span>
         <span class="member-sidebar-label">Dashboard</span>
       </a>
+      <p class="member-sidebar-group-label">Library</p>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/books.php" data-tooltip="Books">
         <span class="dashboard-icon icon-books" aria-hidden="true"></span>
         <span class="member-sidebar-label">Books</span>
@@ -517,6 +519,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
         <span class="member-sidebar-label">eBooks</span>
       </a>
+      <p class="member-sidebar-group-label">My Activity</p>
       <a class="member-sidebar-link" href="/librarymanage/<?php echo h($role); ?>/borrow_return.php" data-tooltip="Returns">
         <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
         <span class="member-sidebar-label">Returns</span>
@@ -540,9 +543,9 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
         <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
         <span class="member-sidebar-label">Profile</span>
       </a>
-      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
+      <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Portal Home">
         <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
-        <span class="member-sidebar-label">Home</span>
+        <span class="member-sidebar-label">Portal Home</span>
       </a>
       <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
         <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
@@ -552,8 +555,9 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
   </aside>
 
   <div class="member-main">
-    <div class="topbar">
+    <div class="topbar topbar-member">
       <div>
+        <p class="topbar-kicker"><?php echo h(role_label($role)); ?> Portal</p>
         <h1><?php echo h(role_label($role)); ?> Portal</h1>
         <p>Penalty payment submissions</p>
       </div>
