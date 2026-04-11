@@ -8,6 +8,7 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
     </div>
   </div>
   <nav class="member-sidebar-nav">
+    <p class="member-sidebar-group-label">Overview</p>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'dashboard' ? 'is-active' : ''; ?>" href="/librarymanage/admin/dashboard.php" data-tooltip="Dashboard">
       <span class="dashboard-icon icon-view" aria-hidden="true"></span>
       <span class="member-sidebar-label">Dashboard</span>
@@ -16,6 +17,7 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
       <span class="member-sidebar-label">Analytics</span>
     </a>
+    <p class="member-sidebar-group-label">Management</p>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'accounts' ? 'is-active' : ''; ?>" href="/librarymanage/admin/manage_accounts.php" data-tooltip="Accounts">
       <span class="dashboard-icon icon-edit" aria-hidden="true"></span>
       <span class="member-sidebar-label">Accounts</span>
@@ -40,32 +42,33 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
       <span class="member-sidebar-label">Complaints</span>
     </a>
+    <p class="member-sidebar-group-label">System</p>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'notifications' ? 'is-active' : ''; ?>" href="/librarymanage/admin/notifications.php" data-tooltip="Notifications">
       <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
       <span class="member-sidebar-label">Notifications</span>
     </a>
-    <a class="member-sidebar-link <?php echo $sidebarPage === 'diagnostics' ? 'is-active' : ''; ?>" href="/librarymanage/admin/system_diagnostics.php" data-tooltip="Diagnostics">
+    <a class="member-sidebar-link is-secondary <?php echo $sidebarPage === 'diagnostics' ? 'is-active' : ''; ?>" href="/librarymanage/admin/system_diagnostics.php" data-tooltip="Diagnostics">
       <span class="dashboard-icon icon-tools" aria-hidden="true"></span>
       <span class="member-sidebar-label">Diagnostics</span>
     </a>
-    <a class="member-sidebar-link <?php echo $sidebarPage === 'announcements' ? 'is-active' : ''; ?>" href="/librarymanage/admin/announcements.php" data-tooltip="Announcements">
+    <a class="member-sidebar-link is-secondary <?php echo $sidebarPage === 'announcements' ? 'is-active' : ''; ?>" href="/librarymanage/admin/announcements.php" data-tooltip="Announcements">
       <span class="dashboard-icon icon-notes" aria-hidden="true"></span>
       <span class="member-sidebar-label">Announcements</span>
     </a>
-    <a class="member-sidebar-link <?php echo $sidebarPage === 'audit' ? 'is-active' : ''; ?>" href="/librarymanage/admin/audit_logs.php" data-tooltip="Audit Logs">
+    <a class="member-sidebar-link is-secondary <?php echo $sidebarPage === 'audit' ? 'is-active' : ''; ?>" href="/librarymanage/admin/audit_logs.php" data-tooltip="Audit Logs">
       <span class="dashboard-icon icon-checklist" aria-hidden="true"></span>
       <span class="member-sidebar-label">Audit Logs</span>
     </a>
-    <a class="member-sidebar-link <?php echo $sidebarPage === 'backup' ? 'is-active' : ''; ?>" href="/librarymanage/admin/backup_restore.php" data-tooltip="Backup">
+    <a class="member-sidebar-link is-secondary <?php echo $sidebarPage === 'backup' ? 'is-active' : ''; ?>" href="/librarymanage/admin/backup_restore.php" data-tooltip="Backup">
       <span class="dashboard-icon icon-tools" aria-hidden="true"></span>
       <span class="member-sidebar-label">Backup</span>
     </a>
   </nav>
   <p class="member-sidebar-section member-sidebar-label">Account</p>
   <div class="topbar-nav member-sidebar-utilities">
-    <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Home">
+    <a class="member-sidebar-link" href="/librarymanage/index.php" data-tooltip="Portal Home">
       <span class="dashboard-icon icon-guide" aria-hidden="true"></span>
-      <span class="member-sidebar-label">Home</span>
+      <span class="member-sidebar-label">Portal Home</span>
     </a>
     <a class="member-sidebar-link" href="/librarymanage/logout.php" data-tooltip="Logout">
       <span class="dashboard-icon icon-logout" aria-hidden="true"></span>
