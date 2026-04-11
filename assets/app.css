@@ -4932,7 +4932,6 @@ button.catalog-search-suggestion{
   justify-self:center;
   align-self:start;
   border-radius:16px;
-  transform:translateX(50px);
 }
 
 .member-catalog-card-copy{
@@ -4943,7 +4942,6 @@ button.catalog-search-suggestion{
   width:100%;
   text-align:center;
   justify-items:center;
-  transform:translateX(50px);
 }
 
 .member-catalog-card-title{
