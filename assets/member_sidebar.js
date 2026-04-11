@@ -21,6 +21,19 @@
     });
   }
 
+  function getMobileHeader(shell) {
+    return shell._memberMobileHeader || null;
+  }
+
+  function getMobileToggleButtons(shell) {
+    var buttons = [];
+    var header = getMobileHeader(shell);
+    if (header) {
+      buttons = buttons.concat(Array.prototype.slice.call(header.querySelectorAll('.js-mobile-sidebar-toggle')));
+    }
+    return buttons;
+  }
+
   function setMobileOpen(shell, open) {
     var closeTimer = shell._memberMobileCloseTimer;
     if (closeTimer) {
@@ -42,17 +55,18 @@
       }, CLOSE_DURATION_MS);
     }
 
-    shell.querySelectorAll('.js-mobile-sidebar-toggle').forEach(function (button) {
+    getMobileToggleButtons(shell).forEach(function (button) {
       button.setAttribute('aria-expanded', open ? 'true' : 'false');
       button.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
     });
   }
 
   function ensureMobileControls(shell) {
-    var header = shell.querySelector('.member-mobile-header');
+    var header = getMobileHeader(shell) || document.querySelector('.member-mobile-header[data-owner-shell="' + shell.dataset.sidebarKey + '"]');
     if (!header) {
       header = document.createElement('div');
       header.className = 'member-mobile-header';
+      header.dataset.ownerShell = shell.dataset.sidebarKey || 'member-shell';
       header.innerHTML =
         '<div class="member-mobile-brand">' +
           '<img class="member-mobile-brand-mark" src="/librarymanage/assets/images/RMLOGO.jfif" alt="Regis Marie College logo">' +
@@ -62,8 +76,12 @@
           '</span>' +
         '</div>' +
         '<div class="member-mobile-nav-actions"></div>';
-      shell.insertBefore(header, shell.firstChild);
+      document.body.appendChild(header);
+    } else if (header.parentNode !== document.body) {
+      document.body.appendChild(header);
     }
+
+    shell._memberMobileHeader = header;
 
     var actions = header.querySelector('.member-mobile-nav-actions');
     if (!actions) {
@@ -110,7 +128,7 @@
         button.setAttribute('aria-label', 'Main menu');
       });
 
-      shell.querySelectorAll('.js-mobile-sidebar-toggle').forEach(function (button) {
+      getMobileToggleButtons(shell).forEach(function (button) {
         button.addEventListener('click', function () {
           if (!isMobileViewport()) {
             return;
@@ -138,7 +156,7 @@
         }
 
         var sidebar = shell.querySelector('.member-sidebar');
-        var mobileToggle = shell.querySelector('.js-mobile-sidebar-toggle');
+        var mobileToggle = getMobileHeader(shell);
         var target = event.target;
         if (!sidebar || !target) {
           return;
