@@ -76,9 +76,9 @@
           '</span>' +
         '</div>' +
         '<div class="member-mobile-nav-actions"></div>';
-      document.body.appendChild(header);
-    } else if (header.parentNode !== document.body) {
-      document.body.appendChild(header);
+      document.body.insertBefore(header, shell);
+    } else if (header.parentNode !== document.body || header.nextSibling !== shell) {
+      document.body.insertBefore(header, shell);
     }
 
     shell._memberMobileHeader = header;
