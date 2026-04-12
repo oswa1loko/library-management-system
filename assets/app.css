@@ -8556,34 +8556,6 @@ button.member-book-search-suggestion{
   height:148px;
 }
 
-.member-borrow-modal-dialog .desk-modal-head > :first-child{
-  min-width:0;
-}
-
-.member-borrow-modal-close{
-  display:none;
-  align-items:center;
-  justify-content:center;
-  flex:0 0 auto;
-  width:42px;
-  min-width:42px;
-  height:42px;
-  min-height:42px;
-  padding:0;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,0.12);
-  background:rgba(255,255,255,0.06);
-  color:var(--text);
-  box-shadow:0 10px 18px rgba(0,0,0,0.08);
-}
-
-.member-borrow-modal-close span{
-  display:block;
-  font-size:28px;
-  line-height:1;
-  transform:translateY(-1px);
-}
-
 [data-book-modal-cover][hidden],
 [data-book-modal-cover-placeholder][hidden]{
   display:none !important;
@@ -8619,7 +8591,6 @@ body.modal-open{
   }
 
   .member-borrow-modal-dialog .desk-modal-head{
-    align-items:flex-start;
     position:sticky;
     top:0;
     z-index:2;
@@ -8647,21 +8618,6 @@ body.modal-open{
   .desk-modal{
     padding:0;
     align-items:end;
-  }
-
-  .member-borrow-modal-dialog .desk-modal-head{
-    display:grid;
-    grid-template-columns:minmax(0, 1fr) auto;
-    align-items:start;
-    gap:10px;
-  }
-
-  .member-borrow-modal-dialog .button.secondary[data-book-modal-close]{
-    display:none;
-  }
-
-  .member-borrow-modal-close{
-    display:inline-flex;
   }
 
   .desk-modal-dialog.member-borrow-modal-dialog{
