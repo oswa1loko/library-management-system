@@ -111,11 +111,11 @@
           <div>
             <p class="muted eyebrow-compact">Bulk Provisioning</p>
             <h4 class="heading-top-sm">Bulk Student/Faculty Import</h4>
-            <p class="muted">Paste one user per line using: <code>fullname,email,username,role,course</code>. The <code>course</code> column can be blank for faculty, librarian, and admin rows.</p>
+            <p class="muted">Paste one user per line using: <code>fullname,email,username,role,program</code>. The <code>program</code> column can be blank for faculty, librarian, and admin rows.</p>
           </div>
         </div>
         <label for="bulk_rows">Bulk rows</label>
-        <textarea id="bulk_rows" name="bulk_rows" rows="8" placeholder="fullname,email,username,role,course&#10;Juan Dela Cruz,juan@example.com,juan.student,student,BSIT&#10;Maria Santos,maria@example.com,maria.faculty,faculty,"><?php echo h($bulkData); ?></textarea>
+        <textarea id="bulk_rows" name="bulk_rows" rows="8" placeholder="fullname,email,username,role,program&#10;Juan Dela Cruz,juan@example.com,juan.student,student,BSIT&#10;Maria Santos,maria@example.com,maria.faculty,faculty,"><?php echo h($bulkData); ?></textarea>
         <div class="inline-actions manage-users-bulk-actions">
           <button type="submit" name="bulk_create" value="1">Create Bulk Accounts</button>
         </div>

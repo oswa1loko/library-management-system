@@ -276,7 +276,7 @@ if ($role === 'student' && isset($_POST['remove_profile_photo'])) {
           </div>
           <?php if ($role === 'student'): ?>
             <div class="member-profile-meta-card">
-              <span class="muted">Course</span>
+              <span class="muted">Program</span>
               <strong><?php echo h($course !== '' ? $course : 'Not set'); ?></strong>
             </div>
           <?php endif; ?>
@@ -304,7 +304,7 @@ if ($role === 'student' && isset($_POST['remove_profile_photo'])) {
             </div>
             <?php if ($role === 'student'): ?>
               <div>
-                <label for="profile_course">Course</label>
+                <label for="profile_course">Program</label>
                 <input id="profile_course" value="<?php echo h($course); ?>" disabled>
               </div>
             <?php endif; ?>

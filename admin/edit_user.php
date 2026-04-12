@@ -49,7 +49,7 @@ if (isset($_POST['update'])) {
         $message = 'Invalid role selected.';
         $messageType = 'error';
     } elseif ($role === 'student' && ($course === '' || !array_key_exists($course, $courseOptions))) {
-        $message = 'Select a valid course for the student account.';
+        $message = 'Select a valid program for the student account.';
         $messageType = 'error';
     } else {
         $check = $conn->prepare("SELECT id FROM users WHERE (email = ? OR username = ?) AND id <> ? LIMIT 1");

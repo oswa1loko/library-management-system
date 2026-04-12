@@ -57,7 +57,7 @@
           <th>Role</th>
           <th>Status</th>
           <th>Access</th>
-          <th>Course</th>
+          <th>Program</th>
           <th>Created</th>
           <th>Action</th>
         </tr>

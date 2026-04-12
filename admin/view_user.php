@@ -125,7 +125,7 @@ if (in_array($role, ['student', 'faculty'], true)) {
         </div>
         <?php if (($viewUser['role'] ?? '') === 'student'): ?>
           <div class="member-profile-meta-card">
-            <span class="muted">Course</span>
+            <span class="muted">Program</span>
             <strong><?php echo h(trim((string) ($viewUser['course'] ?? '')) !== '' ? (string) $viewUser['course'] : 'Not set'); ?></strong>
           </div>
         <?php endif; ?>
@@ -160,7 +160,7 @@ if (in_array($role, ['student', 'faculty'], true)) {
           </div>
           <?php if (($viewUser['role'] ?? '') === 'student'): ?>
             <div class="member-profile-form-span">
-              <label>Course</label>
+              <label>Program</label>
               <input value="<?php echo h((string) ($viewUser['course'] ?? '')); ?>" disabled>
             </div>
           <?php endif; ?>

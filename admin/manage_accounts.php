@@ -105,7 +105,7 @@ function manage_accounts_create_invited_user(mysqli $conn, array $payload, array
     }
 
     if ($role === 'student' && ($course === '' || !array_key_exists($course, $courseOptions))) {
-        return ['ok' => false, 'message' => 'Select a valid course for the student account.'];
+        return ['ok' => false, 'message' => 'Select a valid program for the student account.'];
     }
 
     $check = $conn->prepare("SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1");
@@ -262,7 +262,7 @@ function manage_accounts_parse_bulk_rows(string $rawInput): array
         }
 
         if (count($columns) < 4 || count($columns) > 5) {
-            $errors[] = 'Line ' . $lineNumber . ': use 4 or 5 comma-separated values -> fullname,email,username,role,course.';
+            $errors[] = 'Line ' . $lineNumber . ': use 4 or 5 comma-separated values -> fullname,email,username,role,program.';
             continue;
         }
 
