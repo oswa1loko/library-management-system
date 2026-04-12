@@ -11371,7 +11371,7 @@ body.ebook-reader-screen {
   .member-book-picker {
     max-height: none;
     padding: 0;
-    gap: 12px;
+    gap: 14px;
   }
 
   .member-book-group-title {
@@ -11380,17 +11380,24 @@ body.ebook-reader-screen {
   }
 
   .member-book-group-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(148px, 1fr));
+    gap: 14px;
   }
 
   .member-book-option {
     grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 12px;
+    gap: 10px;
+    padding: 14px 13px 15px;
     align-items: start;
     min-height: 0;
-    border-radius: 18px;
+    border-radius: 22px;
+    border-color: rgba(255,255,255,0.07);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.026), rgba(255,255,255,0.01)),
+      rgba(8, 19, 33, 0.84);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.045),
+      0 16px 28px rgba(0,0,0,0.18);
   }
 
   .member-book-option > input[type="checkbox"] {
@@ -11398,19 +11405,20 @@ body.ebook-reader-screen {
   }
 
   .member-book-option-cover {
-    width: 88px;
-    height: 118px;
-    border-radius: 16px;
+    width: 94px;
+    height: 128px;
+    border-radius: 18px;
     justify-self: center;
     padding: 4px;
+    box-shadow: 0 14px 26px rgba(0,0,0,0.22);
   }
 
   .member-book-option-cover-placeholder {
-    width: 88px;
-    height: 118px;
+    width: 94px;
+    height: 128px;
     padding: 10px;
     font-size: 0.76rem;
-    border-radius: 16px;
+    border-radius: 18px;
     background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
     border: 1px solid rgba(255,255,255,0.08);
   }
@@ -11424,7 +11432,7 @@ body.ebook-reader-screen {
   }
 
   .member-book-option-copy {
-    gap: 5px;
+    gap: 6px;
     justify-items: center;
   }
 
@@ -11437,13 +11445,13 @@ body.ebook-reader-screen {
   .member-book-option-copy strong,
   .ebook-card-copy strong,
   .member-workspace-history td strong {
-    font-size: 1rem;
+    font-size: 1.02rem;
   }
 
   .member-book-option-copy .muted,
   .member-book-description{
-    width:min(100%, 20ch);
-    text-align:left;
+    width:min(100%, 22ch);
+    text-align:center;
   }
 
   .member-book-option-copy strong{
@@ -11458,17 +11466,28 @@ body.ebook-reader-screen {
   .member-book-option-copy .muted{
     display:-webkit-box;
     -webkit-box-orient:vertical;
-    -webkit-line-clamp:2;
+    -webkit-line-clamp:1;
     overflow:hidden;
     line-height:1.32;
-    font-size:0.85rem;
+    font-size:0.84rem;
     color:rgba(211,223,238,0.86);
   }
 
+  .member-book-description{
+    -webkit-line-clamp:2;
+    font-size:0.82rem;
+    line-height:1.38;
+    color:rgba(214,226,240,0.78);
+  }
+
   :root[data-theme="light"] .member-book-option {
-    background: linear-gradient(180deg, rgba(244,248,254,0.98), rgba(233,239,247,0.95));
-    border-color: rgba(35,72,127,0.14);
-    box-shadow: 0 10px 20px rgba(34,63,112,0.08);
+    background:
+      linear-gradient(180deg, rgba(252,254,255,0.99), rgba(241,246,252,0.96)),
+      rgba(248,251,255,0.98);
+    border-color: rgba(35,72,127,0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.92),
+      0 14px 28px rgba(34,63,112,0.09);
   }
 
   :root[data-theme="light"] .member-book-option-copy strong {
@@ -11484,6 +11503,10 @@ body.ebook-reader-screen {
     background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,245,253,0.94));
     border-color: rgba(35,72,127,0.12);
     color: #6d83a0;
+  }
+
+  :root[data-theme="light"] .member-book-description{
+    color:#70839c;
   }
 
   .member-workspace-history .card-head,
@@ -13154,6 +13177,23 @@ body.ebook-reader-screen {
 }
 
 @media (max-width: 480px) {
+  .member-book-group-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .member-book-option {
+    padding: 15px 15px 16px;
+  }
+
+  .member-book-option-copy .muted,
+  .member-book-description{
+    width:min(100%, 28ch);
+  }
+
+  .member-book-description{
+    display:none;
+  }
+
   :root[data-theme="light"] .member-main > .topbar {
     padding: 16px;
   }
