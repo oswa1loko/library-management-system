@@ -267,7 +267,7 @@ unset($trackingGroup);
     <div class="topbar topbar-member">
       <div>
         <p class="topbar-kicker"><?php echo h(role_label($role)); ?> Portal</p>
-        <h1><?php echo h(role_label($role)); ?> Portal</h1>
+        <h1><?php echo h(role_label($role)); ?> Tracking</h1>
         <p>Track the progress of your borrow requests, incident cases, and completed returns</p>
       </div>
     </div>

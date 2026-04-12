@@ -253,7 +253,7 @@ $hasFocusedRequestBatch = $focusRequestBatch !== '' && isset($activeReturnGroups
     <div class="topbar topbar-member">
       <div>
         <p class="topbar-kicker"><?php echo h(role_label($role)); ?> Portal</p>
-        <h1><?php echo h(role_label($role)); ?> Portal</h1>
+        <h1><?php echo h(role_label($role)); ?> Returns</h1>
         <p>Track active borrows, due dates, and return requests</p>
       </div>
     </div>

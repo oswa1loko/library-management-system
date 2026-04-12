@@ -235,7 +235,7 @@ if ($role === 'student' && isset($_POST['remove_profile_photo'])) {
     <div class="topbar topbar-member">
       <div>
         <p class="topbar-kicker"><?php echo h(role_label($role)); ?> Portal</p>
-        <h1><?php echo h(role_label($role)); ?> Portal</h1>
+        <h1><?php echo h(role_label($role)); ?> Profile</h1>
         <p>Review account details and manage login credentials</p>
       </div>
     </div>

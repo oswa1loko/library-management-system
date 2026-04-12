@@ -104,7 +104,7 @@ $incidents = get_member_incidents($conn, $userId);
     <div class="topbar topbar-member">
       <div>
         <p class="topbar-kicker"><?php echo h(role_label($role)); ?> Portal</p>
-        <h1><?php echo h(role_label($role)); ?> Portal</h1>
+        <h1><?php echo h(role_label($role)); ?> Book Incidents</h1>
         <p>Report lost or damaged borrowed books and monitor a simpler incident workflow</p>
       </div>
     </div>

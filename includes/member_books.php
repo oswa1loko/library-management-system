@@ -307,7 +307,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
     <div class="topbar topbar-member">
       <div>
         <p class="topbar-kicker"><?php echo h(role_label($role)); ?> Portal</p>
-        <h1><?php echo h(role_label($role)); ?> Portal</h1>
+        <h1><?php echo h(role_label($role)); ?> Books</h1>
         <p>Browse the catalog and request books</p>
       </div>
     </div>
