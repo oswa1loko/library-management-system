@@ -4,7 +4,7 @@ $pageSubtitle = isset($pageSubtitle) ? (string) $pageSubtitle : '';
 ?>
 <div class="topbar topbar-librarian">
   <div>
-    <p class="topbar-kicker">Librarian Desk</p>
+    <p class="topbar-kicker">Librarian Portal</p>
     <h1><?php echo h($pageTitle); ?></h1>
     <?php if ($pageSubtitle !== ''): ?>
       <p><?php echo h($pageSubtitle); ?></p>
