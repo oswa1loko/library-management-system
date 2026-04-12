@@ -454,6 +454,9 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
         <h3 id="member-borrow-modal-title" class="heading-card" data-book-modal-title>Request a Book</h3>
         <p class="muted">Set the quantity and borrowing period, then submit your request for librarian approval.</p>
       </div>
+      <button type="button" class="member-borrow-modal-close" data-book-modal-close aria-label="Close borrow request dialog">
+        <span aria-hidden="true">&times;</span>
+      </button>
       <button type="button" class="button secondary" data-book-modal-close>Close</button>
     </div>
     <div class="member-borrow-modal-layout">
