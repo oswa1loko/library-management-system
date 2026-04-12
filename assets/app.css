@@ -5082,6 +5082,10 @@ button.catalog-search-suggestion{
   padding:0;
 }
 
+.member-borrow-modal{
+  z-index:1300;
+}
+
 .desk-modal[hidden]{
   display:none !important;
 }
