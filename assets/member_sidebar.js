@@ -36,7 +36,6 @@
 
   function setMobileOpen(shell, open) {
     var closeTimer = shell._memberMobileCloseTimer;
-    var header = getMobileHeader(shell);
     if (closeTimer) {
       clearTimeout(closeTimer);
       shell._memberMobileCloseTimer = null;
@@ -46,15 +45,9 @@
       shell.classList.remove('is-mobile-nav-closing');
       shell.classList.add('is-mobile-nav-open');
       document.body.classList.add('member-mobile-nav-active');
-      if (header) {
-        header.classList.add('is-mobile-nav-open');
-      }
     } else {
       shell.classList.remove('is-mobile-nav-open');
       shell.classList.add('is-mobile-nav-closing');
-      if (header) {
-        header.classList.remove('is-mobile-nav-open');
-      }
       shell._memberMobileCloseTimer = window.setTimeout(function () {
         shell.classList.remove('is-mobile-nav-closing');
         document.body.classList.remove('member-mobile-nav-active');

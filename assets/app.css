@@ -12476,15 +12476,15 @@ body.ebook-reader-screen {
     top: 14px;
   }
 
-  .member-mobile-header.is-mobile-nav-open .member-mobile-nav-toggle-bars {
+  .member-shell.is-mobile-nav-open .member-mobile-nav-toggle-bars {
     background: transparent;
   }
 
-  .member-mobile-header.is-mobile-nav-open .member-mobile-nav-toggle-bars::before {
+  .member-shell.is-mobile-nav-open .member-mobile-nav-toggle-bars::before {
     transform: translateY(6px) rotate(45deg);
   }
 
-  .member-mobile-header.is-mobile-nav-open .member-mobile-nav-toggle-bars::after {
+  .member-shell.is-mobile-nav-open .member-mobile-nav-toggle-bars::after {
     transform: translateY(-6px) rotate(-45deg);
   }
 
