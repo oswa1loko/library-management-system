@@ -10,6 +10,8 @@ $userId = (int) ($_SESSION['user_id'] ?? 0);
 $role = (string) $_SESSION['role'];
 $msg = '';
 $msgType = 'success';
+$focusReturnBatch = trim((string) ($_GET['return_batch'] ?? ''));
+$openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
 
 if (isset($_POST['cancel_borrow_request'])) {
     $borrowIdsRaw = $_POST['borrow_ids'] ?? [];
@@ -71,6 +73,7 @@ $trackingStmt = $conn->prepare("
       br.id,
       br.book_id,
       br.request_batch,
+      br.return_batch,
       br.status,
       br.requested_at,
       br.approved_at,
@@ -125,6 +128,7 @@ while ($trackingRow = $trackingRows->fetch_assoc()) {
         $borrowTrackingGroups[$groupKey] = [
             'request_batch' => $groupKey,
             'requested_at' => (string) ($trackingRow['requested_at'] ?? ''),
+            'return_batches' => [],
             'total_items' => 0,
             'counts' => [
                 'pending' => 0,
@@ -135,6 +139,11 @@ while ($trackingRow = $trackingRows->fetch_assoc()) {
             'pending_borrow_ids' => [],
             'items' => [],
         ];
+    }
+
+    $rowReturnBatch = trim((string) ($trackingRow['return_batch'] ?? ''));
+    if ($rowReturnBatch !== '' && !in_array($rowReturnBatch, $borrowTrackingGroups[$groupKey]['return_batches'], true)) {
+        $borrowTrackingGroups[$groupKey]['return_batches'][] = $rowReturnBatch;
     }
 
     $borrowTrackingGroups[$groupKey]['total_items']++;
@@ -188,6 +197,16 @@ foreach ($borrowTrackingGroups as &$trackingGroup) {
     $trackingGroup['items'] = array_values($trackingGroup['items']);
 }
 unset($trackingGroup);
+$focusedTrackingGroup = null;
+if ($focusReturnBatch !== '') {
+    foreach ($borrowTrackingGroups as $trackingGroup) {
+        if (in_array($focusReturnBatch, (array) ($trackingGroup['return_batches'] ?? []), true)) {
+            $focusedTrackingGroup = $trackingGroup;
+            break;
+        }
+    }
+}
+$trackingBaseHref = app_url($role . '/tracking.php');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -275,6 +294,14 @@ unset($trackingGroup);
     <div class="stack">
       <?php if ($msg !== ''): ?>
         <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
+      <?php endif; ?>
+
+      <?php if ($openedFromNotification && $focusReturnBatch !== ''): ?>
+        <div class="notice <?php echo $focusedTrackingGroup ? 'success' : 'warning'; ?>">
+          <?php echo h($focusedTrackingGroup
+            ? 'Opened the return tracking record from your notification.'
+            : 'The return batch from your notification is no longer visible in your tracking history.'); ?>
+        </div>
       <?php endif; ?>
 
       <div class="panel member-workspace-overview member-mobile-hide">
@@ -545,6 +572,92 @@ unset($trackingGroup);
     </div>
   </div>
 </div>
+<?php if ($openedFromNotification && $focusedTrackingGroup): ?>
+  <div class="desk-modal" data-member-notification-page-modal>
+    <a class="desk-modal-backdrop" href="<?php echo h($trackingBaseHref); ?>" aria-label="Close return tracking details"></a>
+    <div class="desk-modal-dialog panel member-notification-page-dialog" role="dialog" aria-modal="true" aria-labelledby="member-tracking-notification-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact">Return Tracking</p>
+          <h3 id="member-tracking-notification-modal-title" class="heading-card"><?php echo h(format_batch_reference((string) $focusedTrackingGroup['request_batch'], 'Borrow Ref')); ?></h3>
+          <p class="muted">This return record was opened from your notification so you can review the completed or pending return history for that exact batch.</p>
+        </div>
+        <a class="button secondary" href="<?php echo h($trackingBaseHref); ?>">Close</a>
+      </div>
+      <div class="panel member-return-batch-card member-notification-page-card">
+        <div class="member-return-batch-head">
+          <div>
+            <strong class="label-block">Tracked Return Batch</strong>
+            <span class="muted">
+              Requested <?php echo h(format_display_datetime((string) ($focusedTrackingGroup['requested_at'] ?? ''), '-')); ?>
+              <?php if ($focusReturnBatch !== ''): ?>
+                | <?php echo h(format_batch_reference($focusReturnBatch, 'Return Ref')); ?>
+              <?php endif; ?>
+            </span>
+            <div class="inline-actions chips-row batch-status-row">
+              <span class="chip"><?php echo (int) ($focusedTrackingGroup['total_items'] ?? 0); ?> total</span>
+              <?php if ((int) (($focusedTrackingGroup['counts']['pending'] ?? 0)) > 0): ?><span class="chip"><?php echo (int) $focusedTrackingGroup['counts']['pending']; ?> pending</span><?php endif; ?>
+              <?php if ((int) (($focusedTrackingGroup['counts']['borrowed'] ?? 0)) > 0): ?><span class="chip"><?php echo (int) $focusedTrackingGroup['counts']['borrowed']; ?> borrowed</span><?php endif; ?>
+              <?php if ((int) (($focusedTrackingGroup['counts']['return_requested'] ?? 0)) > 0): ?><span class="chip"><?php echo (int) $focusedTrackingGroup['counts']['return_requested']; ?> return requested</span><?php endif; ?>
+              <?php if ((int) (($focusedTrackingGroup['counts']['returned'] ?? 0)) > 0): ?><span class="chip"><?php echo (int) $focusedTrackingGroup['counts']['returned']; ?> returned</span><?php endif; ?>
+            </div>
+          </div>
+          <span class="chip">History View</span>
+        </div>
+        <div class="stack member-return-batch-list">
+          <?php foreach (($focusedTrackingGroup['items'] ?? []) as $trackingItem): ?>
+            <?php
+              $itemCounts = $trackingItem['counts'] ?? [];
+              $copies = array_sum(array_map('intval', $itemCounts));
+              $dateLabel = '-';
+              if ((int) ($itemCounts['borrowed'] ?? 0) > 0 || (int) ($itemCounts['return_requested'] ?? 0) > 0) {
+                  $dateLabel = 'Due ' . format_display_datetime((string) (($trackingItem['due_at'] ?? '') ?: ($trackingItem['due_date'] ?? '')), '-');
+              } elseif ((int) ($itemCounts['returned'] ?? 0) > 0) {
+                  $dateLabel = 'Returned ' . format_display_datetime((string) (($trackingItem['returned_at'] ?? '') ?: ($trackingItem['return_date'] ?? '')), '-');
+              }
+            ?>
+            <div class="empty-state member-return-batch-item">
+              <span class="grow">
+                <strong class="label-block meta-top-sm"><?php echo h((string) ($trackingItem['title'] ?? 'Book')); ?></strong>
+                <span class="muted"><?php echo h((string) ($trackingItem['author'] ?? '-')); ?> | <?php echo h($dateLabel); ?> | <?php echo (int) $copies; ?> copie<?php echo $copies === 1 ? 'y' : 's'; ?></span>
+              </span>
+              <span class="badge">
+                <?php if ((int) ($itemCounts['returned'] ?? 0) > 0): ?>
+                  <span class="status-dot approved"></span>Returned
+                <?php elseif ((int) ($itemCounts['return_requested'] ?? 0) > 0): ?>
+                  <span class="status-dot return_requested"></span>Return Requested
+                <?php elseif ((int) ($itemCounts['borrowed'] ?? 0) > 0): ?>
+                  <span class="status-dot borrowed"></span>Borrowed
+                <?php else: ?>
+                  <span class="status-dot pending"></span>Pending
+                <?php endif; ?>
+              </span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var pageModal = document.querySelector('[data-member-notification-page-modal]');
+  if (!pageModal) {
+    return;
+  }
+
+  document.body.classList.add('modal-open');
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+    var closeLink = pageModal.querySelector('.desk-modal-backdrop');
+    if (closeLink) {
+      window.location.href = closeLink.href;
+    }
+  });
+});
+</script>
 </body>
 </html>

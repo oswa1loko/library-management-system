@@ -2712,12 +2712,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
                 $url .= '?incident=' . $incidentId . '&from_notification=1';
             }
             $label = 'Open book incidents';
-        } elseif (
-            $kind === 'due_soon'
-            || $kind === 'overdue'
-            || strpos($titleLower, 'borrow request approved') !== false
-            || strpos($titleLower, 'return request approved') !== false
-        ) {
+        } elseif ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'borrow request approved') !== false) {
             $url = '/librarymanage/student/borrow_return.php';
             $requestBatch = notification_lookup_request_batch($notification);
             if ($requestBatch !== '') {
@@ -2726,6 +2721,13 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
                 $url .= '?borrow_id=' . (int) ($notification['entity_id'] ?? 0) . '&from_notification=1';
             }
             $label = 'Open borrow status';
+        } elseif (strpos($titleLower, 'return request approved') !== false) {
+            $url = '/librarymanage/student/tracking.php';
+            $returnBatch = notification_lookup_return_batch($notification);
+            if ($returnBatch !== '') {
+                $url .= '?return_batch=' . rawurlencode($returnBatch) . '&from_notification=1';
+            }
+            $label = 'Open return tracking';
         } elseif ($entityType === 'payment' || strpos($titleLower, 'payment') !== false) {
             $url = '/librarymanage/student/payment_upload.php';
             $params = ['from_notification' => '1'];
@@ -2751,12 +2753,7 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
                 $url .= '?incident=' . $incidentId . '&from_notification=1';
             }
             $label = 'Open book incidents';
-        } elseif (
-            $kind === 'due_soon'
-            || $kind === 'overdue'
-            || strpos($titleLower, 'borrow request approved') !== false
-            || strpos($titleLower, 'return request approved') !== false
-        ) {
+        } elseif ($kind === 'due_soon' || $kind === 'overdue' || strpos($titleLower, 'borrow request approved') !== false) {
             $url = '/librarymanage/faculty/borrow_return.php';
             $requestBatch = notification_lookup_request_batch($notification);
             if ($requestBatch !== '') {
@@ -2765,6 +2762,13 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
                 $url .= '?borrow_id=' . (int) ($notification['entity_id'] ?? 0) . '&from_notification=1';
             }
             $label = 'Open borrow status';
+        } elseif (strpos($titleLower, 'return request approved') !== false) {
+            $url = '/librarymanage/faculty/tracking.php';
+            $returnBatch = notification_lookup_return_batch($notification);
+            if ($returnBatch !== '') {
+                $url .= '?return_batch=' . rawurlencode($returnBatch) . '&from_notification=1';
+            }
+            $label = 'Open return tracking';
         } elseif ($entityType === 'payment' || strpos($titleLower, 'payment') !== false) {
             $url = '/librarymanage/faculty/payment_upload.php';
             $params = ['from_notification' => '1'];
