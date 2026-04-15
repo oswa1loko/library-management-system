@@ -12740,6 +12740,23 @@ body.ebook-reader-screen {
 }
 
 @media (max-width: 768px) {
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell)::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 105;
+    background: rgba(3, 10, 18, 0.52);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .24s ease, backdrop-filter .24s ease;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open::before {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .member-shell::before {
     content: "";
     position: fixed;
@@ -12765,6 +12782,34 @@ body.ebook-reader-screen {
   .member-shell.is-mobile-nav-open .member-mobile-nav-toggle {
     right: auto;
     top: auto;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar {
+    top: calc(var(--member-mobile-header-height) + env(safe-area-inset-top, 0px));
+    left: auto;
+    right: 0;
+    bottom: 0;
+    width: min(86vw, 360px);
+    max-width: 360px;
+    max-height: calc(100dvh - (var(--member-mobile-header-height) + env(safe-area-inset-top, 0px)));
+    border-radius: 24px 0 0 24px;
+    border: 0;
+    border-left: 1px solid rgba(143, 211, 255, 0.12);
+    background:
+      linear-gradient(180deg, rgba(5, 12, 24, 0.992), rgba(3, 9, 19, 0.985)),
+      rgba(3, 9, 19, 0.985);
+    box-shadow: -18px 24px 42px rgba(0, 0, 0, 0.3);
+    padding: 18px 16px 22px;
+    transform: translate3d(28px, 0, 0) !important;
+    transform-origin: top right;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar {
+    transform: translate3d(0, 0, 0) !important;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar {
+    transform: translate3d(18px, 0, 0) !important;
   }
 
   .member-sidebar {
@@ -12903,6 +12948,10 @@ body.ebook-reader-screen {
 }
 
 @media (max-width: 768px) {
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell)::before {
+    background: rgba(224, 234, 246, 0.52);
+  }
+
   :root[data-theme="light"] .member-shell::before {
     background: rgba(224, 234, 246, 0.52);
   }
@@ -12928,6 +12977,14 @@ body.ebook-reader-screen {
 
   :root[data-theme="light"] .member-main > .topbar:first-child::after {
     display: none;
+  }
+
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar {
+    border-left-color: rgba(188, 204, 228, 0.82);
+    background:
+      linear-gradient(180deg, rgba(251, 253, 255, 0.995), rgba(243, 247, 252, 0.99)),
+      rgba(243, 247, 252, 0.99);
+    box-shadow: -18px 22px 38px rgba(62, 92, 138, 0.16);
   }
 
   :root[data-theme="light"] .member-mobile-header {
