@@ -12746,10 +12746,10 @@ body.ebook-reader-screen {
     inset: 0;
     z-index: 105;
     background: rgba(3, 10, 18, 0.52);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(6px);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .24s ease, backdrop-filter .24s ease;
+    transition: opacity .2s ease, backdrop-filter .2s ease;
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open::before {
@@ -12799,9 +12799,18 @@ body.ebook-reader-screen {
       linear-gradient(180deg, rgba(5, 12, 24, 0.992), rgba(3, 9, 19, 0.985)),
       rgba(3, 9, 19, 0.985);
     box-shadow: -18px 24px 42px rgba(0, 0, 0, 0.3);
-    padding: 18px 16px 22px;
+    padding: 16px 14px 16px;
     transform: translate3d(28px, 0, 0) !important;
     transform-origin: top right;
+    transition:
+      transform .2s cubic-bezier(.22, 1, .36, 1),
+      box-shadow .2s ease,
+      background-color .2s ease;
+    will-change: transform;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar {
@@ -12857,6 +12866,20 @@ body.ebook-reader-screen {
 
   .member-sidebar-nav,
   .member-sidebar .topbar-nav.member-sidebar-utilities {
+    gap: 10px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-nav {
+    display: grid;
+    gap: 10px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar .topbar-nav.member-sidebar-utilities {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid rgba(143, 211, 255, 0.08);
+    display: grid;
+    align-content: end;
     gap: 8px;
   }
 
@@ -12866,28 +12889,33 @@ body.ebook-reader-screen {
     min-height: 0;
     padding: 11px 12px !important;
     border: 0;
-    border-radius: 14px;
-    background: transparent;
-    box-shadow: none;
+    border-radius: 15px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     color: #eef6ff;
     justify-content: flex-start !important;
     gap: 0 !important;
+    transition:
+      background-color .18s ease,
+      transform .18s ease,
+      color .18s ease,
+      box-shadow .18s ease;
   }
 
   .member-sidebar-link:hover,
   .member-sidebar-link:focus-visible,
   .member-sidebar .theme-toggle:focus-visible {
-    transform: none;
+    transform: translateX(-2px);
     border-color: transparent;
-    background: rgba(95, 177, 255, 0.1);
-    box-shadow: none;
+    background: linear-gradient(180deg, rgba(95, 177, 255, 0.14), rgba(95, 177, 255, 0.08));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
   }
 
   .member-sidebar-link.is-active {
     border: 0;
     position: relative;
-    background: linear-gradient(180deg, rgba(74, 140, 211, 0.24), rgba(57, 108, 164, 0.18));
-    box-shadow: none;
+    background: linear-gradient(180deg, rgba(74, 140, 211, 0.3), rgba(57, 108, 164, 0.22));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 12px 24px rgba(15, 43, 74, 0.18);
     color: #ffffff;
   }
 
@@ -12985,6 +13013,27 @@ body.ebook-reader-screen {
       linear-gradient(180deg, rgba(251, 253, 255, 0.995), rgba(243, 247, 252, 0.99)),
       rgba(243, 247, 252, 0.99);
     box-shadow: -18px 22px 38px rgba(62, 92, 138, 0.16);
+  }
+
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar .topbar-nav.member-sidebar-utilities {
+    border-top-color: rgba(188, 204, 228, 0.72);
+  }
+
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-link,
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar .topbar-nav.member-sidebar-utilities > .member-sidebar-link {
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,249,255,0.86));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 16px rgba(62, 92, 138, 0.06);
+  }
+
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-link:hover,
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-link:focus-visible {
+    background: linear-gradient(180deg, rgba(236,244,255,0.98), rgba(226,238,255,0.92));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.98), 0 10px 18px rgba(62, 92, 138, 0.08);
+  }
+
+  :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-link.is-active {
+    background: linear-gradient(180deg, rgba(102, 160, 255, 0.26), rgba(72, 129, 232, 0.18));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.58), 0 12px 22px rgba(62, 92, 138, 0.12);
   }
 
   :root[data-theme="light"] .member-mobile-header {
