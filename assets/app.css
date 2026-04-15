@@ -7766,6 +7766,17 @@ button.catalog-search-suggestion{
   }
 }
 
+@keyframes member-mobile-drawer-out-left{
+  from{
+    opacity:1;
+    transform:translate3d(0, 0, 0) scale(1);
+  }
+  to{
+    opacity:1;
+    transform:translate3d(calc(-100% - 14px), 0, 0) scale(1);
+  }
+}
+
 @keyframes member-mobile-item-in{
   from{
     opacity:0;
@@ -12807,10 +12818,7 @@ body.ebook-reader-screen {
     padding: 16px 14px 16px;
     transform: translate3d(calc(-100% - 14px), 0, 0) !important;
     transform-origin: top left;
-    transition:
-      transform .2s cubic-bezier(.22, 1, .36, 1),
-      box-shadow .2s ease,
-      background-color .2s ease;
+    transition: none;
     will-change: transform;
     backface-visibility: hidden;
     display: flex;
@@ -12821,10 +12829,12 @@ body.ebook-reader-screen {
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar {
     transform: translate3d(0, 0, 0) !important;
+    animation: member-mobile-drawer-in .24s cubic-bezier(.22, 1, .36, 1) both;
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar {
     transform: translate3d(calc(-100% - 14px), 0, 0) !important;
+    animation: member-mobile-drawer-out-left .22s cubic-bezier(.4, 0, .2, 1) both;
   }
 
   .member-sidebar {
