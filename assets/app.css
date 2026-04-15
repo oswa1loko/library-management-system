@@ -7758,7 +7758,7 @@ button.catalog-search-suggestion{
 @keyframes member-mobile-drawer-in{
   from{
     opacity:0;
-    transform:translate3d(calc(-100% - 28px), 0, 0) scale(0.985);
+    transform:translate3d(calc(100% + 28px), 0, 0) scale(0.985);
   }
   to{
     opacity:1;
@@ -7766,14 +7766,14 @@ button.catalog-search-suggestion{
   }
 }
 
-@keyframes member-mobile-drawer-out-left{
+@keyframes member-mobile-drawer-out-right{
   from{
     opacity:1;
     transform:translate3d(0, 0, 0) scale(1);
   }
   to{
     opacity:1;
-    transform:translate3d(calc(-100% - 14px), 0, 0) scale(1);
+    transform:translate3d(calc(100% + 14px), 0, 0) scale(1);
   }
 }
 
@@ -12802,22 +12802,22 @@ body.ebook-reader-screen {
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar {
     top: calc(var(--member-mobile-header-height) + env(safe-area-inset-top, 0px));
-    left: 0;
-    right: auto;
+    left: auto;
+    right: 0;
     bottom: 0;
     width: min(86vw, 360px);
     max-width: 360px;
     max-height: calc(100dvh - (var(--member-mobile-header-height) + env(safe-area-inset-top, 0px)));
-    border-radius: 0 24px 24px 0;
+    border-radius: 24px 0 0 24px;
     border: 0;
-    border-right: 1px solid rgba(143, 211, 255, 0.12);
+    border-left: 1px solid rgba(143, 211, 255, 0.12);
     background:
       linear-gradient(180deg, rgba(5, 12, 24, 0.992), rgba(3, 9, 19, 0.985)),
       rgba(3, 9, 19, 0.985);
-    box-shadow: 18px 24px 42px rgba(0, 0, 0, 0.3);
+    box-shadow: -18px 24px 42px rgba(0, 0, 0, 0.3);
     padding: 16px 14px 16px;
-    transform: translate3d(calc(-100% - 14px), 0, 0) !important;
-    transform-origin: top left;
+    transform: translate3d(calc(100% + 14px), 0, 0) !important;
+    transform-origin: top right;
     transition: none;
     will-change: transform;
     backface-visibility: hidden;
@@ -12829,12 +12829,12 @@ body.ebook-reader-screen {
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar {
     transform: translate3d(0, 0, 0) !important;
-    animation: member-mobile-drawer-in .24s cubic-bezier(.22, 1, .36, 1) both;
+    animation: member-mobile-drawer-in .22s cubic-bezier(.22, 1, .36, 1) both;
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar {
-    transform: translate3d(calc(-100% - 14px), 0, 0) !important;
-    animation: member-mobile-drawer-out-left .22s cubic-bezier(.4, 0, .2, 1) both;
+    transform: translate3d(calc(100% + 14px), 0, 0) !important;
+    animation: member-mobile-drawer-out-right .18s cubic-bezier(.4, 0, .2, 1) both;
   }
 
   .member-sidebar {
@@ -13046,11 +13046,11 @@ body.ebook-reader-screen {
   }
 
   :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar {
-    border-right-color: rgba(188, 204, 228, 0.82);
+    border-left-color: rgba(188, 204, 228, 0.82);
     background:
       linear-gradient(180deg, rgba(251, 253, 255, 0.995), rgba(243, 247, 252, 0.99)),
       rgba(243, 247, 252, 0.99);
-    box-shadow: 18px 22px 38px rgba(62, 92, 138, 0.16);
+    box-shadow: -18px 22px 38px rgba(62, 92, 138, 0.16);
   }
 
   :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar .topbar-nav.member-sidebar-utilities {
