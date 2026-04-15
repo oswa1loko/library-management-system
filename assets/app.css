@@ -5231,78 +5231,6 @@ button.catalog-search-suggestion{
   border-bottom:1px solid var(--line);
 }
 
-.member-notification-modal-dialog{
-  width:min(560px, calc(100vw - 32px));
-  padding:28px;
-  border:1px solid rgba(110, 184, 255, 0.18);
-  background:
-    radial-gradient(circle at top right, rgba(80, 170, 255, 0.16), transparent 46%),
-    linear-gradient(180deg, rgba(17, 34, 56, 0.98), rgba(8, 18, 32, 0.98));
-  box-shadow:0 28px 60px rgba(0, 0, 0, 0.38);
-}
-
-.member-notification-modal-head{
-  margin-bottom:18px;
-}
-
-.member-notification-modal-heading h3{
-  margin:4px 0 0;
-}
-
-.member-notification-modal-content{
-  display:grid;
-  gap:16px;
-}
-
-.member-notification-modal-status{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  width:max-content;
-  max-width:100%;
-  padding:8px 12px;
-  border-radius:999px;
-  background:rgba(255, 255, 255, 0.04);
-  border:1px solid rgba(255, 255, 255, 0.08);
-}
-
-.member-notification-modal-status-text{
-  color:var(--text-muted);
-  font-size:0.83rem;
-  font-weight:700;
-  letter-spacing:0.08em;
-  text-transform:uppercase;
-}
-
-.member-notification-modal-copy{
-  padding:18px;
-  border-radius:18px;
-  background:rgba(255, 255, 255, 0.035);
-  border:1px solid rgba(255, 255, 255, 0.06);
-}
-
-.member-notification-modal-body{
-  margin:0;
-  color:var(--text);
-  line-height:1.65;
-}
-
-.member-notification-modal-meta{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
-  color:var(--text-muted);
-  font-size:0.92rem;
-}
-
-.member-notification-modal-actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:12px;
-}
-
 .librarian-desk-queue-grid{
   grid-template-columns:repeat(auto-fit, minmax(420px, 1fr));
   align-items:start;
@@ -8814,12 +8742,6 @@ body.modal-open{
     width:92px;
     height:128px;
   }
-
-  .member-notification-modal-dialog{
-    width:min(100%, 520px);
-    padding:22px;
-    border-radius:22px;
-  }
 }
 
 @media (max-width: 540px){
@@ -8856,35 +8778,6 @@ body.modal-open{
   }
 
   .member-borrow-modal-dialog .member-workspace-actions > *{
-    width:100%;
-  }
-
-  .desk-modal-dialog.member-notification-modal-dialog{
-    width:100%;
-    max-height:min(100dvh, 100vh);
-    min-height:min(58dvh, 420px);
-    padding:20px 18px calc(18px + env(safe-area-inset-bottom, 0px));
-    border-radius:22px 22px 0 0;
-  }
-
-  .member-notification-modal-head{
-    position:sticky;
-    top:0;
-    z-index:2;
-    background:inherit;
-    padding-bottom:12px;
-  }
-
-  .member-notification-modal-meta{
-    display:grid;
-    gap:8px;
-  }
-
-  .member-notification-modal-actions{
-    display:grid;
-  }
-
-  .member-notification-modal-actions > *{
     width:100%;
   }
 }
