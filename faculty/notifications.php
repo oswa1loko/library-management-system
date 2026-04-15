@@ -156,6 +156,11 @@ $notificationFeedUrl = app_url('faculty/notifications_feed.php');
               href="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
               data-notification-link
               data-destination-url="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
+              data-notification-title="Overdue Alert"
+              data-notification-body="<?php echo h((string) ($dueBook['title'] ?? 'Book')); ?> was due on <?php echo h(format_display_date($dueDateRaw)); ?> and is now overdue by <?php echo (int) $daysOverdue; ?> day<?php echo $daysOverdue === 1 ? '' : 's'; ?>.<?php if (($dueBook['status'] ?? '') === 'return_requested'): ?> Return confirmation is still pending.<?php endif; ?>"
+              data-notification-created-at="Overdue"
+              data-notification-destination-label="Open borrow status"
+              data-notification-severity="critical"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
               <strong>
@@ -181,6 +186,11 @@ $notificationFeedUrl = app_url('faculty/notifications_feed.php');
               href="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
               data-notification-link
               data-destination-url="<?php echo h(app_url('faculty/borrow_return.php')); ?>"
+              data-notification-title="Due Date Alert"
+              data-notification-body="<?php echo h((string) ($dueBook['title'] ?? 'Book')); ?> is due on <?php echo h(format_display_date((string) ($dueBook['due_date'] ?? ''))); ?><?php if (($dueBook['status'] ?? '') === 'return_requested'): ?> and is waiting for librarian confirmation.<?php endif; ?>"
+              data-notification-created-at="Due soon"
+              data-notification-destination-label="Open borrow status"
+              data-notification-severity="warning"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
               <strong>
@@ -216,6 +226,11 @@ $notificationFeedUrl = app_url('faculty/notifications_feed.php');
               href="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('faculty/notifications.php')); ?>"
               data-notification-link
               data-destination-url="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('faculty/notifications.php')); ?>"
+              data-notification-title="<?php echo h((string) $row['title']); ?>"
+              data-notification-body="<?php echo h((string) $row['body']); ?>"
+              data-notification-created-at="<?php echo h(date('F j, Y g:i A', strtotime((string) $row['created_at']))); ?>"
+              data-notification-destination-label="<?php echo h($destinationLabel); ?>"
+              data-notification-severity="<?php echo h((string) ($row['severity'] ?? 'info')); ?>"
               <?php if ($isUnread): ?>data-notification-id="<?php echo (int) $row['id']; ?>" data-notification-unread="true"<?php endif; ?>
             >
               <strong>
@@ -237,36 +252,9 @@ $notificationFeedUrl = app_url('faculty/notifications_feed.php');
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  var openEndpoint = <?php echo json_encode(app_url('faculty/notification_open.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-
-  document.querySelectorAll('[data-notification-link]').forEach(function (link) {
-    link.addEventListener('click', function (event) {
-      var destinationUrl = link.getAttribute('data-destination-url') || link.getAttribute('href') || '';
-      var notificationId = Number(link.getAttribute('data-notification-id') || 0);
-      var borrowId = Number(link.getAttribute('data-alert-borrow-id') || 0);
-      var isNotificationUnread = link.getAttribute('data-notification-unread') === 'true';
-      var isAlertUnread = link.getAttribute('data-alert-unread') === 'true';
-
-      if (!destinationUrl || (!isNotificationUnread && !isAlertUnread)) {
-        return;
-      }
-
-      event.preventDefault();
-
-      var redirectUrl = new URL(openEndpoint, window.location.origin);
-      redirectUrl.searchParams.set('redirect', destinationUrl);
-      if (isNotificationUnread && notificationId > 0) {
-        redirectUrl.searchParams.set('notification_id', String(notificationId));
-      } else if (isAlertUnread && borrowId > 0) {
-        redirectUrl.searchParams.set('borrow_id', String(borrowId));
-      } else {
-        window.location.assign(destinationUrl);
-        return;
-      }
-
-      window.location.assign(redirectUrl.toString());
-    });
-  });
+  if (window.libraryManageBindMemberNotificationLinks) {
+    window.libraryManageBindMemberNotificationLinks('[data-notification-link]');
+  }
 });
 </script>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>

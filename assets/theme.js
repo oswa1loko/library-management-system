@@ -279,7 +279,7 @@
 
       event.preventDefault();
       event.stopPropagation();
-      openStudentNotificationDestination(panel, notificationItem);
+      openStudentNotificationModal(panel, notificationItem);
     });
 
     return panel;
@@ -332,6 +332,11 @@
         (isLinked ? ' data-destination-url="' + escapeHtml(destinationUrl) + '"' : '') +
         (Number(item.id || 0) > 0 ? ' data-notification-id="' + Number(item.id || 0) + '"' : '') +
         (Number(item.borrow_id || 0) > 0 ? ' data-notification-borrow-id="' + Number(item.borrow_id || 0) + '"' : '') +
+        ' data-notification-title="' + escapeHtml(item.title || 'Notification') + '"' +
+        ' data-notification-body="' + escapeHtml(item.body || '') + '"' +
+        ' data-notification-created-at="' + escapeHtml(item.created_at || '-') + '"' +
+        ' data-notification-destination-label="' + escapeHtml(destinationLabel || 'Open item') + '"' +
+        ' data-notification-severity="' + escapeHtml(item.severity || 'info') + '"' +
         ' data-notification-unread="' + (item.is_read ? 'false' : 'true') + '">' +
         '<div class="student-notification-title">' +
           '<span class="status-dot ' + severityClass + '"></span>' +
@@ -399,14 +404,129 @@
     }
 
     notificationItem.setAttribute('data-notification-unread', 'false');
-    var chip = notificationItem.querySelector('.student-notification-title .chip');
+    notificationItem.setAttribute('data-alert-unread', 'false');
+    notificationItem.classList.remove('is-unread');
+    var chip = notificationItem.querySelector('.chip');
     if (chip) {
       chip.textContent = 'Read';
       chip.classList.add('student-notification-read');
     }
   }
 
-  function openStudentNotificationDestination(panel, notificationItem) {
+  function ensureMemberNotificationModal() {
+    var modal = document.querySelector('.member-notification-modal');
+    if (modal) {
+      return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'desk-modal member-notification-modal';
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML =
+      '<div class="desk-modal-backdrop" data-member-notification-close></div>' +
+      '<div class="desk-modal-dialog panel member-notification-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="member-notification-modal-title">' +
+        '<div class="desk-modal-head member-notification-modal-head">' +
+          '<div class="member-notification-modal-heading">' +
+            '<p class="muted eyebrow-compact member-notification-modal-kicker">Notification</p>' +
+            '<h3 id="member-notification-modal-title">Notification details</h3>' +
+          '</div>' +
+          '<button type="button" class="button secondary" data-member-notification-close aria-label="Close notification details">Close</button>' +
+        '</div>' +
+        '<div class="member-notification-modal-content">' +
+          '<div class="member-notification-modal-status">' +
+            '<span class="status-dot approved" data-member-notification-severity></span>' +
+            '<span class="member-notification-modal-status-text" data-member-notification-status>Notification</span>' +
+          '</div>' +
+          '<div class="member-notification-modal-copy">' +
+            '<p class="member-notification-modal-body" data-member-notification-body></p>' +
+          '</div>' +
+          '<div class="member-notification-modal-meta">' +
+            '<span data-member-notification-created>-</span>' +
+            '<span data-member-notification-action-label>Open item</span>' +
+          '</div>' +
+          '<div class="member-notification-modal-actions">' +
+            '<button type="button" class="button" data-member-notification-open>Open</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    function closeModal() {
+      modal.hidden = true;
+      modal.setAttribute('aria-hidden', 'true');
+      delete modal.dataset.destinationUrl;
+      document.body.classList.remove('modal-open');
+    }
+
+    modal.addEventListener('click', function (event) {
+      if (event.target.closest('[data-member-notification-close]')) {
+        closeModal();
+        return;
+      }
+
+      var openButton = event.target.closest('[data-member-notification-open]');
+      if (!openButton) {
+        return;
+      }
+
+      var destinationUrl = modal.dataset.destinationUrl || '';
+      if (!destinationUrl) {
+        closeModal();
+        return;
+      }
+
+      closeModal();
+      window.location.assign(destinationUrl);
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !modal.hidden) {
+        closeModal();
+      }
+    });
+
+    return modal;
+  }
+
+  function markStudentNotificationAlertRead(panel, borrowId, options) {
+    var config = getMemberNotificationConfig();
+    var formData = new window.URLSearchParams();
+    var shouldReload = !options || options.reload !== false;
+    formData.set('action', 'mark_alert_read');
+    formData.set('borrow_id', String(Number(borrowId || 0)));
+
+    if (!config) {
+      return Promise.reject(new Error('Notifications are not available here.'));
+    }
+
+    return window.fetch(config.feedUrl, {
+      method: 'POST',
+      keepalive: true,
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: formData.toString()
+    })
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (payload) {
+        if (!payload || payload.ok !== true) {
+          throw new Error('Unable to mark alert as read.');
+        }
+
+        updateStudentNotificationBadges(payload.unread_count || 0);
+        if (shouldReload && panel) {
+          loadStudentNotifications(panel);
+        }
+      });
+  }
+
+  function openStudentNotificationModal(panel, notificationItem) {
     if (!notificationItem) {
       return;
     }
@@ -416,31 +536,77 @@
       return;
     }
 
-    var notificationId = Number(notificationItem.getAttribute('data-notification-id') || 0);
-    var borrowId = Number(notificationItem.getAttribute('data-notification-borrow-id') || 0);
-    var isUnread = notificationItem.getAttribute('data-notification-unread') === 'true';
-    var config = getMemberNotificationConfig();
-    var navigate = function () {
-      window.location.assign(destinationUrl);
-    };
+    var modal = ensureMemberNotificationModal();
+    var title = notificationItem.getAttribute('data-notification-title') || 'Notification';
+    var body = notificationItem.getAttribute('data-notification-body') || '';
+    var createdAt = notificationItem.getAttribute('data-notification-created-at') || '-';
+    var destinationLabel = notificationItem.getAttribute('data-notification-destination-label') || 'Open item';
+    var severity = notificationItem.getAttribute('data-notification-severity') || 'info';
+    var notificationId = Number(
+      notificationItem.getAttribute('data-notification-id') ||
+      notificationItem.getAttribute('data-alert-notification-id') ||
+      0
+    );
+    var borrowId = Number(
+      notificationItem.getAttribute('data-notification-borrow-id') ||
+      notificationItem.getAttribute('data-alert-borrow-id') ||
+      0
+    );
+    var isNotificationUnread = notificationItem.getAttribute('data-notification-unread') === 'true';
+    var isAlertUnread = notificationItem.getAttribute('data-alert-unread') === 'true' || (borrowId > 0 && notificationId <= 0 && isNotificationUnread);
+    var severityDot = modal.querySelector('[data-member-notification-severity]');
+    var severityLabel = modal.querySelector('[data-member-notification-status]');
+    var bodyNode = modal.querySelector('[data-member-notification-body]');
+    var createdNode = modal.querySelector('[data-member-notification-created]');
+    var actionNode = modal.querySelector('[data-member-notification-action-label]');
+    var titleNode = modal.querySelector('#member-notification-modal-title');
 
-    if (isUnread && config && config.openUrl && (notificationId > 0 || borrowId > 0)) {
-      setNotificationItemReadState(notificationItem);
-      window.location.assign(buildMemberNotificationOpenUrl(config.openUrl, destinationUrl, notificationId, borrowId));
-      return;
+    if (titleNode) {
+      titleNode.textContent = title;
+    }
+    if (bodyNode) {
+      bodyNode.textContent = body;
+    }
+    if (createdNode) {
+      createdNode.textContent = createdAt;
+    }
+    if (actionNode) {
+      actionNode.textContent = destinationLabel;
+    }
+    if (severityDot) {
+      severityDot.classList.remove('approved', 'due', 'unpaid');
+      severityDot.classList.add(severity === 'critical' ? 'unpaid' : (severity === 'warning' ? 'due' : 'approved'));
+    }
+    if (severityLabel) {
+      severityLabel.textContent = severity === 'critical'
+        ? 'Critical update'
+        : (severity === 'warning' ? 'Attention needed' : 'Notification');
     }
 
-    if (isUnread && notificationId > 0) {
+    modal.dataset.destinationUrl = destinationUrl;
+    if (panel) {
+      setStudentNotificationPanelOpen(panel, false);
+    }
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+
+    if (isNotificationUnread && notificationId > 0) {
       setNotificationItemReadState(notificationItem);
-      markStudentNotificationRead(panel, notificationId, { reload: false })
+      markStudentNotificationRead(panel, notificationId, { reload: !!panel })
         .catch(function () {
-          // Navigate even if the read update fails so the click still feels reliable.
-        })
-        .finally(navigate);
+          // Keep the modal open even if the background read update fails.
+        });
       return;
     }
 
-    navigate();
+    if (isAlertUnread && borrowId > 0) {
+      setNotificationItemReadState(notificationItem);
+      markStudentNotificationAlertRead(panel, borrowId, { reload: !!panel })
+        .catch(function () {
+          // Keep the modal open even if the background read update fails.
+        });
+    }
   }
 
   function updateStudentNotificationBadges(unreadCount) {
@@ -650,6 +816,23 @@
 
     attachStudentNotificationShortcut(notificationButton);
   }
+
+  window.libraryManageOpenMemberNotificationModal = function (element) {
+    openStudentNotificationModal(null, element);
+  };
+  window.libraryManageBindMemberNotificationLinks = function (selector) {
+    document.querySelectorAll(selector).forEach(function (link) {
+      if (!link || link.dataset.notificationModalBound === 'true') {
+        return;
+      }
+
+      link.addEventListener('click', function (event) {
+        event.preventDefault();
+        openStudentNotificationModal(null, link);
+      });
+      link.dataset.notificationModalBound = 'true';
+    });
+  };
 
   var initialTheme = getStoredTheme() || 'dark';
   setTheme(initialTheme);
