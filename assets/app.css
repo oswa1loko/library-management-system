@@ -2589,11 +2589,12 @@ body.auth-page > .theme-toggle{
   height:36px;
   min-height:36px;
   padding:0;
-  border:0;
+  border:0 !important;
   border-radius:999px;
-  background:transparent;
+  background:transparent !important;
+  background-image:none !important;
   color:rgba(207,231,255,0.72);
-  box-shadow:none;
+  box-shadow:none !important;
   transform:translateY(-50%);
   animation:none;
 }
@@ -2605,15 +2606,19 @@ body.auth-page > .theme-toggle{
 .password-toggle:hover,
 .password-toggle:focus-visible{
   transform:translateY(-50%);
-  background:rgba(143,211,255,0.12);
+  border:0 !important;
+  background:rgba(143,211,255,0.12) !important;
+  background-image:none !important;
   color:#eaf6ff;
-  box-shadow:0 0 0 4px rgba(143,211,255,0.08);
+  box-shadow:0 0 0 4px rgba(143,211,255,0.08) !important;
 }
 
 .password-toggle[data-visible="true"]{
-  background:rgba(94,186,255,0.16);
+  border:0 !important;
+  background:rgba(94,186,255,0.16) !important;
+  background-image:none !important;
   color:#f4fbff;
-  box-shadow:0 0 0 3px rgba(83,178,255,0.08);
+  box-shadow:0 0 0 3px rgba(83,178,255,0.08) !important;
 }
 
 .password-toggle-icon{
@@ -4030,22 +4035,28 @@ body.auth-page > .theme-toggle{
 }
 
 :root[data-theme="light"] .password-toggle{
-  background:transparent;
+  border:0 !important;
+  background:transparent !important;
+  background-image:none !important;
   color:rgba(63,95,134,0.7);
-  box-shadow:none;
+  box-shadow:none !important;
 }
 
 :root[data-theme="light"] .password-toggle:hover,
 :root[data-theme="light"] .password-toggle:focus-visible{
-  background:rgba(47,109,255,0.1);
+  border:0 !important;
+  background:rgba(47,109,255,0.1) !important;
+  background-image:none !important;
   color:#234f7d;
-  box-shadow:0 0 0 4px rgba(47,109,255,0.08);
+  box-shadow:0 0 0 4px rgba(47,109,255,0.08) !important;
 }
 
 :root[data-theme="light"] .password-toggle[data-visible="true"]{
-  background:rgba(47,109,255,0.14);
+  border:0 !important;
+  background:rgba(47,109,255,0.14) !important;
+  background-image:none !important;
   color:#21466f;
-  box-shadow:0 0 0 3px rgba(47,109,255,0.08);
+  box-shadow:0 0 0 3px rgba(47,109,255,0.08) !important;
 }
 
 :root[data-theme="light"] .button,
