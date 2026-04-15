@@ -158,10 +158,15 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
                         $targetRole,
                         $isIncidentPayment ? 'Incident Payment Rejected' : 'Payment Rejected',
                         $isIncidentPayment
-                            ? 'Your incident payment proof was rejected by admin. Please upload a new valid proof.'
+                            ? 'Your incident payment proof for incident #' . (int) ($current['incident_id'] ?? 0) . ' was rejected by admin. Please upload a new valid proof.'
                             : 'Payment #' . $id . ' was rejected by admin. Please resubmit with a valid proof.',
                         $isIncidentPayment ? 'warning' : 'critical',
-                        (int) $current['user_id']
+                        (int) $current['user_id'],
+                        $isIncidentPayment ? [
+                            'kind' => 'incident_payment_rejected',
+                            'entity_type' => 'book_incident',
+                            'entity_id' => (int) ($current['incident_id'] ?? 0),
+                        ] : []
                     );
                 }
             }
@@ -232,10 +237,15 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
                         $targetRole,
                         $isIncidentPayment ? 'Incident Payment Approved' : 'Payment Approved',
                         $isIncidentPayment
-                            ? 'Your incident payment proof was approved by admin.'
+                            ? 'Your incident payment proof for incident #' . (int) ($current['incident_id'] ?? 0) . ' was approved by admin.'
                             : 'Payment #' . $id . ' was approved by admin.',
                         'info',
-                        (int) $current['user_id']
+                        (int) $current['user_id'],
+                        $isIncidentPayment ? [
+                            'kind' => 'incident_payment_approved',
+                            'entity_type' => 'book_incident',
+                            'entity_id' => (int) ($current['incident_id'] ?? 0),
+                        ] : []
                     );
                 }
             }

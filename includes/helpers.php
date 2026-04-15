@@ -2733,6 +2733,10 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $params = ['from_notification' => '1'];
             if (strpos($titleLower, 'incident payment') !== false || strpos($bodyLower, 'incident payment') !== false) {
                 $params['payment_context'] = 'incident';
+                $incidentId = notification_lookup_incident_id($notification);
+                if ($incidentId > 0) {
+                    $params['incident_id'] = $incidentId;
+                }
             } else {
                 $params['payment_context'] = 'penalty';
             }
@@ -2774,6 +2778,10 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $params = ['from_notification' => '1'];
             if (strpos($titleLower, 'incident payment') !== false || strpos($bodyLower, 'incident payment') !== false) {
                 $params['payment_context'] = 'incident';
+                $incidentId = notification_lookup_incident_id($notification);
+                if ($incidentId > 0) {
+                    $params['incident_id'] = $incidentId;
+                }
             } else {
                 $params['payment_context'] = 'penalty';
             }

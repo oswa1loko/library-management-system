@@ -11,6 +11,7 @@ $role = (string) $_SESSION['role'];
 $msg = '';
 $msgType = 'success';
 $paymentContext = trim((string) ($_GET['payment_context'] ?? ''));
+$focusedIncidentId = (int) ($_GET['incident_id'] ?? 0);
 $openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
 
 function upload_payment_proof(array $file, int $userId): array
@@ -483,6 +484,40 @@ while ($incidentRow = $incidentOptionRows->fetch_assoc()) {
 $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentOptions) > 0;
 $paymentUploadBaseHref = app_url($role . '/payment_upload.php');
 $notificationPaymentContext = in_array($paymentContext, ['penalty', 'incident'], true) ? $paymentContext : '';
+$focusedIncidentPayment = null;
+if ($focusedIncidentId > 0) {
+    $focusedIncidentStmt = $conn->prepare("
+        SELECT
+          bi.id,
+          bi.assessed_fee,
+          bi.settlement_status,
+          bi.workflow_status,
+          bi.incident_type,
+          bi.resolution_action,
+          bi.resolution_notes,
+          bi.reported_at,
+          b.title,
+          (
+            SELECT pay.status
+            FROM payments pay
+            WHERE pay.user_id = bi.user_id
+              AND pay.incident_id = bi.id
+            ORDER BY pay.id DESC
+            LIMIT 1
+          ) AS latest_payment_status
+        FROM book_incidents bi
+        JOIN books b ON b.id = bi.book_id
+        WHERE bi.user_id = ?
+          AND bi.id = ?
+        LIMIT 1
+    ");
+    if ($focusedIncidentStmt) {
+        $focusedIncidentStmt->bind_param('ii', $userId, $focusedIncidentId);
+        $focusedIncidentStmt->execute();
+        $focusedIncidentPayment = $focusedIncidentStmt->get_result()->fetch_assoc() ?: null;
+        $focusedIncidentStmt->close();
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -916,18 +951,36 @@ $notificationPaymentContext = in_array($paymentContext, ['penalty', 'incident'],
       <div class="panel member-return-batch-card member-notification-page-card">
         <div class="member-return-batch-head">
           <div>
-            <strong class="label-block">
-              <?php echo h($notificationPaymentContext === 'incident' ? 'Incident Fees' : 'Penalty Payments'); ?>
-            </strong>
-            <span class="muted">
-              <?php echo h($notificationPaymentContext === 'incident'
-                ? count($payableIncidentOptions) . ' payable incident case(s) currently available.'
-                : count($payablePenaltyOptions) . ' payable penalty group(s) currently available.'); ?>
-            </span>
+            <?php if ($notificationPaymentContext === 'incident' && $focusedIncidentPayment): ?>
+              <strong class="label-block">
+                Incident #<?php echo (int) ($focusedIncidentPayment['id'] ?? 0); ?>:
+                <?php echo h((string) ($focusedIncidentPayment['title'] ?? 'Incident payment')); ?>
+              </strong>
+              <span class="muted">
+                <?php echo h(book_incident_type_label((string) ($focusedIncidentPayment['incident_type'] ?? ''))); ?> |
+                <?php echo h(book_incident_payment_stage_label($focusedIncidentPayment)); ?> |
+                <?php echo h(format_currency($focusedIncidentPayment['assessed_fee'] ?? 0)); ?>
+              </span>
+            <?php else: ?>
+              <strong class="label-block">
+                <?php echo h($notificationPaymentContext === 'incident' ? 'Incident Fees' : 'Penalty Payments'); ?>
+              </strong>
+              <span class="muted">
+                <?php echo h($notificationPaymentContext === 'incident'
+                  ? count($payableIncidentOptions) . ' payable incident case(s) currently available.'
+                  : count($payablePenaltyOptions) . ' payable penalty group(s) currently available.'); ?>
+              </span>
+            <?php endif; ?>
             <div class="inline-actions chips-row batch-status-row">
-              <span class="chip"><?php echo h(format_currency($overviewStats['unpaid_total'] ?? 0)); ?> outstanding penalties</span>
-              <span class="chip"><?php echo h(format_currency($incidentStats['incident_balance'] ?? 0)); ?> incident balance</span>
-              <span class="chip"><?php echo (int) ($paymentStats['pending_submissions'] ?? 0); ?> pending submissions</span>
+              <?php if ($notificationPaymentContext === 'incident' && $focusedIncidentPayment): ?>
+                <span class="chip"><?php echo h(book_incident_workflow_label((string) ($focusedIncidentPayment['workflow_status'] ?? 'open'))); ?></span>
+                <span class="chip"><?php echo h(book_incident_payment_stage_label($focusedIncidentPayment)); ?></span>
+                <span class="chip"><?php echo h(format_currency($focusedIncidentPayment['assessed_fee'] ?? 0)); ?></span>
+              <?php else: ?>
+                <span class="chip"><?php echo h(format_currency($overviewStats['unpaid_total'] ?? 0)); ?> outstanding penalties</span>
+                <span class="chip"><?php echo h(format_currency($incidentStats['incident_balance'] ?? 0)); ?> incident balance</span>
+                <span class="chip"><?php echo (int) ($paymentStats['pending_submissions'] ?? 0); ?> pending submissions</span>
+              <?php endif; ?>
             </div>
           </div>
           <a class="button" href="#<?php echo h($notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'); ?>">
@@ -939,16 +992,43 @@ $notificationPaymentContext = in_array($paymentContext, ['penalty', 'incident'],
             <span class="grow">
               <strong class="label-block meta-top-sm">Next Step</strong>
               <span class="muted">
-                <?php echo h($notificationPaymentContext === 'incident'
-                  ? 'Review the incident payment form below, confirm the assessed fee amount, then upload a valid proof if the case is still payable.'
-                  : 'Review the grouped penalty form below, make sure the amount matches the total due, then upload your payment proof for admin review.'); ?>
+                <?php
+                  if ($notificationPaymentContext === 'incident' && $focusedIncidentPayment) {
+                      $latestPaymentStatus = trim((string) ($focusedIncidentPayment['latest_payment_status'] ?? ''));
+                      if ($latestPaymentStatus === 'approved' || (string) ($focusedIncidentPayment['settlement_status'] ?? '') === 'paid') {
+                          echo h('This incident payment is already approved and marked as settled.');
+                      } elseif ($latestPaymentStatus === 'rejected') {
+                          echo h('This incident payment was rejected. Review the amount below and upload a new valid proof from the incident payment form.');
+                      } else {
+                          echo h('Review this incident fee below and continue from the incident payment form if another proof is still needed.');
+                      }
+                  } else {
+                      echo h($notificationPaymentContext === 'incident'
+                        ? 'Review the incident payment form below, confirm the assessed fee amount, then upload a valid proof if the case is still payable.'
+                        : 'Review the grouped penalty form below, make sure the amount matches the total due, then upload your payment proof for admin review.');
+                  }
+                ?>
               </span>
             </span>
           </div>
           <div class="empty-state member-return-batch-item">
             <span class="grow">
-              <strong class="label-block meta-top-sm">Status Reminder</strong>
-              <span class="muted">Pending submissions still need admin approval before balances are fully settled.</span>
+              <strong class="label-block meta-top-sm"><?php echo h($notificationPaymentContext === 'incident' ? 'Incident Status' : 'Status Reminder'); ?></strong>
+              <span class="muted">
+                <?php
+                  if ($notificationPaymentContext === 'incident' && $focusedIncidentPayment) {
+                      $resolutionNotes = trim((string) ($focusedIncidentPayment['resolution_notes'] ?? ''));
+                      $statusLine = 'Case is ' . strtolower(book_incident_workflow_label((string) ($focusedIncidentPayment['workflow_status'] ?? 'open')))
+                        . ' and settlement is ' . strtolower(book_incident_settlement_label((string) ($focusedIncidentPayment['settlement_status'] ?? 'pending'))) . '.';
+                      if ($resolutionNotes !== '') {
+                          $statusLine .= ' ' . $resolutionNotes;
+                      }
+                      echo h($statusLine);
+                  } else {
+                      echo 'Pending submissions still need admin approval before balances are fully settled.';
+                  }
+                ?>
+              </span>
             </span>
           </div>
         </div>
