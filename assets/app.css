@@ -12805,12 +12805,12 @@ body.ebook-reader-screen {
       rgba(3, 9, 19, 0.985);
     box-shadow: 18px 24px 42px rgba(0, 0, 0, 0.3);
     padding: 16px 14px 16px;
-    transform: translate3d(-24px, 0, 0) !important;
+    transform: translate3d(calc(-100% - 14px), 0, 0) !important;
     transform-origin: top left;
     transition:
-      transform .18s cubic-bezier(.22, 1, .36, 1),
-      box-shadow .18s ease,
-      background-color .18s ease;
+      transform .2s cubic-bezier(.22, 1, .36, 1),
+      box-shadow .2s ease,
+      background-color .2s ease;
     will-change: transform;
     backface-visibility: hidden;
     display: flex;
@@ -12824,7 +12824,7 @@ body.ebook-reader-screen {
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar {
-    transform: translate3d(-18px, 0, 0) !important;
+    transform: translate3d(calc(-100% - 14px), 0, 0) !important;
   }
 
   .member-sidebar {
@@ -12890,26 +12890,25 @@ body.ebook-reader-screen {
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-nav > *,
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-utilities > * {
-    opacity: 0;
-    transform: translateX(-10px);
+    opacity: 1;
+    transform: none;
     transition:
-      opacity .14s ease,
-      transform .16s cubic-bezier(.22, 1, .36, 1),
       background-color .16s ease,
-      box-shadow .16s ease;
+      box-shadow .16s ease,
+      color .16s ease;
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar-nav > *,
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar-utilities > * {
     animation: none;
     opacity: 1;
-    transform: translateX(0);
+    transform: none;
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar-nav > *,
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar-utilities > * {
-    opacity: 0;
-    transform: translateX(-10px);
+    opacity: 1;
+    transform: none;
   }
 
   .member-sidebar-link,
