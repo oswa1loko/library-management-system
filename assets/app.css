@@ -12890,6 +12890,8 @@ body.ebook-reader-screen {
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-nav > *,
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-utilities > * {
+    opacity: 0;
+    transform: translateX(-10px);
     transition:
       opacity .14s ease,
       transform .16s cubic-bezier(.22, 1, .36, 1),
@@ -12907,7 +12909,7 @@ body.ebook-reader-screen {
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar-nav > *,
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar-utilities > * {
     opacity: 0;
-    transform: translateX(8px);
+    transform: translateX(-10px);
   }
 
   .member-sidebar-link,
