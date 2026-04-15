@@ -12809,12 +12809,13 @@ body.ebook-reader-screen {
     max-width: 360px;
     max-height: calc(100dvh - (var(--member-mobile-header-height) + env(safe-area-inset-top, 0px)));
     border-radius: 24px 0 0 24px;
-    border: 0;
-    border-left: 1px solid rgba(143, 211, 255, 0.12);
+    border: 1px solid rgba(123,219,255,0.1);
+    border-right: 0;
     background:
-      linear-gradient(180deg, rgba(5, 12, 24, 0.992), rgba(3, 9, 19, 0.985)),
-      rgba(3, 9, 19, 0.985);
-    box-shadow: -18px 24px 42px rgba(0, 0, 0, 0.3);
+      radial-gradient(circle at top right, rgba(123,219,255,0.12), transparent 24%),
+      linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025)),
+      linear-gradient(145deg, rgba(12,31,50,0.96), rgba(7,19,34,0.98));
+    box-shadow: -20px 24px 42px rgba(0,0,0,0.26);
     padding: 16px 14px 16px;
     transform: translate3d(calc(100% + 14px), 0, 0) !important;
     transform-origin: top right;
@@ -13048,7 +13049,8 @@ body.ebook-reader-screen {
   }
 
   :root[data-theme="light"] .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar {
-    border-left-color: rgba(188, 204, 228, 0.82);
+    border-color: rgba(188, 204, 228, 0.82);
+    border-right: 0;
     background:
       linear-gradient(180deg, rgba(251, 253, 255, 0.995), rgba(243, 247, 252, 0.99)),
       rgba(243, 247, 252, 0.99);
