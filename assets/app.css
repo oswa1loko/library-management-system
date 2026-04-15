@@ -12952,21 +12952,23 @@ body.ebook-reader-screen {
   .member-sidebar-link.is-active {
     border: 0;
     position: relative;
-    background: linear-gradient(180deg, rgba(74, 140, 211, 0.3), rgba(57, 108, 164, 0.22));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 12px 24px rgba(15, 43, 74, 0.18);
-    color: #ffffff;
+    background:
+      linear-gradient(180deg, rgba(143,211,255,0.2), rgba(143,211,255,0.07)),
+      rgba(8,21,38,0.36);
+    box-shadow: 0 14px 28px rgba(10, 28, 49, 0.28), 0 0 0 1px rgba(143,211,255,0.08);
+    color: #f2f8ff;
   }
 
   .member-sidebar-link.is-active::before {
     display: block;
     content: "";
     position: absolute;
-    left: 0;
+    left: -1px;
     top: 10px;
     bottom: 10px;
     width: 3px;
-    border-radius: 999px;
-    background: #8fd3ff;
+    border-radius: 0 6px 6px 0;
+    background: rgba(143,211,255,0.95);
   }
 
   .member-sidebar .dashboard-icon {
