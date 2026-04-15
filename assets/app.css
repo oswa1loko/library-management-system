@@ -5223,55 +5223,10 @@ button.catalog-search-suggestion{
 
 .member-notification-page-dialog{
   width:min(980px, calc(100vw - 32px));
-  border:1px solid rgba(122, 198, 255, 0.16);
-  background:
-    radial-gradient(circle at top right, rgba(92, 177, 255, 0.2), transparent 34%),
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 28%),
-    linear-gradient(180deg, rgba(14, 30, 50, 0.98), rgba(7, 17, 31, 0.98));
-  box-shadow:
-    0 28px 70px rgba(1, 8, 18, 0.56),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .member-notification-page-card{
-  margin-top:6px;
-  padding:22px;
-  border-radius:26px;
-  border:1px solid rgba(143,211,255,0.14);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
-    linear-gradient(135deg, rgba(79,150,224,0.12), rgba(10,22,40,0));
-  box-shadow:0 18px 34px rgba(2, 12, 24, 0.22);
-}
-
-.member-notification-page-dialog .desk-modal-head{
-  position:sticky;
-  top:0;
-  z-index:2;
-  margin:-2px -2px 18px;
-  padding:22px 22px 18px;
-  border-bottom:1px solid rgba(255,255,255,0.08);
-  background:
-    linear-gradient(180deg, rgba(10, 22, 38, 0.98), rgba(10, 22, 38, 0.86)),
-    transparent;
-  backdrop-filter:blur(14px);
-}
-
-.member-notification-page-dialog .desk-modal-head .heading-card{
-  margin-bottom:8px;
-  font-size:clamp(1.25rem, 2vw, 1.8rem);
-}
-
-.member-notification-page-dialog .desk-modal-head .button.secondary{
-  min-width:112px;
-  border-color:rgba(143,211,255,0.16);
-  background:linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
-  box-shadow:0 12px 24px rgba(4, 17, 33, 0.18);
-}
-
-.member-notification-page-dialog .eyebrow-compact{
-  letter-spacing:0.16em;
-  opacity:0.88;
+  margin-top:4px;
 }
 
 .desk-modal-head{
@@ -8763,10 +8718,6 @@ body.modal-open{
     width:min(100%, 920px);
   }
 
-  .member-notification-page-dialog .desk-modal-head{
-    padding:20px 20px 16px;
-  }
-
   .desk-modal-head{
     gap:12px;
   }
@@ -8822,41 +8773,7 @@ body.modal-open{
     width:100%;
     max-height:min(100dvh, 100vh);
     min-height:min(68dvh, 460px);
-    border-radius:22px 22px 0 0;
-  }
-
-  .member-notification-page-dialog .desk-modal-head{
-    margin:0 0 16px;
-    padding:18px 18px 14px;
-    border-radius:22px 22px 0 0;
-  }
-
-  .member-notification-page-card{
-    margin-top:0;
-    padding:18px;
-    border-radius:22px;
-  }
-
-  .member-notification-page-card.member-return-batch-card{
-    padding:18px;
-  }
-
-  .member-notification-page-card .member-return-batch-item{
-    padding:14px 14px 15px;
-    border-radius:18px;
-  }
-
-  .member-notification-page-card .member-return-batch-head{
-    gap:14px;
-  }
-
-  .member-notification-page-card .member-return-batch-head > *{
-    min-width:0;
-  }
-
-  .member-notification-page-card .member-return-batch-head .button,
-  .member-notification-page-card .member-return-batch-head .chip:last-child{
-    flex-shrink:0;
+    border-radius:18px 18px 0 0;
   }
 
   .member-borrow-modal-layout{
@@ -8942,15 +8859,6 @@ body.modal-open{
   box-shadow:0 18px 38px rgba(3,12,28,0.16);
 }
 
-.member-notification-page-card.member-return-batch-card{
-  padding:24px;
-  border-radius:24px;
-  border-color:rgba(143,211,255,0.16);
-  box-shadow:
-    0 22px 42px rgba(3,12,28,0.22),
-    inset 0 1px 0 rgba(255,255,255,0.04);
-}
-
 .member-return-batch-card.is-targeted{
   border-color:rgba(143,211,255,0.42);
   box-shadow:0 22px 44px rgba(3,12,28,0.2), 0 0 0 2px rgba(143,211,255,0.18);
@@ -8970,34 +8878,9 @@ body.modal-open{
   border-bottom:1px solid rgba(255,255,255,0.08);
 }
 
-.member-notification-page-card .member-return-batch-head{
-  padding-bottom:18px;
-  margin-bottom:18px;
-}
-
 .batch-status-row{
   margin-top:8px;
   row-gap:8px;
-}
-
-.member-notification-page-card .batch-status-row{
-  margin-top:12px;
-  gap:10px;
-}
-
-.member-notification-page-card .chip{
-  border-color:rgba(143,211,255,0.12);
-  background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
-}
-
-.member-notification-page-card .member-return-batch-item{
-  padding:16px 18px;
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,0.07);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025)),
-    rgba(255,255,255,0.01);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
 .member-return-batch-list{
