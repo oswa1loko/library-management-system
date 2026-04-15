@@ -160,7 +160,7 @@ foreach ($dueSoonBooks as $dueBook) {
         'created_at' => 'Due soon',
         'created_at_raw' => '',
         'kind' => 'due_soon',
-        'destination_url' => '/librarymanage/student/borrow_return.php',
+        'destination_url' => '/librarymanage/student/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1',
         'destination_label' => 'Open borrow status',
     ];
 }
@@ -188,7 +188,7 @@ foreach ($overdueBooks as $dueBook) {
         'created_at' => 'Overdue',
         'created_at_raw' => '',
         'kind' => 'overdue',
-        'destination_url' => '/librarymanage/student/borrow_return.php',
+        'destination_url' => '/librarymanage/student/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1',
         'destination_label' => 'Open borrow status',
     ];
 }

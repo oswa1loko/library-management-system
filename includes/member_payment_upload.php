@@ -10,6 +10,8 @@ $userId = (int) ($_SESSION['user_id'] ?? 0);
 $role = (string) $_SESSION['role'];
 $msg = '';
 $msgType = 'success';
+$paymentContext = trim((string) ($_GET['payment_context'] ?? ''));
+$openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
 
 function upload_payment_proof(array $file, int $userId): array
 {
@@ -479,6 +481,8 @@ while ($incidentRow = $incidentOptionRows->fetch_assoc()) {
 }
 
 $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentOptions) > 0;
+$paymentUploadBaseHref = app_url($role . '/payment_upload.php');
+$notificationPaymentContext = in_array($paymentContext, ['penalty', 'incident'], true) ? $paymentContext : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -568,6 +572,14 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
       <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
     <?php endif; ?>
 
+    <?php if ($openedFromNotification && $notificationPaymentContext !== ''): ?>
+      <div class="notice success">
+        <?php echo h($notificationPaymentContext === 'incident'
+          ? 'Opened the incident payment workspace from your notification.'
+          : 'Opened the penalty payment workspace from your notification.'); ?>
+      </div>
+    <?php endif; ?>
+
     <div class="panel member-workspace-overview">
       <p class="muted eyebrow-compact stack-copy">Overview</p>
       <h3 class="heading-panel">Payment workspace</h3>
@@ -600,7 +612,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
     </div>
 
     <div class="grid cards member-workspace-grid">
-      <div class="panel member-workspace-main">
+      <div id="penalty-payment-form" class="panel member-workspace-main">
         <div class="card-head">
           <div class="dashboard-icon icon-payments" aria-hidden="true"></div>
           <div>
@@ -645,7 +657,7 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
         </form>
       </div>
 
-      <div class="panel member-workspace-main">
+      <div id="incident-payment-form" class="panel member-workspace-main">
         <div class="card-head">
           <div class="dashboard-icon icon-notes" aria-hidden="true"></div>
           <div>
@@ -883,7 +895,87 @@ $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentO
     </div>
   </div>
 </div>
+<?php if ($openedFromNotification && $notificationPaymentContext !== ''): ?>
+  <div class="desk-modal" data-member-notification-page-modal>
+    <a class="desk-modal-backdrop" href="<?php echo h($paymentUploadBaseHref); ?>" aria-label="Close payment workspace details"></a>
+    <div class="desk-modal-dialog panel member-notification-page-dialog" role="dialog" aria-modal="true" aria-labelledby="member-payment-notification-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact"><?php echo h($notificationPaymentContext === 'incident' ? 'Incident Payment' : 'Penalty Payment'); ?></p>
+          <h3 id="member-payment-notification-modal-title" class="heading-card">
+            <?php echo h($notificationPaymentContext === 'incident' ? 'Incident Payment Workspace' : 'Penalty Payment Workspace'); ?>
+          </h3>
+          <p class="muted">
+            <?php echo h($notificationPaymentContext === 'incident'
+              ? 'This notification points you to the lost or damaged fee section so you can review the latest incident payment status or submit the next required proof.'
+              : 'This notification points you to the grouped penalty payment section so you can review the latest status or submit a new payment proof if needed.'); ?>
+          </p>
+        </div>
+        <a class="button secondary" href="<?php echo h($paymentUploadBaseHref); ?>">Close</a>
+      </div>
+      <div class="panel member-return-batch-card member-notification-page-card">
+        <div class="member-return-batch-head">
+          <div>
+            <strong class="label-block">
+              <?php echo h($notificationPaymentContext === 'incident' ? 'Incident Fees' : 'Penalty Payments'); ?>
+            </strong>
+            <span class="muted">
+              <?php echo h($notificationPaymentContext === 'incident'
+                ? count($payableIncidentOptions) . ' payable incident case(s) currently available.'
+                : count($payablePenaltyOptions) . ' payable penalty group(s) currently available.'); ?>
+            </span>
+            <div class="inline-actions chips-row batch-status-row">
+              <span class="chip"><?php echo h(format_currency($overviewStats['unpaid_total'] ?? 0)); ?> outstanding penalties</span>
+              <span class="chip"><?php echo h(format_currency($incidentStats['incident_balance'] ?? 0)); ?> incident balance</span>
+              <span class="chip"><?php echo (int) ($paymentStats['pending_submissions'] ?? 0); ?> pending submissions</span>
+            </div>
+          </div>
+          <a class="button" href="#<?php echo h($notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'); ?>">
+            <?php echo h($notificationPaymentContext === 'incident' ? 'Go To Incident Form' : 'Go To Penalty Form'); ?>
+          </a>
+        </div>
+        <div class="stack member-return-batch-list">
+          <div class="empty-state member-return-batch-item">
+            <span class="grow">
+              <strong class="label-block meta-top-sm">Next Step</strong>
+              <span class="muted">
+                <?php echo h($notificationPaymentContext === 'incident'
+                  ? 'Review the incident payment form below, confirm the assessed fee amount, then upload a valid proof if the case is still payable.'
+                  : 'Review the grouped penalty form below, make sure the amount matches the total due, then upload your payment proof for admin review.'); ?>
+              </span>
+            </span>
+          </div>
+          <div class="empty-state member-return-batch-item">
+            <span class="grow">
+              <strong class="label-block meta-top-sm">Status Reminder</strong>
+              <span class="muted">Pending submissions still need admin approval before balances are fully settled.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var pageModal = document.querySelector('[data-member-notification-page-modal]');
+  if (!pageModal) {
+    return;
+  }
+
+  document.body.classList.add('modal-open');
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+    var closeLink = pageModal.querySelector('.desk-modal-backdrop');
+    if (closeLink) {
+      window.location.href = closeLink.href;
+    }
+  });
+});
+</script>
 </body>
 </html>
 

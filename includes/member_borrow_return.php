@@ -11,7 +11,22 @@ $msgType = 'success';
 $role = (string) $_SESSION['role'];
 $today = date('Y-m-d');
 $focusRequestBatch = trim((string) ($_GET['request_batch'] ?? ''));
+$focusBorrowId = (int) ($_GET['borrow_id'] ?? 0);
 $openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
+
+if ($focusRequestBatch === '' && $focusBorrowId > 0) {
+    $focusBatchStmt = $conn->prepare("
+        SELECT request_batch
+        FROM borrows
+        WHERE id = ?
+          AND user_id = ?
+        LIMIT 1
+    ");
+    $focusBatchStmt->bind_param('ii', $focusBorrowId, $userId);
+    $focusBatchStmt->execute();
+    $focusRequestBatch = trim((string) ($focusBatchStmt->get_result()->fetch_assoc()['request_batch'] ?? ''));
+    $focusBatchStmt->close();
+}
 
 if (isset($_POST['return_book']) || isset($_POST['return_books'])) {
     $borrowIdsRaw = $_POST['borrow_ids'] ?? [];
@@ -173,6 +188,8 @@ foreach ($activeReturnGroups as &$group) {
 }
 unset($group);
 $hasFocusedRequestBatch = $focusRequestBatch !== '' && isset($activeReturnGroups[$focusRequestBatch]);
+$focusedReturnGroup = $hasFocusedRequestBatch ? $activeReturnGroups[$focusRequestBatch] : null;
+$borrowReturnBaseHref = app_url($role . '/borrow_return.php');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -263,7 +280,7 @@ $hasFocusedRequestBatch = $focusRequestBatch !== '' && isset($activeReturnGroups
         <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
       <?php endif; ?>
 
-      <?php if ($openedFromNotification && $focusRequestBatch !== ''): ?>
+      <?php if ($openedFromNotification && ($focusRequestBatch !== '' || $focusBorrowId > 0)): ?>
         <div class="notice <?php echo $hasFocusedRequestBatch ? 'success' : 'warning'; ?>">
           <?php echo h($hasFocusedRequestBatch
             ? 'Opened the approved borrow batch from your notification.'
@@ -382,10 +399,78 @@ $hasFocusedRequestBatch = $focusRequestBatch !== '' && isset($activeReturnGroups
     </div>
   </div>
 </div>
+<?php if ($openedFromNotification && $focusedReturnGroup): ?>
+  <div class="desk-modal" data-member-notification-page-modal>
+    <a class="desk-modal-backdrop" href="<?php echo h($borrowReturnBaseHref); ?>" aria-label="Close borrow batch details"></a>
+    <div class="desk-modal-dialog panel member-notification-page-dialog" role="dialog" aria-modal="true" aria-labelledby="member-borrow-notification-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact">Borrow Status Batch</p>
+          <h3 id="member-borrow-notification-modal-title" class="heading-card"><?php echo h(format_batch_reference((string) $focusedReturnGroup['request_batch'], 'Borrow Ref')); ?></h3>
+          <p class="muted">This batch was opened directly from your notification so you can review the latest borrow and return status right away.</p>
+        </div>
+        <a class="button secondary" href="<?php echo h($borrowReturnBaseHref); ?>">Close</a>
+      </div>
+      <div class="panel member-return-batch-card member-notification-page-card">
+        <div class="member-return-batch-head">
+          <div>
+            <strong class="label-block">Batch Snapshot</strong>
+            <span class="muted">
+              Borrowed on <?php echo h(format_display_datetime((string) (($focusedReturnGroup['approved_at'] ?? '') ?: ($focusedReturnGroup['borrow_date'] ?? '')), '-')); ?> |
+              <?php echo (int) $focusedReturnGroup['return_requested_items']; ?> of <?php echo (int) $focusedReturnGroup['total_items']; ?> already requested for return
+            </span>
+            <div class="inline-actions chips-row batch-status-row">
+              <span class="chip"><?php echo (int) $focusedReturnGroup['total_items']; ?> total</span>
+              <span class="chip"><?php echo (int) $focusedReturnGroup['return_requested_items']; ?> requested</span>
+              <span class="chip"><?php echo (int) $focusedReturnGroup['borrowed_items']; ?> outstanding</span>
+            </div>
+          </div>
+          <span class="chip"><?php echo (int) $focusedReturnGroup['borrowed_items']; ?> still returnable</span>
+        </div>
+        <div class="stack member-return-batch-list">
+          <?php foreach (($focusedReturnGroup['items'] ?? []) as $item): ?>
+            <div class="empty-state member-return-batch-item">
+              <span class="grow">
+                <strong class="label-block meta-top-sm"><?php echo h((string) ($item['title'] ?? 'Book')); ?></strong>
+                <span class="muted">
+                  <?php echo h((string) ($item['author'] ?? '')); ?> |
+                  Due <?php echo h(format_display_datetime((string) (($item['due_at'] ?? '') ?: ($item['due_date'] ?? '')), '-')); ?> |
+                  <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
+                    <?php echo (int) ($item['borrowed_count'] ?? 0); ?> copie<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? '' : 's'; ?> ready for return
+                  <?php else: ?>
+                    <?php echo (int) ($item['return_requested_count'] ?? 0); ?> copie<?php echo (int) ($item['return_requested_count'] ?? 0) === 1 ? '' : 's'; ?> waiting for confirmation
+                  <?php endif; ?>
+                </span>
+              </span>
+              <span class="badge">
+                <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : 'return_requested'; ?>"></span>
+                <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : 'Return Requested'; ?>
+              </span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/member_borrow_return.js?v=<?php echo urlencode($memberBorrowReturnVersion); ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  var pageModal = document.querySelector('[data-member-notification-page-modal]');
+  if (pageModal) {
+    document.body.classList.add('modal-open');
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      var closeLink = pageModal.querySelector('.desk-modal-backdrop');
+      if (closeLink) {
+        window.location.href = closeLink.href;
+      }
+    });
+  }
+
   var focusedBatch = document.querySelector('[data-focused-request-batch="true"]');
   if (!focusedBatch) {
     return;

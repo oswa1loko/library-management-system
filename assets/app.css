@@ -5221,6 +5221,14 @@ button.catalog-search-suggestion{
   border-radius:24px;
 }
 
+.member-notification-page-dialog{
+  width:min(980px, calc(100vw - 32px));
+}
+
+.member-notification-page-card{
+  margin-top:4px;
+}
+
 .desk-modal-head{
   display:flex;
   align-items:flex-start;
@@ -8706,6 +8714,10 @@ body.modal-open{
     max-height:calc(100dvh - 20px);
   }
 
+  .member-notification-page-dialog{
+    width:min(100%, 920px);
+  }
+
   .desk-modal-head{
     gap:12px;
   }
@@ -8754,6 +8766,13 @@ body.modal-open{
     width:100%;
     max-height:min(100dvh, 100vh);
     min-height:min(78dvh, 640px);
+    border-radius:18px 18px 0 0;
+  }
+
+  .desk-modal-dialog.member-notification-page-dialog{
+    width:100%;
+    max-height:min(100dvh, 100vh);
+    min-height:min(68dvh, 460px);
     border-radius:18px 18px 0 0;
   }
 

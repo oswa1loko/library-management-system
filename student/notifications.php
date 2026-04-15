@@ -154,9 +154,9 @@ $notificationFeedUrl = app_url('student/notifications_feed.php');
             ?>
             <a
               class="activity-item activity-item-link<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
-              href="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              href="<?php echo h(app_url('student/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               data-notification-link
-              data-destination-url="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              data-destination-url="<?php echo h(app_url('student/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
               <strong>
@@ -179,9 +179,9 @@ $notificationFeedUrl = app_url('student/notifications_feed.php');
             <?php $borrowId = (int) ($dueBook['id'] ?? 0); ?>
             <a
               class="activity-item activity-item-link<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
-              href="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              href="<?php echo h(app_url('student/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               data-notification-link
-              data-destination-url="<?php echo h(app_url('student/borrow_return.php')); ?>"
+              data-destination-url="<?php echo h(app_url('student/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
               <strong>

@@ -10,6 +10,8 @@ $userId = (int) ($_SESSION['user_id'] ?? 0);
 $role = canonical_role((string) ($_SESSION['role'] ?? 'student'));
 $msg = '';
 $msgType = 'success';
+$focusedIncidentId = (int) ($_GET['incident'] ?? 0);
+$openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
 
 if (isset($_POST['submit_incident'])) {
     $result = create_member_book_incident($conn, $userId, $role, [
@@ -25,6 +27,14 @@ if (isset($_POST['submit_incident'])) {
 $summary = member_book_incident_summary($conn, $userId);
 $reportableBorrows = get_member_reportable_borrows($conn, $userId);
 $incidents = get_member_incidents($conn, $userId);
+$focusedIncident = null;
+foreach ($incidents as $incident) {
+    if ((int) ($incident['id'] ?? 0) === $focusedIncidentId) {
+        $focusedIncident = $incident;
+        break;
+    }
+}
+$bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -112,6 +122,14 @@ $incidents = get_member_incidents($conn, $userId);
     <div class="stack">
       <?php if ($msg !== ''): ?>
         <div class="notice <?php echo $msgType === 'error' ? 'error' : 'success'; ?>"><?php echo h($msg); ?></div>
+      <?php endif; ?>
+
+      <?php if ($openedFromNotification && $focusedIncidentId > 0): ?>
+        <div class="notice <?php echo $focusedIncident ? 'success' : 'warning'; ?>">
+          <?php echo h($focusedIncident
+            ? 'Opened the incident case from your notification.'
+            : 'The incident from your notification is no longer available in your current list.'); ?>
+        </div>
       <?php endif; ?>
 
       <div class="panel member-workspace-overview member-mobile-hide">
@@ -318,6 +336,70 @@ $incidents = get_member_incidents($conn, $userId);
     </div>
   </div>
 </div>
+<?php if ($openedFromNotification && $focusedIncident): ?>
+  <div class="desk-modal" data-member-notification-page-modal>
+    <a class="desk-modal-backdrop" href="<?php echo h($bookIncidentsBaseHref); ?>" aria-label="Close incident details"></a>
+    <div class="desk-modal-dialog panel member-notification-page-dialog" role="dialog" aria-modal="true" aria-labelledby="member-incident-notification-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact">Incident Case</p>
+          <h3 id="member-incident-notification-modal-title" class="heading-card"><?php echo h((string) ($focusedIncident['title'] ?? 'Book incident')); ?></h3>
+          <p class="muted">This incident record was opened directly from your notification so you can review the latest case and payment status immediately.</p>
+        </div>
+        <a class="button secondary" href="<?php echo h($bookIncidentsBaseHref); ?>">Close</a>
+      </div>
+      <div class="panel member-return-batch-card member-notification-page-card">
+        <div class="member-return-batch-head">
+          <div>
+            <strong class="label-block">Incident #<?php echo (int) ($focusedIncident['id'] ?? 0); ?></strong>
+            <span class="muted">
+              Reported <?php echo h(format_display_datetime((string) ($focusedIncident['reported_at'] ?? ''))); ?>
+              <?php if (trim((string) ($focusedIncident['copy_id'] ?? '')) !== ''): ?>
+                | Copy <?php echo h((string) $focusedIncident['copy_id']); ?>
+              <?php endif; ?>
+            </span>
+            <div class="inline-actions chips-row batch-status-row">
+              <span class="chip"><?php echo h(book_incident_type_label((string) ($focusedIncident['incident_type'] ?? ''))); ?></span>
+              <span class="chip"><?php echo h(book_incident_severity_label((string) ($focusedIncident['severity'] ?? ''))); ?></span>
+              <span class="chip"><?php echo h(format_currency($focusedIncident['assessed_fee'] ?? 0)); ?></span>
+              <span class="chip"><?php echo h(book_incident_payment_stage_label($focusedIncident)); ?></span>
+            </div>
+          </div>
+          <div class="stack flow-gap-sm">
+            <span class="badge">
+              <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($focusedIncident['workflow_status'] ?? 'open'))); ?>"></span>
+              Case: <?php echo h(book_incident_workflow_label((string) ($focusedIncident['workflow_status'] ?? 'open'))); ?>
+            </span>
+            <span class="badge">
+              <span class="status-dot <?php echo h(book_incident_payment_stage_dot_class($focusedIncident)); ?>"></span>
+              Payment: <?php echo h(book_incident_payment_stage_label($focusedIncident)); ?>
+            </span>
+          </div>
+        </div>
+        <div class="stack member-return-batch-list">
+          <div class="empty-state member-return-batch-item">
+            <span class="grow">
+              <strong class="label-block meta-top-sm">Description</strong>
+              <span class="muted"><?php echo nl2br(h((string) ($focusedIncident['description'] ?? ''))); ?></span>
+            </span>
+          </div>
+          <div class="empty-state member-return-batch-item">
+            <span class="grow">
+              <strong class="label-block meta-top-sm">Resolution</strong>
+              <span class="muted">
+                Action: <?php echo h(book_incident_resolution_label((string) ($focusedIncident['resolution_action'] ?? 'none'))); ?> |
+                Borrow status: <?php echo h(ucfirst((string) ($focusedIncident['borrow_status'] ?? 'n/a'))); ?>
+              </span>
+              <?php if (trim((string) ($focusedIncident['resolution_notes'] ?? '')) !== ''): ?>
+                <span class="muted meta-top-sm"><?php echo nl2br(h((string) $focusedIncident['resolution_notes'])); ?></span>
+              <?php endif; ?>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="<?php echo h(app_url('assets/member_sidebar.js?v=' . urlencode($memberSidebarVersion))); ?>"></script>
 <script>
 (() => {
@@ -340,6 +422,24 @@ $incidents = get_member_incidents($conn, $userId);
   incidentType.addEventListener('change', syncIncidentPhotoRequirement);
   syncIncidentPhotoRequirement();
 })();
+
+document.addEventListener('DOMContentLoaded', function () {
+  var pageModal = document.querySelector('[data-member-notification-page-modal]');
+  if (!pageModal) {
+    return;
+  }
+
+  document.body.classList.add('modal-open');
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+    var closeLink = pageModal.querySelector('.desk-modal-backdrop');
+    if (closeLink) {
+      window.location.href = closeLink.href;
+    }
+  });
+});
 </script>
 </body>
 </html>
