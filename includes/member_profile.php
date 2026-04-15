@@ -354,15 +354,95 @@ if ($role === 'student' && isset($_POST['remove_profile_photo'])) {
             <div class="grid form member-profile-form-grid">
               <div>
                 <label for="current_password">Current password</label>
-                <input id="current_password" type="password" name="current_password" required>
+                <div class="password-field" data-password-field>
+                  <input
+                    id="current_password"
+                    class="password-field-input"
+                    type="password"
+                    name="current_password"
+                    required
+                    data-password-input
+                  >
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    aria-label="Show password"
+                    title="Show password"
+                    data-password-toggle
+                    data-visible="false"
+                  >
+                    <span class="password-toggle-icon" aria-hidden="true">
+                      <svg class="password-toggle-icon-eye" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="M12 5C7.28 5 3.23 7.86 1.47 11.95a.75.75 0 0 0 0 .6C3.23 16.14 7.28 19 12 19s8.77-2.86 10.53-6.45a.75.75 0 0 0 0-.6C20.77 7.86 16.72 5 12 5Zm0 12.5c-3.97 0-7.43-2.29-9-5.25 1.57-2.96 5.03-5.25 9-5.25s7.43 2.29 9 5.25c-1.57 2.96-5.03 5.25-9 5.25Zm0-8.5a3.25 3.25 0 1 0 3.25 3.25A3.25 3.25 0 0 0 12 9Zm0 5a1.75 1.75 0 1 1 1.75-1.75A1.75 1.75 0 0 1 12 14Z"></path>
+                      </svg>
+                      <svg class="password-toggle-icon-eye-off" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="M2.78 2.72a.75.75 0 1 0-1.06 1.06l2.11 2.11a12.78 12.78 0 0 0-2.36 3.56.75.75 0 0 0 0 .6C3.23 16.14 7.28 19 12 19a10.6 10.6 0 0 0 5.16-1.3l3.06 3.06a.75.75 0 1 0 1.06-1.06Zm9.22 14.78c-3.97 0-7.43-2.29-9-5.25a11.24 11.24 0 0 1 1.91-2.8l2.2 2.2A3.22 3.22 0 0 0 7 12.25 5 5 0 0 0 12 17.5Zm0-3.5a1.75 1.75 0 0 1-1.74-1.95l2.19 2.19A1.76 1.76 0 0 1 12 14Zm10.53-1.75C20.77 7.86 16.72 5 12 5a10.57 10.57 0 0 0-4.03.79l1.24 1.24A9.15 9.15 0 0 1 12 6.5c3.97 0 7.43 2.29 9 5.25a11.32 11.32 0 0 1-2.58 3.48l1.08 1.08a12.75 12.75 0 0 0 3.03-4.06.75.75 0 0 0 0-.6Zm-7.17.52a3.26 3.26 0 0 0-4.13-4.13l1.23 1.23a1.75 1.75 0 0 1 1.67 1.67Z"></path>
+                      </svg>
+                    </span>
+                  </button>
+                </div>
               </div>
               <div>
                 <label for="new_password">New password</label>
-                <input id="new_password" type="password" name="new_password" minlength="8" required>
+                <div class="password-field" data-password-field>
+                  <input
+                    id="new_password"
+                    class="password-field-input"
+                    type="password"
+                    name="new_password"
+                    minlength="8"
+                    required
+                    data-password-input
+                  >
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    aria-label="Show password"
+                    title="Show password"
+                    data-password-toggle
+                    data-visible="false"
+                  >
+                    <span class="password-toggle-icon" aria-hidden="true">
+                      <svg class="password-toggle-icon-eye" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="M12 5C7.28 5 3.23 7.86 1.47 11.95a.75.75 0 0 0 0 .6C3.23 16.14 7.28 19 12 19s8.77-2.86 10.53-6.45a.75.75 0 0 0 0-.6C20.77 7.86 16.72 5 12 5Zm0 12.5c-3.97 0-7.43-2.29-9-5.25 1.57-2.96 5.03-5.25 9-5.25s7.43 2.29 9 5.25c-1.57 2.96-5.03 5.25-9 5.25Zm0-8.5a3.25 3.25 0 1 0 3.25 3.25A3.25 3.25 0 0 0 12 9Zm0 5a1.75 1.75 0 1 1 1.75-1.75A1.75 1.75 0 0 1 12 14Z"></path>
+                      </svg>
+                      <svg class="password-toggle-icon-eye-off" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="M2.78 2.72a.75.75 0 1 0-1.06 1.06l2.11 2.11a12.78 12.78 0 0 0-2.36 3.56.75.75 0 0 0 0 .6C3.23 16.14 7.28 19 12 19a10.6 10.6 0 0 0 5.16-1.3l3.06 3.06a.75.75 0 1 0 1.06-1.06Zm9.22 14.78c-3.97 0-7.43-2.29-9-5.25a11.24 11.24 0 0 1 1.91-2.8l2.2 2.2A3.22 3.22 0 0 0 7 12.25 5 5 0 0 0 12 17.5Zm0-3.5a1.75 1.75 0 0 1-1.74-1.95l2.19 2.19A1.76 1.76 0 0 1 12 14Zm10.53-1.75C20.77 7.86 16.72 5 12 5a10.57 10.57 0 0 0-4.03.79l1.24 1.24A9.15 9.15 0 0 1 12 6.5c3.97 0 7.43 2.29 9 5.25a11.32 11.32 0 0 1-2.58 3.48l1.08 1.08a12.75 12.75 0 0 0 3.03-4.06.75.75 0 0 0 0-.6Zm-7.17.52a3.26 3.26 0 0 0-4.13-4.13l1.23 1.23a1.75 1.75 0 0 1 1.67 1.67Z"></path>
+                      </svg>
+                    </span>
+                  </button>
+                </div>
               </div>
               <div class="member-profile-form-span">
                 <label for="confirm_password">Confirm new password</label>
-                <input id="confirm_password" type="password" name="confirm_password" minlength="8" required>
+                <div class="password-field" data-password-field>
+                  <input
+                    id="confirm_password"
+                    class="password-field-input"
+                    type="password"
+                    name="confirm_password"
+                    minlength="8"
+                    required
+                    data-password-input
+                  >
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    aria-label="Show password"
+                    title="Show password"
+                    data-password-toggle
+                    data-visible="false"
+                  >
+                    <span class="password-toggle-icon" aria-hidden="true">
+                      <svg class="password-toggle-icon-eye" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="M12 5C7.28 5 3.23 7.86 1.47 11.95a.75.75 0 0 0 0 .6C3.23 16.14 7.28 19 12 19s8.77-2.86 10.53-6.45a.75.75 0 0 0 0-.6C20.77 7.86 16.72 5 12 5Zm0 12.5c-3.97 0-7.43-2.29-9-5.25 1.57-2.96 5.03-5.25 9-5.25s7.43 2.29 9 5.25c-1.57 2.96-5.03 5.25-9 5.25Zm0-8.5a3.25 3.25 0 1 0 3.25 3.25A3.25 3.25 0 0 0 12 9Zm0 5a1.75 1.75 0 1 1 1.75-1.75A1.75 1.75 0 0 1 12 14Z"></path>
+                      </svg>
+                      <svg class="password-toggle-icon-eye-off" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="M2.78 2.72a.75.75 0 1 0-1.06 1.06l2.11 2.11a12.78 12.78 0 0 0-2.36 3.56.75.75 0 0 0 0 .6C3.23 16.14 7.28 19 12 19a10.6 10.6 0 0 0 5.16-1.3l3.06 3.06a.75.75 0 1 0 1.06-1.06Zm9.22 14.78c-3.97 0-7.43-2.29-9-5.25a11.24 11.24 0 0 1 1.91-2.8l2.2 2.2A3.22 3.22 0 0 0 7 12.25 5 5 0 0 0 12 17.5Zm0-3.5a1.75 1.75 0 0 1-1.74-1.95l2.19 2.19A1.76 1.76 0 0 1 12 14Zm10.53-1.75C20.77 7.86 16.72 5 12 5a10.57 10.57 0 0 0-4.03.79l1.24 1.24A9.15 9.15 0 0 1 12 6.5c3.97 0 7.43 2.29 9 5.25a11.32 11.32 0 0 1-2.58 3.48l1.08 1.08a12.75 12.75 0 0 0 3.03-4.06.75.75 0 0 0 0-.6Zm-7.17.52a3.26 3.26 0 0 0-4.13-4.13l1.23 1.23a1.75 1.75 0 0 1 1.67 1.67Z"></path>
+                      </svg>
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
             <div class="inline-actions member-workspace-actions">
@@ -376,5 +456,36 @@ if ($role === 'student' && isset($_POST['remove_profile_photo'])) {
   </div>
 </div>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
+<script>
+(() => {
+  const passwordToggles = Array.from(document.querySelectorAll('[data-password-toggle]'));
+  passwordToggles.forEach((toggle) => {
+    const field = toggle.closest('[data-password-field]');
+    const input = field ? field.querySelector('[data-password-input]') : null;
+    if (!input) {
+      return;
+    }
+
+    const syncPasswordState = (isVisible) => {
+      input.type = isVisible ? 'text' : 'password';
+      toggle.dataset.visible = isVisible ? 'true' : 'false';
+      toggle.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
+      const label = isVisible ? 'Hide password' : 'Show password';
+      toggle.setAttribute('aria-label', label);
+      toggle.setAttribute('title', label);
+    };
+
+    syncPasswordState(false);
+    toggle.addEventListener('click', () => {
+      syncPasswordState(input.type === 'password');
+      input.focus({ preventScroll: true });
+      const valueLength = input.value.length;
+      if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(valueLength, valueLength);
+      }
+    });
+  });
+})();
+</script>
 </body>
 </html>

@@ -2569,6 +2569,72 @@ body.auth-page > .theme-toggle{
   margin-top:18px;
 }
 
+.password-field{
+  position:relative;
+}
+
+.password-field-input{
+  padding-right:58px;
+}
+
+.password-toggle{
+  position:absolute;
+  top:50%;
+  right:10px;
+  z-index:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  min-height:40px;
+  padding:0;
+  border:1px solid rgba(143,211,255,0.12);
+  border-radius:12px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  color:#cfe7ff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 18px rgba(0,0,0,0.12);
+  transform:translateY(-50%);
+  animation:none;
+}
+
+.password-toggle::after{
+  display:none;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible{
+  transform:translateY(-50%);
+  border-color:rgba(143,211,255,0.28);
+  box-shadow:0 0 0 4px rgba(143,211,255,0.12), 0 14px 24px rgba(0,0,0,0.16);
+}
+
+.password-toggle-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  height:18px;
+}
+
+.password-toggle-icon svg{
+  width:18px;
+  height:18px;
+  fill:currentColor;
+}
+
+.password-toggle-icon-eye-off{
+  display:none;
+}
+
+.password-toggle[data-visible="true"] .password-toggle-icon-eye{
+  display:none;
+}
+
+.password-toggle[data-visible="true"] .password-toggle-icon-eye-off{
+  display:block;
+}
+
 .auth-inline-note{
   margin-top:-2px;
   margin-bottom:2px;
@@ -3460,6 +3526,18 @@ body.auth-page > .theme-toggle{
     border-radius:15px;
   }
 
+  .auth-form .password-field-input{
+    padding-right:60px;
+  }
+
+  .auth-form .password-toggle{
+    right:8px;
+    width:42px;
+    height:42px;
+    min-height:42px;
+    border-radius:13px;
+  }
+
   .auth-inline-note{
     margin-top:0;
     margin-bottom:4px;
@@ -3942,6 +4020,19 @@ body.auth-page > .theme-toggle{
 
 :root[data-theme="light"] .auth-form .inline-actions{
   padding-top:4px;
+}
+
+:root[data-theme="light"] .password-toggle{
+  border-color:rgba(35,72,127,0.12);
+  background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,246,255,0.92));
+  color:#3f5f86;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.92), 0 8px 16px rgba(34,63,112,0.08);
+}
+
+:root[data-theme="light"] .password-toggle:hover,
+:root[data-theme="light"] .password-toggle:focus-visible{
+  border-color:rgba(47,109,255,0.24);
+  box-shadow:0 0 0 4px rgba(47,109,255,0.1), 0 12px 22px rgba(34,63,112,0.12);
 }
 
 :root[data-theme="light"] .button,
