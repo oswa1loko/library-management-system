@@ -1,5 +1,5 @@
 (function () {
-  var CLOSE_DURATION_MS = 220;
+  var CLOSE_DURATION_MS = 180;
   var MOBILE_TRACKING_LABEL = 'Tracking';
 
   function isMobileViewport() {

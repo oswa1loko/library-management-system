@@ -12811,6 +12811,7 @@ body.ebook-reader-screen {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    overflow-x: hidden;
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar {
@@ -12875,12 +12876,33 @@ body.ebook-reader-screen {
   }
 
   .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar .topbar-nav.member-sidebar-utilities {
-    margin-top: auto;
+    margin-top: 14px;
     padding-top: 12px;
     border-top: 1px solid rgba(143, 211, 255, 0.08);
     display: grid;
-    align-content: end;
     gap: 8px;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-nav > *,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell) .member-sidebar-utilities > * {
+    transition:
+      opacity .14s ease,
+      transform .16s cubic-bezier(.22, 1, .36, 1),
+      background-color .16s ease,
+      box-shadow .16s ease;
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar-nav > *,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-open .member-sidebar-utilities > * {
+    animation: none;
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar-nav > *,
+  .site-shell.member-shell:not(.admin-shell):not(.librarian-shell).is-mobile-nav-closing .member-sidebar-utilities > * {
+    opacity: 0;
+    transform: translateX(8px);
   }
 
   .member-sidebar-link,
