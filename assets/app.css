@@ -9866,11 +9866,12 @@ body.modal-open{
 
   /* Show icons in sidebar links */
   .member-sidebar-link .dashboard-icon {
-    width:32px;
-    height:32px;
-    min-width:32px;
-    flex-shrink:0;
-    margin-right:4px;
+    width:32px !important;
+    height:32px !important;
+    min-width:32px !important;
+    flex-shrink:0 !important;
+    margin-right:4px !important;
+    display:inline-flex !important;
   }
 
   /* Logout button - highlight in cyan */
