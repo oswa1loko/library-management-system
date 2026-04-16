@@ -9724,9 +9724,9 @@ body.modal-open{
     font-size:15px;
   }
   .auth-form .inline-actions button {
-    background:linear-gradient(135deg, #38a6ff, #1a66d1);
-    border:1px solid rgba(64,160,255,0.5);
-    box-shadow:0 18px 30px rgba(20,88,180,0.24);
+    background:linear-gradient(135deg, #00d4ff, #0099cc);
+    border:1px solid rgba(0,212,255,0.5);
+    box-shadow:0 18px 30px rgba(0,180,220,0.28);
   }
   .auth-form .inline-actions .button.secondary {
     background:rgba(255,255,255,0.08);
