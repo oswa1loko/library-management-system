@@ -9840,52 +9840,13 @@ body.modal-open{
   /* Mobile sidebar menu enhancements */
   .member-sidebar-link {
     min-height:48px !important;
-    padding:12px 14px !important;
+    padding:14px 16px !important;
     display:flex;
     align-items:center;
     gap:12px;
     border-radius:14px;
     transition:all .2s ease;
     margin-bottom:6px;
-  }
-
-  /* Enhance icons in sidebar links */
-  .member-sidebar-link .dashboard-icon {
-    width:36px;
-    height:36px;
-    min-width:36px;
-    min-height:36px;
-    flex-shrink:0;
-    border-radius:10px;
-    background:rgba(0,212,255,0.08);
-    border:1px solid rgba(0,212,255,0.16);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    transition:all .2s ease;
-  }
-
-  .member-sidebar-link:hover .dashboard-icon {
-    background:rgba(0,212,255,0.14);
-    border-color:rgba(0,212,255,0.28);
-    box-shadow:0 4px 12px rgba(0,212,255,0.12);
-  }
-
-  .member-sidebar-link.is-active .dashboard-icon {
-    background:linear-gradient(135deg, rgba(0,212,255,0.3), rgba(0,212,255,0.15));
-    border-color:rgba(0,212,255,0.5);
-    box-shadow:0 6px 16px rgba(0,212,255,0.18);
-  }
-
-  /* Hide text labels on very small screens, show only icons */
-  @media (max-width: 400px) {
-    .member-sidebar-link span:not(.dashboard-icon) {
-      display:none;
-    }
-    .member-sidebar-link {
-      justify-content:center;
-      padding:12px !important;
-    }
   }
 
   .member-sidebar-link:hover {
@@ -9916,29 +9877,15 @@ body.modal-open{
     color:#a8e6ff;
     font-weight:600;
     margin-top:12px;
-    padding-top:14px !important;
-    padding-bottom:14px !important;
+    padding-top:16px !important;
+    padding-bottom:16px !important;
     text-align:center;
-    justify-content:center;
-    gap:8px;
-  }
-
-  .topbar-nav.member-sidebar-utilities > .member-sidebar-link:last-child .dashboard-icon,
-  a[href*="logout.php"] .dashboard-icon {
-    background:rgba(0,212,255,0.2);
-    border-color:rgba(0,212,255,0.4);
   }
 
   .topbar-nav.member-sidebar-utilities > .member-sidebar-link:last-child:hover,
   a[href*="logout.php"]:hover {
     background:linear-gradient(135deg, rgba(0,212,255,0.24), rgba(0,180,216,0.12));
     box-shadow:0 8px 20px rgba(0,212,255,0.16);
-  }
-
-  .topbar-nav.member-sidebar-utilities > .member-sidebar-link:last-child:hover .dashboard-icon,
-  a[href*="logout.php"]:hover .dashboard-icon {
-    background:rgba(0,212,255,0.28);
-    border-color:rgba(0,212,255,0.5);
   }
 }
 
