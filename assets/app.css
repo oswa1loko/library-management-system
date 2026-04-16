@@ -9864,6 +9864,15 @@ body.modal-open{
     box-shadow:0 4px 16px rgba(0,212,255,0.12);
   }
 
+  /* Show icons in sidebar links */
+  .member-sidebar-link .dashboard-icon {
+    width:32px;
+    height:32px;
+    min-width:32px;
+    flex-shrink:0;
+    margin-right:4px;
+  }
+
   /* Logout button - highlight in cyan */
   a[href*="logout"],
   button[type="button"] {
