@@ -9836,6 +9836,57 @@ body.modal-open{
       transform:translateX(100%);
     }
   }
+
+  /* Mobile sidebar menu enhancements */
+  .member-sidebar-link {
+    min-height:48px !important;
+    padding:14px 16px !important;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    border-radius:14px;
+    transition:all .2s ease;
+    margin-bottom:6px;
+  }
+
+  .member-sidebar-link:hover {
+    transform:translateX(4px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.12);
+  }
+
+  .member-sidebar-link:active {
+    transform:scale(.96) translateX(2px);
+  }
+
+  .member-sidebar-link.is-active {
+    background:linear-gradient(135deg, rgba(0,212,255,0.18), rgba(0,212,255,0.08));
+    border:1px solid rgba(0,212,255,0.3);
+    box-shadow:0 4px 16px rgba(0,212,255,0.12);
+  }
+
+  /* Logout button - highlight in cyan */
+  a[href*="logout"],
+  button[type="button"] {
+    min-height:48px !important;
+  }
+
+  .topbar-nav.member-sidebar-utilities > .member-sidebar-link:last-child,
+  a[href*="logout.php"] {
+    background:linear-gradient(135deg, rgba(0,212,255,0.16), rgba(0,180,216,0.08));
+    border:1px solid rgba(0,212,255,0.3);
+    color:#a8e6ff;
+    font-weight:600;
+    margin-top:12px;
+    padding-top:16px !important;
+    padding-bottom:16px !important;
+    text-align:center;
+  }
+
+  .topbar-nav.member-sidebar-utilities > .member-sidebar-link:last-child:hover,
+  a[href*="logout.php"]:hover {
+    background:linear-gradient(135deg, rgba(0,212,255,0.24), rgba(0,180,216,0.12));
+    box-shadow:0 8px 20px rgba(0,212,255,0.16);
+  }
 }
 
 
