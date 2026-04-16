@@ -209,6 +209,7 @@ export default function LandingPage() {
     }
   });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuClosing, setMenuClosing] = useState(false);
   const [activeSection, setActiveSection] = useState("Home");
   const [currentImage, setCurrentImage] = useState(0);
 
@@ -270,8 +271,27 @@ export default function LandingPage() {
 
     const targetTop = target.getBoundingClientRect().top + window.scrollY - 84;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
-    setMenuOpen(false);
+    setMenuClosing(true);
   };
+
+  const handleMenuToggle = () => {
+    if (menuOpen) {
+      setMenuClosing(true);
+    } else {
+      setMenuOpen(true);
+      setMenuClosing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (menuClosing) {
+      const timer = setTimeout(() => {
+        setMenuOpen(false);
+        setMenuClosing(false);
+      }, 280);
+      return () => clearTimeout(timer);
+    }
+  }, [menuClosing]);
 
   return (
     <div
@@ -358,7 +378,7 @@ export default function LandingPage() {
               </span>
             </button>
             <button
-              onClick={() => setMenuOpen((value) => !value)}
+              onClick={handleMenuToggle}
               className={`inline-flex h-10 w-10 appearance-none items-center justify-center rounded-full border border-white/12 bg-white/[0.06] p-0 text-[#eef6ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors duration-200 [-webkit-tap-highlight-color:transparent] focus:outline-none ${isLightTheme ? "border-slate-200 bg-white text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.08)]" : ""} ${focusBase}`}
               aria-label="Toggle menu"
             >
@@ -368,7 +388,7 @@ export default function LandingPage() {
         </nav>
 
         {menuOpen && (
-          <div className="absolute left-0 right-0 top-full z-[60] border-t border-slate-200/70 bg-white/88 px-3 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#09131c]/96 md:hidden">
+          <div className={`absolute left-0 right-0 top-full z-[60] border-t border-slate-200/70 bg-white/88 px-3 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#09131c]/96 md:hidden ${menuClosing ? "is-closing" : ""}`}>
             <div className="mx-auto flex w-full max-w-[1380px] flex-col gap-3">
               {navLinks.map((link) => (
                 <a

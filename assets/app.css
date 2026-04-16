@@ -9778,6 +9778,10 @@ body.modal-open{
     animation:slideInFromRight .28s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
+  header > div[class*="absolute"].is-closing {
+    animation:slideOutToRight .28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
   header a[aria-current="page"] {
     transition:all .24s ease;
   }
@@ -9818,6 +9822,18 @@ body.modal-open{
     to {
       opacity:1;
       transform:translateX(0);
+    }
+  }
+
+  /* Animation for dropdown menu - slide out to right */
+  @keyframes slideOutToRight {
+    from {
+      opacity:1;
+      transform:translateX(0);
+    }
+    to {
+      opacity:0;
+      transform:translateX(100%);
     }
   }
 }
