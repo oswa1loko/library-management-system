@@ -93,6 +93,13 @@ while ($notifications instanceof mysqli_result && ($row = $notifications->fetch_
         'severity' => (string) ($row['severity'] ?? 'info'),
         'is_read' => (int) ($row['is_read'] ?? 0) === 1,
         'created_at' => format_display_datetime((string) ($row['created_at'] ?? ''), '-'),
+        'relative_time' => format_relative_datetime((string) ($row['created_at'] ?? ''), 'Recent'),
+        'category_label' => member_notification_category_label(
+            (string) ($row['kind'] ?? ''),
+            (string) ($row['entity_type'] ?? ''),
+            (string) ($row['title'] ?? ''),
+            (string) ($row['body'] ?? '')
+        ),
         'created_at_raw' => (string) ($row['created_at'] ?? ''),
         'destination_url' => (string) ($destination['url'] ?? ''),
         'destination_label' => (string) ($destination['label'] ?? ''),

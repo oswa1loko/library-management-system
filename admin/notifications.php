@@ -97,33 +97,47 @@ $notifications = $conn->query("
             $isUnread = (int) ($row['is_read'] ?? 0) === 0;
             $destinationUrl = trim((string) ($destination['url'] ?? ''));
             $destinationLabel = trim((string) ($destination['label'] ?? 'Open notification'));
+            $categoryLabel = member_notification_category_label((string) ($row['kind'] ?? ''), (string) ($row['entity_type'] ?? ''), (string) ($row['title'] ?? ''), (string) ($row['body'] ?? ''));
+            $relativeTime = format_relative_datetime((string) ($row['created_at'] ?? ''), 'Recent');
+            $exactTime = format_display_datetime((string) ($row['created_at'] ?? ''), '-');
+            $severityClass = $row['severity'] === 'critical'
+              ? 'member-notification-card--critical'
+              : ($row['severity'] === 'warning' ? 'member-notification-card--warning' : 'member-notification-card--info');
             $openHref = $destinationUrl !== ''
               ? app_url('admin/notification_open.php?notification_id=' . $notificationId . '&redirect=' . urlencode($destinationUrl))
               : '';
           ?>
           <?php if ($openHref !== ''): ?>
-            <a class="activity-item activity-item-link<?php echo $isUnread ? ' is-unread' : ''; ?>" href="<?php echo h($openHref); ?>">
-              <strong>
+            <a class="activity-item activity-item-link member-notification-card <?php echo h($severityClass); ?><?php echo $isUnread ? ' is-unread' : ''; ?>" href="<?php echo h($openHref); ?>">
+              <div class="member-notification-card-head">
+                <span class="chip member-notification-pill"><?php echo h($categoryLabel); ?></span>
+                <span class="member-notification-time"><?php echo h($relativeTime); ?></span>
+              </div>
+              <strong class="member-notification-card-title">
                 <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
-                <?php echo h($row['title']); ?>
-                <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
+                <span class="member-notification-card-title-copy"><?php echo h($row['title']); ?></span>
+                <?php if ($isUnread): ?><span class="chip member-notification-state-chip">Unread</span><?php endif; ?>
               </strong>
-              <div class="meta"><?php echo h($row['body']); ?></div>
-              <div class="inline-actions meta-top">
-                <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
-                <span><?php echo h($destinationLabel); ?></span>
+              <div class="meta member-notification-card-copy"><?php echo h($row['body']); ?></div>
+              <div class="inline-actions meta-top member-notification-card-meta">
+                <span class="muted member-notification-time"><?php echo h($exactTime); ?></span>
+                <span class="member-notification-link-cta"><?php echo h($destinationLabel); ?></span>
               </div>
             </a>
           <?php else: ?>
-            <div class="activity-item">
-              <strong>
+            <div class="activity-item member-notification-card <?php echo h($severityClass); ?><?php echo $isUnread ? ' is-unread' : ''; ?>">
+              <div class="member-notification-card-head">
+                <span class="chip member-notification-pill"><?php echo h($categoryLabel); ?></span>
+                <span class="member-notification-time"><?php echo h($relativeTime); ?></span>
+              </div>
+              <strong class="member-notification-card-title">
                 <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
-                <?php echo h($row['title']); ?>
-                <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip student-notification-read">Read</span><?php endif; ?>
+                <span class="member-notification-card-title-copy"><?php echo h($row['title']); ?></span>
+                <?php if ($isUnread): ?><span class="chip member-notification-state-chip">Unread</span><?php endif; ?>
               </strong>
-              <div class="meta"><?php echo h($row['body']); ?></div>
-              <div class="inline-actions meta-top">
-                <span class="muted"><?php echo h(format_display_datetime((string) ($row['created_at'] ?? ''))); ?></span>
+              <div class="meta member-notification-card-copy"><?php echo h($row['body']); ?></div>
+              <div class="inline-actions meta-top member-notification-card-meta">
+                <span class="muted member-notification-time"><?php echo h($exactTime); ?></span>
               </div>
             </div>
           <?php endif; ?>
