@@ -2465,12 +2465,63 @@ function notification_lookup_incident_id(array $notification): int
         return 0;
     }
 
+    $title = trim((string) ($notification['title'] ?? ''));
+    $body = trim((string) ($notification['body'] ?? ''));
+    $combinedText = strtolower($title . ' ' . $body);
+    $isIncidentPaymentNotification = strpos($combinedText, 'incident payment') !== false;
+    $currentViewerId = (int) ($_SESSION['user_id'] ?? 0);
+    $createdAt = trim((string) ($notification['created_at'] ?? ''));
+
+    if ($isIncidentPaymentNotification && $currentViewerId > 0) {
+        if ($createdAt !== '') {
+            $stmt = $conn->prepare("
+                SELECT pay.incident_id
+                FROM payments pay
+                WHERE pay.user_id = ?
+                  AND pay.incident_id IS NOT NULL
+                  AND pay.incident_id > 0
+                  AND pay.created_at <= ?
+                ORDER BY pay.created_at DESC, pay.id DESC
+                LIMIT 1
+            ");
+            if ($stmt) {
+                $stmt->bind_param('is', $currentViewerId, $createdAt);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                $incidentId = (int) ($row['incident_id'] ?? 0);
+                if ($incidentId > 0) {
+                    return $incidentId;
+                }
+            }
+        }
+
+        $stmt = $conn->prepare("
+            SELECT pay.incident_id
+            FROM payments pay
+            WHERE pay.user_id = ?
+              AND pay.incident_id IS NOT NULL
+              AND pay.incident_id > 0
+            ORDER BY pay.created_at DESC, pay.id DESC
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param('i', $currentViewerId);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            $incidentId = (int) ($row['incident_id'] ?? 0);
+            if ($incidentId > 0) {
+                return $incidentId;
+            }
+        }
+    }
+
     $copyId = notification_copy_id($notification);
     if ($copyId === '') {
         return 0;
     }
 
-    $createdAt = trim((string) ($notification['created_at'] ?? ''));
     if ($createdAt !== '') {
         $stmt = $conn->prepare("
             SELECT bi.id
@@ -2704,6 +2755,12 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
     $url = '';
     $label = '';
     $isIncidentPaymentNotification = strpos($titleLower, 'incident payment') !== false || strpos($bodyLower, 'incident payment') !== false;
+    $incidentPaymentNotificationState = '';
+    if ($kind === 'incident_payment_approved' || strpos($titleLower, 'approved') !== false || strpos($bodyLower, 'approved') !== false) {
+        $incidentPaymentNotificationState = 'approved';
+    } elseif ($kind === 'incident_payment_rejected' || strpos($titleLower, 'rejected') !== false || strpos($bodyLower, 'rejected') !== false) {
+        $incidentPaymentNotificationState = 'rejected';
+    }
 
     if ($viewerRole === 'student') {
         if ($isIncidentPaymentNotification || $entityType === 'payment' || strpos($titleLower, 'payment') !== false) {
@@ -2711,6 +2768,9 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $params = ['from_notification' => '1'];
             if ($isIncidentPaymentNotification) {
                 $params['payment_context'] = 'incident';
+                if ($incidentPaymentNotificationState !== '') {
+                    $params['notification_state'] = $incidentPaymentNotificationState;
+                }
                 $incidentId = notification_lookup_incident_id($notification);
                 if ($incidentId > 0) {
                     $params['incident_id'] = $incidentId;
@@ -2756,6 +2816,9 @@ function notification_destination_for_viewer(string $viewerRole, array $notifica
             $params = ['from_notification' => '1'];
             if ($isIncidentPaymentNotification) {
                 $params['payment_context'] = 'incident';
+                if ($incidentPaymentNotificationState !== '') {
+                    $params['notification_state'] = $incidentPaymentNotificationState;
+                }
                 $incidentId = notification_lookup_incident_id($notification);
                 if ($incidentId > 0) {
                     $params['incident_id'] = $incidentId;

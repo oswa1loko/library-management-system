@@ -13,6 +13,10 @@ $msgType = 'success';
 $paymentContext = trim((string) ($_GET['payment_context'] ?? ''));
 $focusedIncidentId = (int) ($_GET['incident_id'] ?? 0);
 $openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
+$notificationState = trim(strtolower((string) ($_GET['notification_state'] ?? '')));
+if (!in_array($notificationState, ['approved', 'rejected'], true)) {
+    $notificationState = '';
+}
 
 function upload_payment_proof(array $file, int $userId): array
 {
@@ -484,6 +488,7 @@ while ($incidentRow = $incidentOptionRows->fetch_assoc()) {
 $canSubmitPayment = count($payablePenaltyOptions) > 0 || count($payableIncidentOptions) > 0;
 $paymentUploadBaseHref = app_url($role . '/payment_upload.php');
 $notificationPaymentContext = in_array($paymentContext, ['penalty', 'incident'], true) ? $paymentContext : '';
+$showIncidentDecisionModal = $openedFromNotification && $notificationPaymentContext === 'incident' && $notificationState !== '';
 $focusedIncidentPayment = null;
 if ($focusedIncidentId > 0) {
     $focusedIncidentStmt = $conn->prepare("
@@ -755,7 +760,7 @@ if ($focusedIncidentId > 0) {
       </div>
     </div>
 
-    <div class="panel member-workspace-history">
+    <div id="my-payment-submissions" class="panel member-workspace-history">
       <div class="card-head">
         <div class="dashboard-icon icon-guide" aria-hidden="true"></div>
         <div>
@@ -938,12 +943,28 @@ if ($focusedIncidentId > 0) {
         <div>
           <p class="muted eyebrow-compact"><?php echo h($notificationPaymentContext === 'incident' ? 'Incident Payment' : 'Penalty Payment'); ?></p>
           <h3 id="member-payment-notification-modal-title" class="heading-card">
-            <?php echo h($notificationPaymentContext === 'incident' ? 'Incident Payment Workspace' : 'Penalty Payment Workspace'); ?>
+            <?php
+              if ($showIncidentDecisionModal && $notificationState === 'approved') {
+                  echo h('Incident Payment Approved');
+              } elseif ($showIncidentDecisionModal && $notificationState === 'rejected') {
+                  echo h('Incident Payment Rejected');
+              } else {
+                  echo h($notificationPaymentContext === 'incident' ? 'Incident Payment Workspace' : 'Penalty Payment Workspace');
+              }
+            ?>
           </h3>
           <p class="muted">
-            <?php echo h($notificationPaymentContext === 'incident'
-              ? 'This notification points you to the lost or damaged fee section so you can review the latest incident payment status or submit the next required proof.'
-              : 'This notification points you to the grouped penalty payment section so you can review the latest status or submit a new payment proof if needed.'); ?>
+            <?php
+              if ($showIncidentDecisionModal && $notificationState === 'approved') {
+                  echo h('Your latest incident payment proof has been approved by admin. This modal shows the final settlement result for the selected incident.');
+              } elseif ($showIncidentDecisionModal && $notificationState === 'rejected') {
+                  echo h('Your latest incident payment proof was not approved. Review the rejection state here, then resubmit a valid proof from the incident payment form below.');
+              } else {
+                  echo h($notificationPaymentContext === 'incident'
+                    ? 'This notification points you to the lost or damaged fee section so you can review the latest incident payment status or submit the next required proof.'
+                    : 'This notification points you to the grouped penalty payment section so you can review the latest status or submit a new payment proof if needed.');
+              }
+            ?>
           </p>
         </div>
         <a class="button secondary" href="<?php echo h($paymentUploadBaseHref); ?>">Close</a>
@@ -958,7 +979,9 @@ if ($focusedIncidentId > 0) {
               </strong>
               <span class="muted">
                 <?php echo h(book_incident_type_label((string) ($focusedIncidentPayment['incident_type'] ?? ''))); ?> |
-                <?php echo h(book_incident_payment_stage_label($focusedIncidentPayment)); ?> |
+                <?php echo h($showIncidentDecisionModal
+                  ? ($notificationState === 'approved' ? 'Approved by admin' : 'Rejected by admin')
+                  : book_incident_payment_stage_label($focusedIncidentPayment)); ?> |
                 <?php echo h(format_currency($focusedIncidentPayment['assessed_fee'] ?? 0)); ?>
               </span>
             <?php else: ?>
@@ -974,7 +997,9 @@ if ($focusedIncidentId > 0) {
             <div class="inline-actions chips-row batch-status-row">
               <?php if ($notificationPaymentContext === 'incident' && $focusedIncidentPayment): ?>
                 <span class="chip"><?php echo h(book_incident_workflow_label((string) ($focusedIncidentPayment['workflow_status'] ?? 'open'))); ?></span>
-                <span class="chip"><?php echo h(book_incident_payment_stage_label($focusedIncidentPayment)); ?></span>
+                <span class="chip"><?php echo h($showIncidentDecisionModal
+                  ? ($notificationState === 'approved' ? 'Approved' : 'Rejected')
+                  : book_incident_payment_stage_label($focusedIncidentPayment)); ?></span>
                 <span class="chip"><?php echo h(format_currency($focusedIncidentPayment['assessed_fee'] ?? 0)); ?></span>
               <?php else: ?>
                 <span class="chip"><?php echo h(format_currency($overviewStats['unpaid_total'] ?? 0)); ?> outstanding penalties</span>
@@ -983,9 +1008,13 @@ if ($focusedIncidentId > 0) {
               <?php endif; ?>
             </div>
           </div>
-          <a class="button" href="#<?php echo h($notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'); ?>">
-            <?php echo h($notificationPaymentContext === 'incident' ? 'Go To Incident Form' : 'Go To Penalty Form'); ?>
-          </a>
+          <?php if ($showIncidentDecisionModal && $notificationState === 'approved'): ?>
+            <a class="button" href="#my-payment-submissions">View Payment Record</a>
+          <?php else: ?>
+            <a class="button" href="#<?php echo h($notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'); ?>">
+              <?php echo h($notificationPaymentContext === 'incident' ? 'Go To Incident Form' : 'Go To Penalty Form'); ?>
+            </a>
+          <?php endif; ?>
         </div>
         <div class="stack member-return-batch-list">
           <div class="empty-state member-return-batch-item">
@@ -993,7 +1022,11 @@ if ($focusedIncidentId > 0) {
               <strong class="label-block meta-top-sm">Next Step</strong>
               <span class="muted">
                 <?php
-                  if ($notificationPaymentContext === 'incident' && $focusedIncidentPayment) {
+                  if ($showIncidentDecisionModal && $notificationState === 'approved' && $focusedIncidentPayment) {
+                      echo h('No further proof is needed. This incident payment is approved and the case is already marked as settled.');
+                  } elseif ($showIncidentDecisionModal && $notificationState === 'rejected' && $focusedIncidentPayment) {
+                      echo h('Please review the incident amount and upload a new valid proof from the incident payment form when you are ready to resubmit.');
+                  } elseif ($notificationPaymentContext === 'incident' && $focusedIncidentPayment) {
                       $latestPaymentStatus = trim((string) ($focusedIncidentPayment['latest_payment_status'] ?? ''));
                       if ($latestPaymentStatus === 'approved' || (string) ($focusedIncidentPayment['settlement_status'] ?? '') === 'paid') {
                           echo h('This incident payment is already approved and marked as settled.');
@@ -1013,10 +1046,19 @@ if ($focusedIncidentId > 0) {
           </div>
           <div class="empty-state member-return-batch-item">
             <span class="grow">
-              <strong class="label-block meta-top-sm"><?php echo h($notificationPaymentContext === 'incident' ? 'Incident Status' : 'Status Reminder'); ?></strong>
+              <strong class="label-block meta-top-sm"><?php echo h($showIncidentDecisionModal ? 'Decision Summary' : ($notificationPaymentContext === 'incident' ? 'Incident Status' : 'Status Reminder')); ?></strong>
               <span class="muted">
                 <?php
-                  if ($notificationPaymentContext === 'incident' && $focusedIncidentPayment) {
+                  if ($showIncidentDecisionModal && $focusedIncidentPayment) {
+                      $resolutionNotes = trim((string) ($focusedIncidentPayment['resolution_notes'] ?? ''));
+                      $statusLine = $notificationState === 'approved'
+                        ? 'Admin approved your payment proof and the incident settlement is now marked as paid.'
+                        : 'Admin rejected your payment proof. The incident remains payable until a new valid proof is approved.';
+                      if ($resolutionNotes !== '') {
+                          $statusLine .= ' ' . $resolutionNotes;
+                      }
+                      echo h($statusLine);
+                  } elseif ($notificationPaymentContext === 'incident' && $focusedIncidentPayment) {
                       $resolutionNotes = trim((string) ($focusedIncidentPayment['resolution_notes'] ?? ''));
                       $statusLine = 'Case is ' . strtolower(book_incident_workflow_label((string) ($focusedIncidentPayment['workflow_status'] ?? 'open')))
                         . ' and settlement is ' . strtolower(book_incident_settlement_label((string) ($focusedIncidentPayment['settlement_status'] ?? 'pending'))) . '.';
