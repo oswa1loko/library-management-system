@@ -8776,6 +8776,26 @@ body.modal-open{
     border-radius:18px 18px 0 0;
   }
 
+  .member-notification-page-dialog .desk-modal-head{
+    position:sticky;
+    top:0;
+    z-index:2;
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:10px;
+    padding-top:calc(env(safe-area-inset-top, 0px) + 6px);
+    padding-bottom:12px;
+    background:inherit;
+  }
+
+  .member-notification-page-dialog .desk-modal-head > div{
+    min-width:0;
+  }
+
+  .member-notification-page-dialog .desk-modal-head > .button.secondary{
+    justify-self:end;
+  }
+
   .member-borrow-modal-layout{
     gap:12px;
     margin-top:12px;
@@ -8810,6 +8830,14 @@ body.modal-open{
     max-height:min(100dvh, 100vh);
     min-height:min(82dvh, 640px);
     border-radius:16px 16px 0 0;
+  }
+
+  .desk-modal-dialog.member-notification-page-dialog{
+    border-radius:16px 16px 0 0;
+  }
+
+  .member-notification-page-dialog .desk-modal-head{
+    padding-top:calc(env(safe-area-inset-top, 0px) + 8px);
   }
 
   .member-borrow-modal-preview{
