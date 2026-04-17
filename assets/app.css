@@ -2139,6 +2139,111 @@ tbody td > .label-block + .muted{
   line-height:1.5;
 }
 
+.member-notification-card{
+  position:relative;
+  display:grid;
+  gap:10px;
+  overflow:hidden;
+}
+
+.member-notification-card::before{
+  content:"";
+  position:absolute;
+  inset:14px auto 14px 0;
+  width:3px;
+  border-radius:999px;
+  background:transparent;
+  opacity:0;
+  transition:opacity .18s ease, background .18s ease;
+}
+
+.member-notification-card.is-unread::before{
+  opacity:1;
+}
+
+.member-notification-card--info.is-unread::before{
+  background:linear-gradient(180deg, rgba(126,210,255,0.96), rgba(74,157,255,0.9));
+}
+
+.member-notification-card--warning.is-unread::before{
+  background:linear-gradient(180deg, rgba(255,214,102,0.96), rgba(255,167,38,0.9));
+}
+
+.member-notification-card--critical.is-unread::before{
+  background:linear-gradient(180deg, rgba(255,142,142,0.96), rgba(255,97,97,0.9));
+}
+
+.member-notification-card-head,
+.member-notification-card-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.member-notification-pill{
+  min-height:28px;
+  padding:5px 10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  font-size:10px;
+  font-weight:800;
+}
+
+.member-notification-time{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.4;
+}
+
+.member-notification-card-title{
+  display:flex !important;
+  align-items:flex-start;
+  gap:10px;
+  margin:0 !important;
+  line-height:1.35;
+}
+
+.member-notification-card-title-copy{
+  flex:1 1 auto;
+  min-width:0;
+}
+
+.member-notification-state-chip{
+  margin-left:auto;
+}
+
+.member-notification-card-copy{
+  margin:0;
+  font-size:14px !important;
+  line-height:1.6 !important;
+}
+
+.member-notification-link-cta{
+  color:#9ad6ff;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.01em;
+}
+
+.member-notification-card.is-unread{
+  border-color:rgba(143,211,255,0.22);
+  box-shadow:0 18px 30px rgba(0,0,0,0.18);
+}
+
+.member-notification-card--warning{
+  background:
+    linear-gradient(180deg, rgba(255,196,87,0.06), rgba(255,255,255,0.02)),
+    rgba(255,255,255,0.025);
+}
+
+.member-notification-card--critical{
+  background:
+    linear-gradient(180deg, rgba(255,124,124,0.07), rgba(255,255,255,0.02)),
+    rgba(255,255,255,0.025);
+}
+
 .status-dot{
   display:inline-block;
   width:10px;
@@ -2931,6 +3036,31 @@ body.auth-page > .theme-toggle{
 
 :root[data-theme="light"] .activity-item .meta{
   color:#61728d;
+}
+
+:root[data-theme="light"] .member-notification-card.is-unread{
+  border-color:rgba(47,109,255,0.2);
+  box-shadow:0 18px 28px rgba(34,63,112,0.1);
+}
+
+:root[data-theme="light"] .member-notification-card--warning{
+  background:
+    linear-gradient(180deg, rgba(255,214,134,0.16), rgba(255,255,255,0.95)),
+    rgba(255,255,255,0.98);
+}
+
+:root[data-theme="light"] .member-notification-card--critical{
+  background:
+    linear-gradient(180deg, rgba(255,167,167,0.16), rgba(255,255,255,0.95)),
+    rgba(255,255,255,0.98);
+}
+
+:root[data-theme="light"] .member-notification-time{
+  color:#7083a0;
+}
+
+:root[data-theme="light"] .member-notification-link-cta{
+  color:#2f6dff;
 }
 
 :root[data-theme="light"] .code-pill{
@@ -8851,6 +8981,35 @@ body.modal-open{
   }
 }
 
+@media (max-width: 480px){
+  .member-notification-card-head,
+  .member-notification-card-meta{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    align-items:start;
+  }
+
+  .member-notification-card-title{
+    display:grid !important;
+    grid-template-columns:auto minmax(0, 1fr);
+    align-items:start;
+  }
+
+  .member-notification-card-title .status-dot{
+    margin-top:4px;
+  }
+
+  .member-notification-state-chip{
+    margin-left:0;
+    justify-self:start;
+    grid-column:2;
+  }
+
+  .member-notification-card-copy{
+    font-size:13px !important;
+  }
+}
+
 .member-workspace-actions{
   justify-content:flex-start;
 }
@@ -11695,6 +11854,30 @@ body.ebook-reader-screen {
   .activity-item .meta-top .inline-form,
   .activity-item .meta-top .inline-form button {
     width: 100%;
+  }
+
+  .member-notification-card-head,
+  .member-notification-card-meta{
+    gap:8px;
+  }
+
+  .member-notification-card-title{
+    align-items:flex-start;
+  }
+
+  .member-notification-state-chip{
+    margin-left:20px;
+  }
+
+  .member-notification-pill{
+    min-height:24px;
+    padding:4px 9px;
+    font-size:9px;
+  }
+
+  .member-notification-time,
+  .member-notification-link-cta{
+    font-size:11px;
   }
 
   .member-mobile-hide{

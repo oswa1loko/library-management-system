@@ -643,6 +643,90 @@ function format_display_datetime(?string $dateValue, string $fallback = '-'): st
     return date('M j, Y g:i A', $timestamp);
 }
 
+function format_relative_datetime(?string $dateValue, string $fallback = 'Recent'): string
+{
+    $dateValue = trim((string) $dateValue);
+    if ($dateValue === '' || $dateValue === '0000-00-00' || $dateValue === '0000-00-00 00:00:00') {
+        return $fallback;
+    }
+
+    $timestamp = strtotime($dateValue);
+    if ($timestamp === false) {
+        return $fallback;
+    }
+
+    $delta = time() - $timestamp;
+    if ($delta < 0) {
+        $delta = 0;
+    }
+
+    if ($delta < 60) {
+        return 'Just now';
+    }
+
+    $minutes = (int) floor($delta / 60);
+    if ($minutes < 60) {
+        return $minutes . 'm ago';
+    }
+
+    $hours = (int) floor($delta / 3600);
+    if ($hours < 24) {
+        return $hours . 'h ago';
+    }
+
+    $days = (int) floor($delta / 86400);
+    if ($days === 1) {
+        return 'Yesterday';
+    }
+    if ($days < 7) {
+        return $days . 'd ago';
+    }
+
+    $weeks = (int) floor($days / 7);
+    if ($weeks < 5) {
+        return $weeks . 'w ago';
+    }
+
+    return format_display_date($dateValue, $fallback);
+}
+
+function member_notification_category_label(string $kind, string $entityType = '', string $title = '', string $body = ''): string
+{
+    $kind = strtolower(trim($kind));
+    $entityType = strtolower(trim($entityType));
+    $text = strtolower(trim($title . ' ' . $body));
+
+    if ($kind === 'overdue') {
+        return 'Overdue';
+    }
+    if ($kind === 'due_soon') {
+        return 'Due Soon';
+    }
+    if (str_contains($text, 'incident payment') || $kind === 'incident_payment_approved' || $kind === 'incident_payment_rejected') {
+        return 'Incident Payment';
+    }
+    if ($entityType === 'payment' || str_contains($text, 'payment')) {
+        return 'Payment';
+    }
+    if ($entityType === 'book_incident' || str_contains($text, 'incident')) {
+        return 'Book Incident';
+    }
+    if (str_contains($text, 'return request approved') || str_contains($text, 'return')) {
+        return 'Return';
+    }
+    if (str_contains($text, 'borrow request approved') || str_contains($text, 'borrow')) {
+        return 'Borrow';
+    }
+    if ($entityType === 'announcement' || $kind === 'announcement_sent' || str_contains($text, 'announcement')) {
+        return 'Announcement';
+    }
+    if (str_contains($text, 'account')) {
+        return 'Account';
+    }
+
+    return 'Update';
+}
+
 function format_batch_reference(?string $batchRef, string $label = 'Request Ref'): string
 {
     $batchRef = trim((string) $batchRef);

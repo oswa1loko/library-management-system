@@ -152,50 +152,60 @@ $notificationFeedUrl = app_url('faculty/notifications_feed.php');
               $borrowId = (int) ($dueBook['id'] ?? 0);
             ?>
             <a
-              class="activity-item activity-item-link<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
+              class="activity-item activity-item-link member-notification-card member-notification-card--critical<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
               href="<?php echo h(app_url('faculty/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               data-notification-link
               data-destination-url="<?php echo h(app_url('faculty/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
-              <strong>
+              <div class="member-notification-card-head">
+                <span class="chip member-notification-pill">Overdue</span>
+                <span class="member-notification-time">Needs attention</span>
+              </div>
+              <strong class="member-notification-card-title">
                 <span class="status-dot unpaid"></span>
-                Overdue Alert
-                <?php if ($borrowId > 0): ?><span class="chip">Unread</span><?php endif; ?>
+                <span class="member-notification-card-title-copy">Overdue Alert</span>
+                <?php if ($borrowId > 0): ?><span class="chip member-notification-state-chip">Unread</span><?php endif; ?>
               </strong>
-              <div class="meta">
+              <div class="meta member-notification-card-copy">
                 <?php echo h((string) ($dueBook['title'] ?? 'Book')); ?> was due on <?php echo h(format_display_date($dueDateRaw)); ?> and is now overdue by <?php echo (int) $daysOverdue; ?> day<?php echo $daysOverdue === 1 ? '' : 's'; ?>.
                 <?php if (($dueBook['status'] ?? '') === 'return_requested'): ?>
                   Return confirmation is still pending.
                 <?php endif; ?>
               </div>
-              <div class="inline-actions meta-top">
-                <span class="muted">Open borrow status</span>
+              <div class="inline-actions meta-top member-notification-card-meta">
+                <span class="muted member-notification-time"><?php echo h('Due ' . format_display_date($dueDateRaw)); ?></span>
+                <span class="member-notification-link-cta">Open borrow status</span>
               </div>
             </a>
           <?php endforeach; ?>
           <?php foreach ($dueSoonBooks as $dueBook): ?>
             <?php $borrowId = (int) ($dueBook['id'] ?? 0); ?>
             <a
-              class="activity-item activity-item-link<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
+              class="activity-item activity-item-link member-notification-card member-notification-card--warning<?php echo $borrowId > 0 ? ' is-unread' : ''; ?>"
               href="<?php echo h(app_url('faculty/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               data-notification-link
               data-destination-url="<?php echo h(app_url('faculty/borrow_return.php?borrow_id=' . $borrowId . '&from_notification=1')); ?>"
               <?php if ($borrowId > 0): ?>data-alert-borrow-id="<?php echo $borrowId; ?>" data-alert-unread="true"<?php endif; ?>
             >
-              <strong>
+              <div class="member-notification-card-head">
+                <span class="chip member-notification-pill">Due Soon</span>
+                <span class="member-notification-time">Upcoming</span>
+              </div>
+              <strong class="member-notification-card-title">
                 <span class="status-dot due"></span>
-                Due Date Alert
-                <?php if ($borrowId > 0): ?><span class="chip">Unread</span><?php endif; ?>
+                <span class="member-notification-card-title-copy">Due Date Alert</span>
+                <?php if ($borrowId > 0): ?><span class="chip member-notification-state-chip">Unread</span><?php endif; ?>
               </strong>
-              <div class="meta">
+              <div class="meta member-notification-card-copy">
                 <?php echo h((string) ($dueBook['title'] ?? 'Book')); ?> is due on <?php echo h(format_display_date((string) ($dueBook['due_date'] ?? ''))); ?>
                 <?php if (($dueBook['status'] ?? '') === 'return_requested'): ?>
                   and is waiting for librarian confirmation.
                 <?php endif; ?>
               </div>
-              <div class="inline-actions meta-top">
-                <span class="muted">Open borrow status</span>
+              <div class="inline-actions meta-top member-notification-card-meta">
+                <span class="muted member-notification-time"><?php echo h('Due ' . format_display_date((string) ($dueBook['due_date'] ?? ''))); ?></span>
+                <span class="member-notification-link-cta">Open borrow status</span>
               </div>
             </a>
           <?php endforeach; ?>
@@ -210,23 +220,33 @@ $notificationFeedUrl = app_url('faculty/notifications_feed.php');
               $destinationUrl = (string) ($destination['url'] ?? '');
               $destinationLabel = (string) ($destination['label'] ?? 'Open notification');
               $isUnread = (int) ($row['is_read'] ?? 0) === 0;
+              $categoryLabel = member_notification_category_label((string) ($row['kind'] ?? ''), (string) ($row['entity_type'] ?? ''), (string) ($row['title'] ?? ''), (string) ($row['body'] ?? ''));
+              $relativeTime = format_relative_datetime((string) ($row['created_at'] ?? ''), 'Recent');
+              $exactTime = format_display_datetime((string) ($row['created_at'] ?? ''), '-');
+              $severityClass = $row['severity'] === 'critical'
+                ? 'member-notification-card--critical'
+                : ($row['severity'] === 'warning' ? 'member-notification-card--warning' : 'member-notification-card--info');
             ?>
             <a
-              class="activity-item activity-item-link<?php echo $isUnread ? ' is-unread' : ''; ?>"
+              class="activity-item activity-item-link member-notification-card <?php echo h($severityClass); ?><?php echo $isUnread ? ' is-unread' : ''; ?>"
               href="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('faculty/notifications.php')); ?>"
               data-notification-link
               data-destination-url="<?php echo h($destinationUrl !== '' ? $destinationUrl : app_url('faculty/notifications.php')); ?>"
               <?php if ($isUnread): ?>data-notification-id="<?php echo (int) $row['id']; ?>" data-notification-unread="true"<?php endif; ?>
             >
-              <strong>
+              <div class="member-notification-card-head">
+                <span class="chip member-notification-pill"><?php echo h($categoryLabel); ?></span>
+                <span class="member-notification-time"><?php echo h($relativeTime); ?></span>
+              </div>
+              <strong class="member-notification-card-title">
                 <span class="status-dot <?php echo h($row['severity'] === 'critical' ? 'unpaid' : ($row['severity'] === 'warning' ? 'due' : 'approved')); ?>"></span>
-                <?php echo h($row['title']); ?>
-                <?php if ($isUnread): ?><span class="chip">Unread</span><?php else: ?><span class="chip">Read</span><?php endif; ?>
+                <span class="member-notification-card-title-copy"><?php echo h($row['title']); ?></span>
+                <?php if ($isUnread): ?><span class="chip member-notification-state-chip">Unread</span><?php endif; ?>
               </strong>
-              <div class="meta"><?php echo h($row['body']); ?></div>
-              <div class="inline-actions meta-top">
-                <span class="muted"><?php echo h(date('F j, Y g:i A', strtotime((string) $row['created_at']))); ?></span>
-                <span class="muted"><?php echo h($destinationLabel); ?></span>
+              <div class="meta member-notification-card-copy"><?php echo h($row['body']); ?></div>
+              <div class="inline-actions meta-top member-notification-card-meta">
+                <span class="muted member-notification-time"><?php echo h($exactTime); ?></span>
+                <span class="member-notification-link-cta"><?php echo h($destinationLabel); ?></span>
               </div>
             </a>
           <?php endwhile; ?>
