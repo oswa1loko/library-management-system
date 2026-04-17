@@ -796,7 +796,7 @@ if ($focusedIncidentId > 0) {
       </div>
     </div>
 
-    <div class="panel member-workspace-history">
+    <div id="incident-eligibility" class="panel member-workspace-history">
       <div class="card-head">
         <div class="dashboard-icon icon-guide" aria-hidden="true"></div>
         <div>
@@ -1011,9 +1011,9 @@ if ($focusedIncidentId > 0) {
           <?php if ($showIncidentDecisionModal && $notificationState === 'approved'): ?>
             <a
               class="button"
-              href="<?php echo h($paymentUploadBaseHref . '#my-payment-submissions'); ?>"
-              data-modal-scroll-target="my-payment-submissions"
-              data-modal-close-url="<?php echo h($paymentUploadBaseHref . '#my-payment-submissions'); ?>"
+              href="<?php echo h($paymentUploadBaseHref . '#incident-eligibility'); ?>"
+              data-modal-scroll-target="incident-eligibility"
+              data-modal-close-url="<?php echo h($paymentUploadBaseHref . '#incident-eligibility'); ?>"
             >View Payment Record</a>
           <?php else: ?>
             <?php $modalTargetId = $notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'; ?>
