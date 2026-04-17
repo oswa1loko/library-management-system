@@ -8783,13 +8783,14 @@ body.modal-open{
     display:grid;
     grid-template-columns:minmax(0, 1fr);
     gap:10px;
-    padding-top:calc(env(safe-area-inset-top, 0px) + 6px);
+    padding-top:calc(env(safe-area-inset-top, 0px) + 16px);
     padding-bottom:12px;
     background:inherit;
   }
 
   .member-notification-page-dialog .desk-modal-head > div{
     min-width:0;
+    padding-top:4px;
   }
 
   .member-notification-page-dialog .desk-modal-head > .button.secondary{
@@ -8837,7 +8838,7 @@ body.modal-open{
   }
 
   .member-notification-page-dialog .desk-modal-head{
-    padding-top:calc(env(safe-area-inset-top, 0px) + 8px);
+    padding-top:calc(env(safe-area-inset-top, 0px) + 18px);
   }
 
   .member-borrow-modal-preview{
