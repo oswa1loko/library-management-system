@@ -1009,7 +1009,7 @@ if ($focusedIncidentId > 0) {
             </div>
           </div>
           <?php if ($showIncidentDecisionModal && $notificationState === 'approved'): ?>
-            <a class="button" href="#my-payment-submissions">View Payment Record</a>
+            <a class="button" href="<?php echo h($paymentUploadBaseHref . '#my-payment-submissions'); ?>">View Payment Record</a>
           <?php else: ?>
             <a class="button" href="#<?php echo h($notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'); ?>">
               <?php echo h($notificationPaymentContext === 'incident' ? 'Go To Incident Form' : 'Go To Penalty Form'); ?>
