@@ -1009,9 +1009,20 @@ if ($focusedIncidentId > 0) {
             </div>
           </div>
           <?php if ($showIncidentDecisionModal && $notificationState === 'approved'): ?>
-            <a class="button" href="<?php echo h($paymentUploadBaseHref . '#my-payment-submissions'); ?>">View Payment Record</a>
+            <a
+              class="button"
+              href="<?php echo h($paymentUploadBaseHref . '#my-payment-submissions'); ?>"
+              data-modal-scroll-target="my-payment-submissions"
+              data-modal-close-url="<?php echo h($paymentUploadBaseHref . '#my-payment-submissions'); ?>"
+            >View Payment Record</a>
           <?php else: ?>
-            <a class="button" href="#<?php echo h($notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'); ?>">
+            <?php $modalTargetId = $notificationPaymentContext === 'incident' ? 'incident-payment-form' : 'penalty-payment-form'; ?>
+            <a
+              class="button"
+              href="<?php echo h($paymentUploadBaseHref . '#' . $modalTargetId); ?>"
+              data-modal-scroll-target="<?php echo h($modalTargetId); ?>"
+              data-modal-close-url="<?php echo h($paymentUploadBaseHref . '#' . $modalTargetId); ?>"
+            >
               <?php echo h($notificationPaymentContext === 'incident' ? 'Go To Incident Form' : 'Go To Penalty Form'); ?>
             </a>
           <?php endif; ?>
@@ -1085,6 +1096,32 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!pageModal) {
     return;
   }
+
+  var closeModal = function () {
+    pageModal.hidden = true;
+    document.body.classList.remove('modal-open');
+  };
+
+  var modalScrollLinks = pageModal.querySelectorAll('[data-modal-scroll-target]');
+  modalScrollLinks.forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      var targetId = link.getAttribute('data-modal-scroll-target') || '';
+      var closeUrl = link.getAttribute('data-modal-close-url') || '';
+      var target = targetId !== '' ? document.getElementById(targetId) : null;
+      if (!target) {
+        return;
+      }
+
+      event.preventDefault();
+      closeModal();
+      if (closeUrl !== '') {
+        window.history.replaceState(null, document.title, closeUrl);
+      }
+      window.requestAnimationFrame(function () {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  });
 
   document.body.classList.add('modal-open');
   document.addEventListener('keydown', function (event) {
