@@ -322,6 +322,8 @@
       : (item.severity === 'warning' ? 'due' : 'approved');
     var destinationUrl = String(item.destination_url || '');
     var destinationLabel = String(item.destination_label || '');
+    var categoryLabel = String(item.category_label || 'Update');
+    var relativeTime = String(item.relative_time || item.created_at || '-');
     var isLinked = destinationUrl !== '';
     var unreadChip = item.is_read
       ? '<span class="chip student-notification-read">Read</span>'
@@ -333,6 +335,10 @@
         (Number(item.id || 0) > 0 ? ' data-notification-id="' + Number(item.id || 0) + '"' : '') +
         (Number(item.borrow_id || 0) > 0 ? ' data-notification-borrow-id="' + Number(item.borrow_id || 0) + '"' : '') +
         ' data-notification-unread="' + (item.is_read ? 'false' : 'true') + '">' +
+        '<div class="student-notification-kicker">' +
+          '<span class="chip student-notification-category-chip">' + escapeHtml(categoryLabel) + '</span>' +
+          '<span class="student-notification-relative-time">' + escapeHtml(relativeTime) + '</span>' +
+        '</div>' +
         '<div class="student-notification-title">' +
           '<span class="status-dot ' + severityClass + '"></span>' +
           '<strong>' + escapeHtml(item.title || 'Notification') + '</strong>' +

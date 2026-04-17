@@ -7203,6 +7203,29 @@ button.catalog-search-suggestion{
   transition:transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, opacity .18s ease;
 }
 
+.student-notification-kicker{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.student-notification-category-chip{
+  min-height:24px;
+  padding:4px 9px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.student-notification-relative-time{
+  color:rgba(154,214,255,0.78);
+  font-size:11px;
+  line-height:1.35;
+}
+
 .student-notification-item.is-linked{
   cursor:pointer;
 }
