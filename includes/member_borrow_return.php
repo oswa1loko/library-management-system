@@ -153,6 +153,17 @@ $activeBatchStmt = $conn->prepare("
         )
           AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
       ) AS open_incident_count,
+      (
+        SELECT bi.incident_type
+        FROM book_incidents bi
+        WHERE (
+          bi.borrow_id = br.id
+          OR (br.book_copy_id IS NOT NULL AND br.book_copy_id > 0 AND bi.book_copy_id = br.book_copy_id)
+        )
+          AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
+        ORDER BY bi.id DESC
+        LIMIT 1
+      ) AS open_incident_type,
       b.title,
       b.author
     FROM borrows br
@@ -203,6 +214,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
             'due_date' => (string) ($activeRow['due_date'] ?? ''),
             'borrowed_count' => 0,
             'incident_blocked_count' => 0,
+            'blocked_incident_type' => '',
             'blocked_borrow_ids' => [],
             'return_requested_count' => 0,
             'borrow_ids' => [],
@@ -217,6 +229,9 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
         if ((int) ($activeRow['open_incident_count'] ?? 0) > 0) {
             $activeReturnGroups[$groupKey]['incident_blocked_items']++;
             $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['incident_blocked_count']++;
+            if ((string) ($activeReturnGroups[$groupKey]['items'][$itemGroupKey]['blocked_incident_type'] ?? '') === '') {
+                $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['blocked_incident_type'] = trim((string) ($activeRow['open_incident_type'] ?? ''));
+            }
             $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['blocked_borrow_ids'][] = (int) $activeRow['id'];
         } else {
             $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['borrowed_count']++;
@@ -405,6 +420,14 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
               </div>
               <div class="stack member-return-batch-list">
                 <?php foreach ($group['items'] as $item): ?>
+                  <?php
+                  $blockedIncidentType = trim((string) ($item['blocked_incident_type'] ?? ''));
+                  $blockedStatusLabel = $blockedIncidentType === 'lost' ? 'Lost Case Open' : 'Incident Blocked';
+                  $blockedReasonLabel = $blockedIncidentType === 'lost'
+                    ? 'handled through the lost-book case'
+                    : 'blocked by unresolved incident';
+                  $blockedActionLabel = $blockedIncidentType === 'lost' ? 'Review Lost-Book Case' : 'Resolve Incident First';
+                  ?>
                   <div class="empty-state member-return-batch-item">
                     <span class="grow">
                       <strong class="label-block meta-top-sm"><?php echo h($item['title']); ?></strong>
@@ -414,10 +437,10 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                         <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
                           <?php echo (int) ($item['borrowed_count'] ?? 0); ?> copie<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? '' : 's'; ?> ready for return
                           <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
-                            | <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> blocked by unresolved incident
+                            | <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> <?php echo h($blockedReasonLabel); ?>
                           <?php endif; ?>
                         <?php elseif ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
-                          <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> copie<?php echo (int) ($item['incident_blocked_count'] ?? 0) === 1 ? '' : 's'; ?> blocked by unresolved incident
+                          <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> copie<?php echo (int) ($item['incident_blocked_count'] ?? 0) === 1 ? '' : 's'; ?> <?php echo h($blockedReasonLabel); ?>
                         <?php else: ?>
                           <?php echo (int) ($item['return_requested_count'] ?? 0); ?> copie<?php echo (int) ($item['return_requested_count'] ?? 0) === 1 ? '' : 's'; ?> waiting for confirmation
                         <?php endif; ?>
@@ -425,12 +448,12 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                     </span>
                     <span class="badge">
                       <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'overdue' : 'return_requested'); ?>"></span>
-                      <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'Incident Blocked' : 'Return Requested'); ?>
+                      <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? h($blockedStatusLabel) : 'Return Requested'); ?>
                     </span>
                     <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
                       <span class="badge">
                         <span class="status-dot overdue"></span>
-                        Resolve incident first
+                        <?php echo h($blockedIncidentType === 'lost' ? 'Handled in incident case' : 'Resolve incident first'); ?>
                       </span>
                     <?php endif; ?>
                   </div>
@@ -445,7 +468,7 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                   <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
                     <?php $blockedBorrowId = (int) (($item['blocked_borrow_ids'][0] ?? 0)); ?>
                     <?php if ($blockedBorrowId > 0): ?>
-                      <a class="button secondary" href="<?php echo h(app_url($role . '/book_incidents.php?borrow_id=' . $blockedBorrowId . '&from_notification=1')); ?>">Resolve Incident First</a>
+                      <a class="button secondary" href="<?php echo h(app_url($role . '/book_incidents.php?borrow_id=' . $blockedBorrowId . '&from_notification=1')); ?>"><?php echo h($blockedActionLabel); ?></a>
                     <?php endif; ?>
                   <?php endif; ?>
                 <?php endforeach; ?>
@@ -499,6 +522,13 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
         </div>
         <div class="stack member-return-batch-list">
           <?php foreach (($focusedReturnGroup['items'] ?? []) as $item): ?>
+            <?php
+            $blockedIncidentType = trim((string) ($item['blocked_incident_type'] ?? ''));
+            $blockedStatusLabel = $blockedIncidentType === 'lost' ? 'Lost Case Open' : 'Incident Blocked';
+            $blockedReasonLabel = $blockedIncidentType === 'lost'
+              ? 'handled through the lost-book case'
+              : 'blocked by unresolved incident';
+            ?>
             <div class="empty-state member-return-batch-item">
               <span class="grow">
                 <strong class="label-block meta-top-sm"><?php echo h((string) ($item['title'] ?? 'Book')); ?></strong>
@@ -508,10 +538,10 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                   <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
                     <?php echo (int) ($item['borrowed_count'] ?? 0); ?> copie<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? '' : 's'; ?> ready for return
                     <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
-                      | <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> blocked by unresolved incident
+                      | <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> <?php echo h($blockedReasonLabel); ?>
                     <?php endif; ?>
                   <?php elseif ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
-                    <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> copie<?php echo (int) ($item['incident_blocked_count'] ?? 0) === 1 ? '' : 's'; ?> blocked by unresolved incident
+                    <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> copie<?php echo (int) ($item['incident_blocked_count'] ?? 0) === 1 ? '' : 's'; ?> <?php echo h($blockedReasonLabel); ?>
                   <?php else: ?>
                     <?php echo (int) ($item['return_requested_count'] ?? 0); ?> copie<?php echo (int) ($item['return_requested_count'] ?? 0) === 1 ? '' : 's'; ?> waiting for confirmation
                   <?php endif; ?>
@@ -519,7 +549,7 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
               </span>
               <span class="badge">
                 <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'overdue' : 'return_requested'); ?>"></span>
-                <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'Incident Blocked' : 'Return Requested'); ?>
+                <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? h($blockedStatusLabel) : 'Return Requested'); ?>
               </span>
             </div>
           <?php endforeach; ?>
