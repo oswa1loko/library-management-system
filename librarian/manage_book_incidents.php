@@ -264,6 +264,9 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
                 <option value="<?php echo h($value); ?>" <?php echo (string) ($selectedIncident['workflow_status'] ?? '') === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
               <?php endforeach; ?>
             </select>
+            <div id="workflow_status_fee_note" class="muted meta-top-sm" <?php echo (float) ($selectedIncident['assessed_fee'] ?? 0) > 0 ? '' : 'hidden'; ?>>
+              Adding an assessed fee automatically moves this case to Waiting for Payment.
+            </div>
           </div>
           <div>
             <label for="resolution_action_selected">Inventory action</label>
@@ -307,5 +310,67 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
 <?php endif; ?>
 <script src="<?php echo h(app_url('assets/member_sidebar.js?v=' . urlencode($memberSidebarVersion))); ?>"></script>
 <script src="<?php echo h(app_url('assets/admin_ajax_panel.js?v=' . urlencode($ajaxPanelVersion))); ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var workflowSelect = document.getElementById('workflow_status_selected');
+  var assessedFeeInput = document.getElementById('assessed_fee_selected');
+  var feeNote = document.getElementById('workflow_status_fee_note');
+  if (!workflowSelect || !assessedFeeInput) {
+    return;
+  }
+
+  var workflowFieldName = workflowSelect.getAttribute('name') || 'workflow_status';
+  var hiddenWorkflowInput = null;
+
+  function ensureHiddenWorkflowInput() {
+    if (hiddenWorkflowInput) {
+      return hiddenWorkflowInput;
+    }
+
+    hiddenWorkflowInput = document.createElement('input');
+    hiddenWorkflowInput.type = 'hidden';
+    hiddenWorkflowInput.name = workflowFieldName;
+    workflowSelect.insertAdjacentElement('afterend', hiddenWorkflowInput);
+    return hiddenWorkflowInput;
+  }
+
+  function removeHiddenWorkflowInput() {
+    if (!hiddenWorkflowInput) {
+      return;
+    }
+
+    hiddenWorkflowInput.remove();
+    hiddenWorkflowInput = null;
+  }
+
+  function syncWorkflowWithFee() {
+    var assessedFee = parseFloat(assessedFeeInput.value || '0');
+    var hasFee = !Number.isNaN(assessedFee) && assessedFee > 0;
+    if (feeNote) {
+      feeNote.hidden = !hasFee;
+    }
+
+    if (hasFee) {
+      workflowSelect.value = 'for_payment';
+      workflowSelect.disabled = true;
+      ensureHiddenWorkflowInput().value = 'for_payment';
+      return;
+    }
+
+    removeHiddenWorkflowInput();
+    if (!workflowSelect.hasAttribute('data-locked')) {
+      workflowSelect.disabled = false;
+    }
+  }
+
+  if (workflowSelect.disabled) {
+    workflowSelect.setAttribute('data-locked', 'true');
+  }
+
+  assessedFeeInput.addEventListener('input', syncWorkflowWithFee);
+  assessedFeeInput.addEventListener('change', syncWorkflowWithFee);
+  syncWorkflowWithFee();
+});
+</script>
 </body>
 </html>
