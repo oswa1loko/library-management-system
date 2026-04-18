@@ -270,11 +270,20 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           </div>
           <div>
             <label for="resolution_action_selected">Inventory action</label>
-            <select id="resolution_action_selected" name="resolution_action" <?php echo $isLocked ? 'disabled' : ''; ?>>
+            <select
+              id="resolution_action_selected"
+              name="resolution_action"
+              data-incident-type="<?php echo h((string) ($selectedIncident['incident_type'] ?? '')); ?>"
+              data-suggested-action="<?php echo h($selectedResolutionAction); ?>"
+              <?php echo $isLocked ? 'disabled' : ''; ?>
+            >
               <?php foreach (book_incident_resolution_form_options($selectedResolutionAction) as $value => $label): ?>
                 <option value="<?php echo h($value); ?>" <?php echo $selectedResolutionAction === $value ? 'selected' : ''; ?>><?php echo h($label); ?></option>
               <?php endforeach; ?>
             </select>
+            <div id="resolution_action_type_note" class="muted meta-top-sm">
+              Suggested from the reported <?php echo h(strtolower(book_incident_type_label((string) ($selectedIncident['incident_type'] ?? '')))); ?> type. You can still change this after inspection.
+            </div>
           </div>
         </div>
         <div class="field-grid two-up">
@@ -315,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var workflowSelect = document.getElementById('workflow_status_selected');
   var assessedFeeInput = document.getElementById('assessed_fee_selected');
   var feeNote = document.getElementById('workflow_status_fee_note');
+  var resolutionActionSelect = document.getElementById('resolution_action_selected');
   if (!workflowSelect || !assessedFeeInput) {
     return;
   }
@@ -370,6 +380,15 @@ document.addEventListener('DOMContentLoaded', function () {
   assessedFeeInput.addEventListener('input', syncWorkflowWithFee);
   assessedFeeInput.addEventListener('change', syncWorkflowWithFee);
   syncWorkflowWithFee();
+
+  if (!resolutionActionSelect || resolutionActionSelect.disabled) {
+    return;
+  }
+
+  var suggestedAction = resolutionActionSelect.getAttribute('data-suggested-action') || '';
+  if (suggestedAction !== '' && resolutionActionSelect.value === 'none') {
+    resolutionActionSelect.value = suggestedAction;
+  }
 });
 </script>
 </body>
