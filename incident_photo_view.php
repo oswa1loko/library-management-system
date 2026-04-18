@@ -91,7 +91,7 @@ $photoUrl = $photoPath !== '' ? app_url($photoPath) : '';
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo h($photoTitle); ?></title>
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/png" href="<?php echo h(app_url('assets/images/regismarielogo.png')); ?>">
 <script src="<?php echo h(app_url('assets/theme.js?v=' . urlencode($themeVersion))); ?>"></script>
 <link rel="stylesheet" href="<?php echo h(app_url('assets/app.css?v=' . urlencode($assetVersion))); ?>">
 </head>
