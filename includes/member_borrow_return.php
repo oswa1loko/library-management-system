@@ -68,6 +68,30 @@ if (isset($_POST['return_book']) || isset($_POST['return_books'])) {
             }
         } else {
             $msg = (string) ($json['error'] ?? '');
+            if ($msg === '' && is_array($json) && !empty($json['blocked_items']) && is_array($json['blocked_items'])) {
+                $blockedLabels = [];
+                foreach ($json['blocked_items'] as $blockedItem) {
+                    if (!is_array($blockedItem)) {
+                        continue;
+                    }
+
+                    $blockedTitle = trim((string) ($blockedItem['title'] ?? ''));
+                    $blockedCopyId = trim((string) ($blockedItem['copy_id'] ?? ''));
+                    if ($blockedTitle === '') {
+                        continue;
+                    }
+
+                    $blockedLabel = $blockedTitle;
+                    if ($blockedCopyId !== '') {
+                        $blockedLabel .= ' (' . $blockedCopyId . ')';
+                    }
+                    $blockedLabels[] = $blockedLabel;
+                }
+
+                if ($blockedLabels !== []) {
+                    $msg = 'Return request is blocked until the unresolved incident is resolved: ' . implode(', ', array_values(array_unique($blockedLabels))) . '.';
+                }
+            }
             if ($msg === '' && (string) ($response['transport_error'] ?? '') !== '') {
                 $msg = 'API request failed: ' . (string) $response['transport_error'];
             }
@@ -120,6 +144,15 @@ $activeBatchStmt = $conn->prepare("
       br.borrow_date,
       br.due_at,
       br.due_date,
+      (
+        SELECT COUNT(*)
+        FROM book_incidents bi
+        WHERE (
+          bi.borrow_id = br.id
+          OR (br.book_copy_id IS NOT NULL AND br.book_copy_id > 0 AND bi.book_copy_id = br.book_copy_id)
+        )
+          AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
+      ) AS open_incident_count,
       b.title,
       b.author
     FROM borrows br
@@ -146,6 +179,7 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
             'approved_at' => (string) ($activeRow['approved_at'] ?? ''),
             'borrow_date' => (string) ($activeRow['borrow_date'] ?? ''),
             'total_items' => 0,
+            'incident_blocked_items' => 0,
             'return_requested_items' => 0,
             'borrowed_items' => 0,
             'items' => [],
@@ -168,6 +202,8 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
             'due_at' => (string) ($activeRow['due_at'] ?? ''),
             'due_date' => (string) ($activeRow['due_date'] ?? ''),
             'borrowed_count' => 0,
+            'incident_blocked_count' => 0,
+            'blocked_borrow_ids' => [],
             'return_requested_count' => 0,
             'borrow_ids' => [],
             'status' => 'borrowed',
@@ -178,8 +214,14 @@ while ($activeRow = $activeBatchRows->fetch_assoc()) {
         $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['return_requested_count']++;
         $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['status'] = 'return_requested';
     } else {
-        $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['borrowed_count']++;
-        $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['borrow_ids'][] = (int) $activeRow['id'];
+        if ((int) ($activeRow['open_incident_count'] ?? 0) > 0) {
+            $activeReturnGroups[$groupKey]['incident_blocked_items']++;
+            $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['incident_blocked_count']++;
+            $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['blocked_borrow_ids'][] = (int) $activeRow['id'];
+        } else {
+            $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['borrowed_count']++;
+            $activeReturnGroups[$groupKey]['items'][$itemGroupKey]['borrow_ids'][] = (int) $activeRow['id'];
+        }
     }
 }
 
@@ -352,6 +394,9 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                     <span class="chip"><?php echo (int) $group['total_items']; ?> total</span>
                     <span class="chip"><?php echo (int) $group['return_requested_items']; ?> requested</span>
                     <span class="chip"><?php echo (int) $group['borrowed_items']; ?> outstanding</span>
+                    <?php if ((int) ($group['incident_blocked_items'] ?? 0) > 0): ?>
+                      <span class="chip"><?php echo (int) $group['incident_blocked_items']; ?> incident blocked</span>
+                    <?php endif; ?>
                   </div>
                 </div>
                 <span class="chip">
@@ -368,15 +413,26 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                         Due <?php echo h(format_display_datetime((string) (($item['due_at'] ?? '') ?: ($item['due_date'] ?? '')))); ?> |
                         <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
                           <?php echo (int) ($item['borrowed_count'] ?? 0); ?> copie<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? '' : 's'; ?> ready for return
+                          <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
+                            | <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> blocked by unresolved incident
+                          <?php endif; ?>
+                        <?php elseif ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
+                          <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> copie<?php echo (int) ($item['incident_blocked_count'] ?? 0) === 1 ? '' : 's'; ?> blocked by unresolved incident
                         <?php else: ?>
                           <?php echo (int) ($item['return_requested_count'] ?? 0); ?> copie<?php echo (int) ($item['return_requested_count'] ?? 0) === 1 ? '' : 's'; ?> waiting for confirmation
                         <?php endif; ?>
                       </span>
                     </span>
                     <span class="badge">
-                      <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : 'return_requested'; ?>"></span>
-                      <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : 'Return Requested'; ?>
+                      <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'overdue' : 'return_requested'); ?>"></span>
+                      <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'Incident Blocked' : 'Return Requested'); ?>
                     </span>
+                    <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
+                      <span class="badge">
+                        <span class="status-dot overdue"></span>
+                        Resolve incident first
+                      </span>
+                    <?php endif; ?>
                   </div>
                   <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
                     <form method="post" class="inline-form" data-confirm="Send a return request for all copies of this book that you are handing over now?">
@@ -386,10 +442,21 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                       <button type="submit" name="return_books" value="1">Request Return for <?php echo (int) ($item['borrowed_count'] ?? 0); ?> Cop<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? 'y' : 'ies'; ?></button>
                     </form>
                   <?php endif; ?>
+                  <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
+                    <?php $blockedBorrowId = (int) (($item['blocked_borrow_ids'][0] ?? 0)); ?>
+                    <?php if ($blockedBorrowId > 0): ?>
+                      <a class="button secondary" href="<?php echo h(app_url($role . '/book_incidents.php?borrow_id=' . $blockedBorrowId . '&from_notification=1')); ?>">Resolve Incident First</a>
+                    <?php endif; ?>
+                  <?php endif; ?>
                 <?php endforeach; ?>
               </div>
               <div class="inline-actions member-workspace-actions">
-                <span class="muted">Return requests are now grouped per book title and copy count. Items already marked as return requested stay pending until the librarian confirms physical receipt.</span>
+                <span class="muted">
+                  Return requests are now grouped per book title and copy count. Items already marked as return requested stay pending until the librarian confirms physical receipt.
+                  <?php if ((int) ($group['incident_blocked_items'] ?? 0) > 0): ?>
+                    <?php echo ' ' . (int) $group['incident_blocked_items']; ?> item<?php echo (int) ($group['incident_blocked_items'] ?? 0) === 1 ? ' is' : 's are'; ?> blocked until the linked incident is resolved.
+                  <?php endif; ?>
+                </span>
               </div>
             </div>
           <?php endforeach; ?>
@@ -423,6 +490,9 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
               <span class="chip"><?php echo (int) $focusedReturnGroup['total_items']; ?> total</span>
               <span class="chip"><?php echo (int) $focusedReturnGroup['return_requested_items']; ?> requested</span>
               <span class="chip"><?php echo (int) $focusedReturnGroup['borrowed_items']; ?> outstanding</span>
+              <?php if ((int) ($focusedReturnGroup['incident_blocked_items'] ?? 0) > 0): ?>
+                <span class="chip"><?php echo (int) $focusedReturnGroup['incident_blocked_items']; ?> incident blocked</span>
+              <?php endif; ?>
             </div>
           </div>
           <span class="chip"><?php echo (int) $focusedReturnGroup['borrowed_items']; ?> still returnable</span>
@@ -437,14 +507,19 @@ $borrowReturnBaseHref = app_url($role . '/borrow_return.php');
                   Due <?php echo h(format_display_datetime((string) (($item['due_at'] ?? '') ?: ($item['due_date'] ?? '')), '-')); ?> |
                   <?php if ((int) ($item['borrowed_count'] ?? 0) > 0): ?>
                     <?php echo (int) ($item['borrowed_count'] ?? 0); ?> copie<?php echo (int) ($item['borrowed_count'] ?? 0) === 1 ? '' : 's'; ?> ready for return
+                    <?php if ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
+                      | <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> blocked by unresolved incident
+                    <?php endif; ?>
+                  <?php elseif ((int) ($item['incident_blocked_count'] ?? 0) > 0): ?>
+                    <?php echo (int) ($item['incident_blocked_count'] ?? 0); ?> copie<?php echo (int) ($item['incident_blocked_count'] ?? 0) === 1 ? '' : 's'; ?> blocked by unresolved incident
                   <?php else: ?>
                     <?php echo (int) ($item['return_requested_count'] ?? 0); ?> copie<?php echo (int) ($item['return_requested_count'] ?? 0) === 1 ? '' : 's'; ?> waiting for confirmation
                   <?php endif; ?>
                 </span>
               </span>
               <span class="badge">
-                <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : 'return_requested'; ?>"></span>
-                <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : 'Return Requested'; ?>
+                <span class="status-dot <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'overdue' : 'return_requested'); ?>"></span>
+                <?php echo (int) ($item['borrowed_count'] ?? 0) > 0 ? 'Borrowed' : ((int) ($item['incident_blocked_count'] ?? 0) > 0 ? 'Incident Blocked' : 'Return Requested'); ?>
               </span>
             </div>
           <?php endforeach; ?>

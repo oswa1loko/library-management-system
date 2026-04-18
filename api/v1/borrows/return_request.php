@@ -26,9 +26,26 @@ $types = str_repeat('i', count($borrowIds) + 1);
 $params = array_merge([$user['id']], $borrowIds);
 
 $stmt = $conn->prepare("
-    SELECT br.id, br.status, br.request_batch, br.book_id, b.title
+    SELECT
+        br.id,
+        br.status,
+        br.request_batch,
+        br.book_id,
+        br.book_copy_id,
+        b.title,
+        bc.copy_id,
+        (
+            SELECT COUNT(*)
+            FROM book_incidents bi
+            WHERE (
+                bi.borrow_id = br.id
+                OR (br.book_copy_id IS NOT NULL AND br.book_copy_id > 0 AND bi.book_copy_id = br.book_copy_id)
+            )
+              AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
+        ) AS open_incident_count
     FROM borrows br
     JOIN books b ON b.id = br.book_id
+    LEFT JOIN book_copies bc ON bc.id = br.book_copy_id
     WHERE br.user_id = ? AND br.id IN ($placeholders)
 ");
 $stmt->bind_param($types, ...$params);
@@ -43,6 +60,7 @@ foreach ($rows as $row) {
 
 $missingIds = [];
 $invalidIds = [];
+$blockedIds = [];
 foreach ($borrowIds as $borrowId) {
     if (!isset($rowsById[$borrowId])) {
         $missingIds[] = $borrowId;
@@ -51,6 +69,11 @@ foreach ($borrowIds as $borrowId) {
 
     if ((string) ($rowsById[$borrowId]['status'] ?? '') !== 'borrowed') {
         $invalidIds[] = $borrowId;
+        continue;
+    }
+
+    if ((int) ($rowsById[$borrowId]['open_incident_count'] ?? 0) > 0) {
+        $blockedIds[] = $borrowId;
     }
 }
 
@@ -60,6 +83,42 @@ if ($missingIds !== []) {
 
 if ($invalidIds !== []) {
     api_error('Only borrowed records can request return.', 409, ['borrow_ids' => $invalidIds]);
+}
+
+if ($blockedIds !== []) {
+    $blockedLabels = [];
+    $blockedItems = [];
+    foreach ($blockedIds as $blockedId) {
+        $blockedRow = $rowsById[$blockedId] ?? null;
+        if (!is_array($blockedRow)) {
+            continue;
+        }
+
+        $title = trim((string) ($blockedRow['title'] ?? ('Book #' . $blockedId)));
+        $copyId = trim((string) ($blockedRow['copy_id'] ?? ''));
+        $label = $title;
+        if ($copyId !== '') {
+            $label .= ' (' . $copyId . ')';
+        }
+
+        $blockedLabels[] = $label;
+        $blockedItems[] = [
+            'borrow_id' => $blockedId,
+            'title' => $title,
+            'copy_id' => $copyId,
+        ];
+    }
+
+    $blockedLabels = array_values(array_unique($blockedLabels));
+    $suffix = $blockedLabels !== [] ? ': ' . implode(', ', $blockedLabels) . '.' : '.';
+    api_error(
+        'Return request is blocked until the unresolved incident is resolved' . $suffix,
+        409,
+        [
+            'borrow_ids' => $blockedIds,
+            'blocked_items' => $blockedItems,
+        ]
+    );
 }
 
 $returnRequestedAt = date('Y-m-d H:i:s');

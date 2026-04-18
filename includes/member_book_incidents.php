@@ -11,6 +11,7 @@ $role = canonical_role((string) ($_SESSION['role'] ?? 'student'));
 $msg = '';
 $msgType = 'success';
 $focusedIncidentId = (int) ($_GET['incident'] ?? 0);
+$focusedBorrowId = (int) ($_GET['borrow_id'] ?? 0);
 $openedFromNotification = (string) ($_GET['from_notification'] ?? '') === '1';
 
 if (isset($_POST['submit_incident'])) {
@@ -32,6 +33,15 @@ foreach ($incidents as $incident) {
     if ((int) ($incident['id'] ?? 0) === $focusedIncidentId) {
         $focusedIncident = $incident;
         break;
+    }
+}
+if (!$focusedIncident && $focusedBorrowId > 0) {
+    foreach ($incidents as $incident) {
+        if ((int) ($incident['borrow_id'] ?? 0) === $focusedBorrowId) {
+            $focusedIncident = $incident;
+            $focusedIncidentId = (int) ($incident['id'] ?? 0);
+            break;
+        }
     }
 }
 $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
@@ -268,7 +278,7 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
             <div class="empty-state">No incident reports yet.</div>
           <?php endif; ?>
           <?php foreach ($incidents as $incident): ?>
-            <div class="panel member-return-batch-card">
+            <div class="panel member-return-batch-card<?php echo $focusedIncidentId > 0 && (int) ($incident['id'] ?? 0) === $focusedIncidentId ? ' is-targeted' : ''; ?>"<?php echo $focusedIncidentId > 0 && (int) ($incident['id'] ?? 0) === $focusedIncidentId ? ' data-focused-incident="true"' : ''; ?>>
               <div class="member-return-batch-head">
                 <div>
                   <strong class="label-block"><?php echo h($incident['title']); ?></strong>
@@ -425,20 +435,29 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
 
 document.addEventListener('DOMContentLoaded', function () {
   var pageModal = document.querySelector('[data-member-notification-page-modal]');
-  if (!pageModal) {
+  if (pageModal) {
+    document.body.classList.add('modal-open');
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      var closeLink = pageModal.querySelector('.desk-modal-backdrop');
+      if (closeLink) {
+        window.location.href = closeLink.href;
+      }
+    });
+  }
+
+  var focusedIncident = document.querySelector('[data-focused-incident="true"]');
+  if (!focusedIncident) {
     return;
   }
 
-  document.body.classList.add('modal-open');
-  document.addEventListener('keydown', function (event) {
-    if (event.key !== 'Escape') {
-      return;
-    }
-    var closeLink = pageModal.querySelector('.desk-modal-backdrop');
-    if (closeLink) {
-      window.location.href = closeLink.href;
-    }
-  });
+  try {
+    focusedIncident.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (error) {
+    focusedIncident.scrollIntoView();
+  }
 });
 </script>
 </body>
