@@ -248,7 +248,7 @@ $baseHref = $baseUrl . ($baseQuery !== [] ? '?' . http_build_query($baseQuery) :
           <?php echo nl2br(h((string) ($selectedIncident['description'] ?? ''))); ?>
           <?php if (trim((string) ($selectedIncident['incident_photo_path'] ?? '')) !== ''): ?>
             <div class="meta-top">
-              <a class="button secondary" href="<?php echo h(app_url((string) $selectedIncident['incident_photo_path'])); ?>" target="_blank">View Damage Photo</a>
+              <a class="button secondary" href="<?php echo h(app_url('incident_photo_view.php?incident_id=' . (int) ($selectedIncident['id'] ?? 0))); ?>" target="_blank">View Damage Photo</a>
             </div>
           <?php endif; ?>
         </div>

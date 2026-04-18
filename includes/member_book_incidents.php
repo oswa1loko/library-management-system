@@ -321,7 +321,7 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
                     <?php if (trim((string) ($incident['incident_photo_path'] ?? '')) !== ''): ?>
                       <span class="muted meta-top-sm">
                         Damage photo:
-                        <a href="<?php echo h(app_url((string) $incident['incident_photo_path'])); ?>" target="_blank">View uploaded photo</a>
+                        <a href="<?php echo h(app_url('incident_photo_view.php?incident_id=' . (int) ($incident['id'] ?? 0))); ?>" target="_blank">View uploaded photo</a>
                       </span>
                     <?php endif; ?>
                   </span>
