@@ -8995,11 +8995,11 @@ body.modal-open{
   }
 
   .desk-modal-dialog.member-notification-page-dialog{
-    width:calc(100% - 12px);
-    max-height:calc(min(100dvh, 100vh) - 12px);
+    width:calc(100% - 16px);
+    max-height:calc(min(100dvh, 100vh) - 44px);
     min-height:min(68dvh, 460px);
     border-radius:18px 18px 0 0;
-    margin-top:12px;
+    margin-top:44px;
   }
 
   .member-notification-page-dialog .desk-modal-head{
@@ -9061,9 +9061,9 @@ body.modal-open{
 
   .desk-modal-dialog.member-notification-page-dialog{
     border-radius:16px 16px 0 0;
-    width:calc(100% - 10px);
-    max-height:calc(min(100dvh, 100vh) - 10px);
-    margin-top:10px;
+    width:calc(100% - 14px);
+    max-height:calc(min(100dvh, 100vh) - 36px);
+    margin-top:36px;
   }
 
   .member-notification-page-dialog .desk-modal-head{
