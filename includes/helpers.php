@@ -3505,8 +3505,6 @@ function send_overdue_notices(mysqli $conn): array
 
 if (isset($conn) && $conn instanceof mysqli) {
     library_enforce_csrf_for_post();
-    sync_overdue_penalties_if_needed($conn);
-    run_due_reminder_sync_if_needed($conn);
 }
 
 ?>
