@@ -23,6 +23,7 @@ async function renderReader(root) {
   const zoomInButton = root.querySelector('[data-ebook-zoom-in]');
   const pageInput = root.querySelector('[data-ebook-page-input]');
   const pageJumpButton = root.querySelector('[data-ebook-page-jump]');
+  const stageWrap = root.querySelector('.ebook-reader-stage-wrap');
 
   if (!pdfUrl || !stage || !loading || !pageLabel || prevButtons.length === 0 || nextButtons.length === 0 || !zoomOutButton || !zoomInButton) {
     return;
@@ -160,15 +161,34 @@ async function renderReader(root) {
     window.setTimeout(resolve, ms);
   });
 
+  const nextFrame = () => new Promise((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
+
   const animateBatchChange = async () => {
     stage.classList.add('is-batch-transitioning');
-    stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    await wait(220);
+    if (stageWrap) {
+      stageWrap.classList.add('is-batch-transitioning');
+      stageWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    await wait(180);
   };
 
   const finishBatchChange = async () => {
-    await wait(120);
+    await nextFrame();
+    stage.classList.add('is-batch-entering');
+    if (stageWrap) {
+      stageWrap.classList.add('is-batch-entering');
+    }
+    await wait(220);
+    stage.classList.remove('is-batch-entering');
     stage.classList.remove('is-batch-transitioning');
+    if (stageWrap) {
+      stageWrap.classList.remove('is-batch-entering');
+      stageWrap.classList.remove('is-batch-transitioning');
+    }
   };
 
   const buildPageShells = () => {
