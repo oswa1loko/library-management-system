@@ -8,7 +8,8 @@ const MIN_ZOOM = 0.72;
 const MAX_ZOOM = 2.1;
 const VIEWPORT_RENDER_MARGIN = 1.5;
 const PAGE_BUFFER = 2;
-const MOBILE_BATCH_SIZE = 5;
+const DESKTOP_BATCH_SIZE = 30;
+const MOBILE_BATCH_SIZE = 30;
 const MOBILE_LAYOUT_QUERY = '(max-width: 768px)';
 
 async function renderReader(root) {
@@ -33,7 +34,7 @@ async function renderReader(root) {
   let isRendering = false;
   let resizeTimer = 0;
   let scrollFrame = 0;
-  let mobileBatchStart = 1;
+  let batchStart = 1;
   let lastWindowWidth = window.innerWidth;
   const pageStates = new Map();
   const pageMetrics = new Map();
@@ -42,7 +43,9 @@ async function renderReader(root) {
 
   const isMobileLayout = () => mobileLayout.matches;
   const getPageShells = () => Array.from(stage.querySelectorAll('[data-page-number]'));
-  const getMobileBatchEnd = () => Math.min((pdfDocument?.numPages || 0), mobileBatchStart + MOBILE_BATCH_SIZE - 1);
+  const getBatchSize = () => (isMobileLayout() ? MOBILE_BATCH_SIZE : DESKTOP_BATCH_SIZE);
+  const getBatchEnd = () => Math.min((pdfDocument?.numPages || 0), batchStart + getBatchSize() - 1);
+  const getBatchStartForPage = (pageNumber) => Math.floor((pageNumber - 1) / getBatchSize()) * getBatchSize() + 1;
 
   const getScaleForDimensions = (baseWidth) => {
     const stageWidth = Math.max(stage.clientWidth || 0, 320);
@@ -87,27 +90,28 @@ async function renderReader(root) {
     }
 
     if (isMobileLayout()) {
-      const batchEnd = getMobileBatchEnd();
-      pageLabel.textContent = `Pages ${mobileBatchStart}-${batchEnd} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
+      const batchEnd = getBatchEnd();
+      pageLabel.textContent = `Pages ${batchStart}-${batchEnd} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
       prevButtons.forEach((button) => {
-        button.textContent = 'Previous 5';
-        button.disabled = mobileBatchStart <= 1 || isRendering;
+        button.textContent = `Previous ${MOBILE_BATCH_SIZE}`;
+        button.disabled = batchStart <= 1 || isRendering;
       });
       nextButtons.forEach((button) => {
-        button.textContent = 'Next 5';
+        button.textContent = `Next ${MOBILE_BATCH_SIZE}`;
         button.disabled = batchEnd >= pdfDocument.numPages || isRendering;
       });
       return;
     }
 
-    pageLabel.textContent = `Page ${currentPage} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
+    const batchEnd = getBatchEnd();
+    pageLabel.textContent = `Pages ${batchStart}-${batchEnd} of ${pdfDocument.numPages} | Page ${currentPage} | ${Math.round(zoomLevel * 100)}%`;
     prevButtons.forEach((button) => {
-      button.textContent = 'Previous';
-      button.disabled = currentPage <= 1 || isRendering;
+      button.textContent = `Previous ${DESKTOP_BATCH_SIZE}`;
+      button.disabled = batchStart <= 1 || isRendering;
     });
     nextButtons.forEach((button) => {
-      button.textContent = 'Next';
-      button.disabled = currentPage >= pdfDocument.numPages || isRendering;
+      button.textContent = `Next ${DESKTOP_BATCH_SIZE}`;
+      button.disabled = batchEnd >= pdfDocument.numPages || isRendering;
     });
   };
 
@@ -156,21 +160,13 @@ async function renderReader(root) {
     window.setTimeout(resolve, ms);
   });
 
-  const animateMobileBatchChange = async () => {
-    if (!isMobileLayout()) {
-      return;
-    }
-
+  const animateBatchChange = async () => {
     stage.classList.add('is-batch-transitioning');
     stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
     await wait(220);
   };
 
-  const finishMobileBatchChange = async () => {
-    if (!isMobileLayout()) {
-      return;
-    }
-
+  const finishBatchChange = async () => {
     await wait(120);
     stage.classList.remove('is-batch-transitioning');
   };
@@ -188,8 +184,8 @@ async function renderReader(root) {
     stage.innerHTML = '';
 
     try {
-      const startPage = isMobileLayout() ? mobileBatchStart : 1;
-      const endPage = isMobileLayout() ? getMobileBatchEnd() : pdfDocument.numPages;
+      const startPage = batchStart;
+      const endPage = getBatchEnd();
 
       for (let pageNumber = startPage; pageNumber <= endPage; pageNumber += 1) {
         const pageCard = document.createElement('section');
@@ -265,14 +261,14 @@ async function renderReader(root) {
   const getVisiblePageRange = () => {
     if (isMobileLayout()) {
       return {
-        start: mobileBatchStart,
-        end: getMobileBatchEnd(),
+        start: batchStart,
+        end: getBatchEnd(),
       };
     }
 
     const pages = getPageShells();
     if (pages.length === 0) {
-      return { start: 1, end: 1 };
+      return { start: batchStart, end: getBatchEnd() };
     }
 
     const renderTop = -window.innerHeight * VIEWPORT_RENDER_MARGIN;
@@ -280,7 +276,8 @@ async function renderReader(root) {
     let start = null;
     let end = null;
 
-    pages.forEach((pageCard, index) => {
+    pages.forEach((pageCard) => {
+      const pageNumber = Number(pageCard.getAttribute('data-page-number') || '0');
       const rect = pageCard.getBoundingClientRect();
       const inRange = rect.bottom >= renderTop && rect.top <= renderBottom;
       if (!inRange) {
@@ -288,21 +285,21 @@ async function renderReader(root) {
       }
 
       if (start === null) {
-        start = index + 1;
+        start = pageNumber;
       }
-      end = index + 1;
+      end = pageNumber;
     });
 
     if (start === null || end === null) {
       return {
-        start: Math.max(1, currentPage - PAGE_BUFFER),
-        end: Math.min(pdfDocument?.numPages || currentPage, currentPage + PAGE_BUFFER),
+        start: Math.max(batchStart, currentPage - PAGE_BUFFER),
+        end: Math.min(getBatchEnd(), currentPage + PAGE_BUFFER),
       };
     }
 
     return {
-      start: Math.max(1, start - PAGE_BUFFER),
-      end: Math.min(pdfDocument?.numPages || end, end + PAGE_BUFFER),
+      start: Math.max(batchStart, start - PAGE_BUFFER),
+      end: Math.min(getBatchEnd(), end + PAGE_BUFFER),
     };
   };
 
@@ -351,25 +348,16 @@ async function renderReader(root) {
       return;
     }
 
-    if (isMobileLayout()) {
-      if (mobileBatchStart <= 1) {
-        return;
-      }
-
-      mobileBatchStart = Math.max(1, mobileBatchStart - MOBILE_BATCH_SIZE);
-      currentPage = mobileBatchStart;
-      pageLabel.textContent = 'Loading pages...';
-      await animateMobileBatchChange();
-      await rebuildReader();
-      await finishMobileBatchChange();
+    if (batchStart <= 1) {
       return;
     }
 
-    if (currentPage <= 1) {
-      return;
-    }
-
-    scrollToPage(currentPage - 1);
+    batchStart = Math.max(1, batchStart - getBatchSize());
+    currentPage = batchStart;
+    pageLabel.textContent = 'Loading pages...';
+    await animateBatchChange();
+    await rebuildReader();
+    await finishBatchChange();
   };
 
   const goToNextPage = async () => {
@@ -377,26 +365,17 @@ async function renderReader(root) {
       return;
     }
 
-    if (isMobileLayout()) {
-      const batchEnd = getMobileBatchEnd();
-      if (batchEnd >= pdfDocument.numPages) {
-        return;
-      }
-
-      mobileBatchStart = batchEnd + 1;
-      currentPage = mobileBatchStart;
-      pageLabel.textContent = 'Loading pages...';
-      await animateMobileBatchChange();
-      await rebuildReader();
-      await finishMobileBatchChange();
+    const batchEnd = getBatchEnd();
+    if (batchEnd >= pdfDocument.numPages) {
       return;
     }
 
-    if (currentPage >= pdfDocument.numPages) {
-      return;
-    }
-
-    scrollToPage(currentPage + 1);
+    batchStart = batchEnd + 1;
+    currentPage = batchStart;
+    pageLabel.textContent = 'Loading pages...';
+    await animateBatchChange();
+    await rebuildReader();
+    await finishBatchChange();
   };
 
   const goToPage = async (pageNumber) => {
@@ -406,19 +385,12 @@ async function renderReader(root) {
 
     const safePageNumber = Math.max(1, Math.min(pdfDocument.numPages, pageNumber));
 
-    if (isMobileLayout()) {
-      const nextBatchStart = Math.floor((safePageNumber - 1) / MOBILE_BATCH_SIZE) * MOBILE_BATCH_SIZE + 1;
-      mobileBatchStart = nextBatchStart;
-      currentPage = safePageNumber;
-      pageLabel.textContent = 'Loading pages...';
-      await animateMobileBatchChange();
-      await rebuildReader();
-      await finishMobileBatchChange();
-      return;
-    }
-
+    batchStart = getBatchStartForPage(safePageNumber);
     currentPage = safePageNumber;
-    scrollToPage(safePageNumber);
+    pageLabel.textContent = 'Loading pages...';
+    await animateBatchChange();
+    await rebuildReader();
+    await finishBatchChange();
   };
 
   prevButtons.forEach((button) => {
@@ -483,13 +455,13 @@ async function renderReader(root) {
 
   zoomOutButton.addEventListener('click', async () => {
     zoomLevel = Math.max(MIN_ZOOM, +(zoomLevel - ZOOM_STEP).toFixed(2));
-    pageLabel.textContent = isMobileLayout() ? 'Refreshing pages...' : 'Refreshing page...';
+    pageLabel.textContent = 'Refreshing pages...';
     await rebuildReader();
   });
 
   zoomInButton.addEventListener('click', async () => {
     zoomLevel = Math.min(MAX_ZOOM, +(zoomLevel + ZOOM_STEP).toFixed(2));
-    pageLabel.textContent = isMobileLayout() ? 'Refreshing pages...' : 'Refreshing page...';
+    pageLabel.textContent = 'Refreshing pages...';
     await rebuildReader();
   });
 
@@ -511,11 +483,8 @@ async function renderReader(root) {
       lastWindowWidth = window.innerWidth;
       lastLayoutMode = nextLayoutMode;
 
-      if (isMobileLayout()) {
-        const maxBatchStart = Math.max(1, pdfDocument.numPages - MOBILE_BATCH_SIZE + 1);
-        mobileBatchStart = Math.min(mobileBatchStart, maxBatchStart);
-        currentPage = Math.max(mobileBatchStart, Math.min(currentPage, getMobileBatchEnd()));
-      }
+      currentPage = Math.max(1, Math.min(currentPage, pdfDocument.numPages));
+      batchStart = getBatchStartForPage(currentPage);
 
       rebuildReader()
         .then(() => {
@@ -559,7 +528,7 @@ async function renderReader(root) {
       });
     }
 
-    mobileBatchStart = 1;
+    batchStart = 1;
     if (pageInput) {
       pageInput.max = String(pdfDocument.numPages);
     }
