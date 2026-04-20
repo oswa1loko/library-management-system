@@ -110,6 +110,7 @@ if (!$ebook) {
               <span class="ebook-reader-page-pill" data-ebook-page-label>Preparing pages...</span>
             </div>
             <div class="ebook-reader-toolbar-group ebook-reader-toolbar-actions">
+              <button type="button" class="button secondary" data-ebook-fit-width>Fit Width</button>
               <button type="button" class="button secondary" data-ebook-zoom-out>Zoom Out</button>
               <button type="button" class="button secondary" data-ebook-zoom-in>Zoom In</button>
               <div class="ebook-reader-jump">

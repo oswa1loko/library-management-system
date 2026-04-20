@@ -19,13 +19,14 @@ async function renderReader(root) {
   const pageLabel = root.querySelector('[data-ebook-page-label]');
   const prevButtons = Array.from(root.querySelectorAll('[data-ebook-prev]'));
   const nextButtons = Array.from(root.querySelectorAll('[data-ebook-next]'));
+  const fitWidthButton = root.querySelector('[data-ebook-fit-width]');
   const zoomOutButton = root.querySelector('[data-ebook-zoom-out]');
   const zoomInButton = root.querySelector('[data-ebook-zoom-in]');
   const pageInput = root.querySelector('[data-ebook-page-input]');
   const pageJumpButton = root.querySelector('[data-ebook-page-jump]');
   const stageWrap = root.querySelector('.ebook-reader-stage-wrap');
 
-  if (!pdfUrl || !stage || !loading || !pageLabel || prevButtons.length === 0 || nextButtons.length === 0 || !zoomOutButton || !zoomInButton) {
+  if (!pdfUrl || !stage || !loading || !pageLabel || prevButtons.length === 0 || nextButtons.length === 0 || !fitWidthButton || !zoomOutButton || !zoomInButton) {
     return;
   }
 
@@ -89,6 +90,10 @@ async function renderReader(root) {
     if (!pdfDocument) {
       return;
     }
+
+    const fitWidthActive = Math.abs(zoomLevel - DEFAULT_ZOOM) < 0.01;
+    fitWidthButton.setAttribute('aria-pressed', fitWidthActive ? 'true' : 'false');
+    fitWidthButton.classList.toggle('is-active', fitWidthActive);
 
     if (isMobileLayout()) {
       const batchEnd = getBatchEnd();
@@ -482,6 +487,16 @@ async function renderReader(root) {
   zoomInButton.addEventListener('click', async () => {
     zoomLevel = Math.min(MAX_ZOOM, +(zoomLevel + ZOOM_STEP).toFixed(2));
     pageLabel.textContent = 'Refreshing pages...';
+    await rebuildReader();
+  });
+
+  fitWidthButton.addEventListener('click', async () => {
+    if (Math.abs(zoomLevel - DEFAULT_ZOOM) < 0.01) {
+      return;
+    }
+
+    zoomLevel = DEFAULT_ZOOM;
+    pageLabel.textContent = 'Fitting to width...';
     await rebuildReader();
   });
 
