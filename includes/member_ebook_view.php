@@ -79,12 +79,19 @@ if (!$ebook) {
   <div class="member-main">
     <div class="stack ebook-reader-layout">
       <div class="panel ebook-reader-panel">
-        <div class="inline-actions inline-actions-spread ebook-reader-header">
-          <div>
+        <div class="ebook-reader-topbar">
+          <div class="ebook-reader-header-copy">
+            <span class="chip ebook-reader-kicker">Desktop Reader</span>
             <strong class="label-block ebook-reader-title"><?php echo h($ebook['title']); ?></strong>
+            <div class="ebook-reader-meta">
+              <span class="chip">PDF Viewer</span>
+              <span class="chip"><?php echo h((string) ($ebook['author'] ?: 'Author unavailable')); ?></span>
+            </div>
             <span class="muted ebook-reader-description"><?php echo h((string) ($ebook['description'] ?: 'View-only eBook')); ?></span>
           </div>
-          <a class="button secondary" href="/librarymanage/<?php echo h($role); ?>/ebooks.php">Back to eBooks</a>
+          <div class="ebook-reader-topbar-actions">
+            <a class="button secondary" href="/librarymanage/<?php echo h($role); ?>/ebooks.php">Back to eBooks</a>
+          </div>
         </div>
         <div class="notice warning flow-top-md ebook-reader-notice">This eBook opens in a custom reader page as best-effort view-only access. Some mobile browsers may still show their own share or download controls.</div>
         <div
@@ -94,17 +101,36 @@ if (!$ebook) {
           data-pdf-title="<?php echo h($ebook['title']); ?>"
         >
           <div class="ebook-reader-toolbar">
-            <div class="ebook-reader-toolbar-group">
-              <span class="chip">Viewer</span>
-              <span class="muted" data-ebook-page-label>Preparing pages...</span>
+            <div class="ebook-reader-toolbar-group ebook-reader-toolbar-nav">
+              <button type="button" class="button secondary" data-ebook-prev>Previous</button>
+              <button type="button" class="button secondary" data-ebook-next>Next</button>
+            </div>
+            <div class="ebook-reader-toolbar-group ebook-reader-toolbar-status">
+              <span class="chip ebook-reader-status-chip">Viewer</span>
+              <span class="ebook-reader-page-pill" data-ebook-page-label>Preparing pages...</span>
             </div>
             <div class="ebook-reader-toolbar-group ebook-reader-toolbar-actions">
               <button type="button" class="button secondary" data-ebook-zoom-out>Zoom Out</button>
               <button type="button" class="button secondary" data-ebook-zoom-in>Zoom In</button>
+              <div class="ebook-reader-jump">
+                <label class="sr-only" for="ebook-page-jump-<?php echo (int) $ebook['id']; ?>">Jump to page</label>
+                <input
+                  id="ebook-page-jump-<?php echo (int) $ebook['id']; ?>"
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="Page #"
+                  data-ebook-page-input
+                >
+                <button type="button" class="button secondary" data-ebook-page-jump>Go</button>
+              </div>
             </div>
           </div>
-          <div class="ebook-reader-stage" data-ebook-stage>
-            <div class="ebook-reader-loading muted" data-ebook-loading>Loading eBook page...</div>
+          <div class="ebook-reader-stage-wrap">
+            <div class="ebook-reader-stage" data-ebook-stage>
+              <div class="ebook-reader-loading muted" data-ebook-loading>Loading eBook page...</div>
+            </div>
           </div>
           <div class="ebook-reader-page-controls">
             <button type="button" class="button secondary" data-ebook-prev>Previous</button>

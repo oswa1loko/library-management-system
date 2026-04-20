@@ -16,12 +16,14 @@ async function renderReader(root) {
   const stage = root.querySelector('[data-ebook-stage]');
   const loading = root.querySelector('[data-ebook-loading]');
   const pageLabel = root.querySelector('[data-ebook-page-label]');
-  const prevButton = root.querySelector('[data-ebook-prev]');
-  const nextButton = root.querySelector('[data-ebook-next]');
+  const prevButtons = Array.from(root.querySelectorAll('[data-ebook-prev]'));
+  const nextButtons = Array.from(root.querySelectorAll('[data-ebook-next]'));
   const zoomOutButton = root.querySelector('[data-ebook-zoom-out]');
   const zoomInButton = root.querySelector('[data-ebook-zoom-in]');
+  const pageInput = root.querySelector('[data-ebook-page-input]');
+  const pageJumpButton = root.querySelector('[data-ebook-page-jump]');
 
-  if (!pdfUrl || !stage || !loading || !pageLabel || !prevButton || !nextButton || !zoomOutButton || !zoomInButton) {
+  if (!pdfUrl || !stage || !loading || !pageLabel || prevButtons.length === 0 || nextButtons.length === 0 || !zoomOutButton || !zoomInButton) {
     return;
   }
 
@@ -87,18 +89,26 @@ async function renderReader(root) {
     if (isMobileLayout()) {
       const batchEnd = getMobileBatchEnd();
       pageLabel.textContent = `Pages ${mobileBatchStart}-${batchEnd} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
-      prevButton.textContent = 'Previous 5';
-      nextButton.textContent = 'Next 5';
-      prevButton.disabled = mobileBatchStart <= 1 || isRendering;
-      nextButton.disabled = batchEnd >= pdfDocument.numPages || isRendering;
+      prevButtons.forEach((button) => {
+        button.textContent = 'Previous 5';
+        button.disabled = mobileBatchStart <= 1 || isRendering;
+      });
+      nextButtons.forEach((button) => {
+        button.textContent = 'Next 5';
+        button.disabled = batchEnd >= pdfDocument.numPages || isRendering;
+      });
       return;
     }
 
     pageLabel.textContent = `Page ${currentPage} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
-    prevButton.textContent = 'Previous';
-    nextButton.textContent = 'Next';
-    prevButton.disabled = currentPage <= 1 || isRendering;
-    nextButton.disabled = currentPage >= pdfDocument.numPages || isRendering;
+    prevButtons.forEach((button) => {
+      button.textContent = 'Previous';
+      button.disabled = currentPage <= 1 || isRendering;
+    });
+    nextButtons.forEach((button) => {
+      button.textContent = 'Next';
+      button.disabled = currentPage >= pdfDocument.numPages || isRendering;
+    });
   };
 
   const updateCurrentPageFromScroll = () => {
@@ -389,13 +399,60 @@ async function renderReader(root) {
     scrollToPage(currentPage + 1);
   };
 
-  prevButton.addEventListener('click', async () => {
-    await goToPreviousPage();
+  const goToPage = async (pageNumber) => {
+    if (!pdfDocument || isRendering) {
+      return;
+    }
+
+    const safePageNumber = Math.max(1, Math.min(pdfDocument.numPages, pageNumber));
+
+    if (isMobileLayout()) {
+      const nextBatchStart = Math.floor((safePageNumber - 1) / MOBILE_BATCH_SIZE) * MOBILE_BATCH_SIZE + 1;
+      mobileBatchStart = nextBatchStart;
+      currentPage = safePageNumber;
+      pageLabel.textContent = 'Loading pages...';
+      await animateMobileBatchChange();
+      await rebuildReader();
+      await finishMobileBatchChange();
+      return;
+    }
+
+    currentPage = safePageNumber;
+    scrollToPage(safePageNumber);
+  };
+
+  prevButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      await goToPreviousPage();
+    });
   });
 
-  nextButton.addEventListener('click', async () => {
-    await goToNextPage();
+  nextButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      await goToNextPage();
+    });
   });
+
+  if (pageJumpButton && pageInput) {
+    pageJumpButton.addEventListener('click', async () => {
+      const targetPage = Number(pageInput.value);
+      if (!Number.isFinite(targetPage) || targetPage <= 0) {
+        return;
+      }
+
+      await goToPage(targetPage);
+      pageInput.value = '';
+    });
+
+    pageInput.addEventListener('keydown', async (event) => {
+      if (event.key !== 'Enter') {
+        return;
+      }
+
+      event.preventDefault();
+      pageJumpButton.click();
+    });
+  }
 
   document.addEventListener('keydown', async (event) => {
     const target = event.target;
@@ -503,6 +560,9 @@ async function renderReader(root) {
     }
 
     mobileBatchStart = 1;
+    if (pageInput) {
+      pageInput.max = String(pdfDocument.numPages);
+    }
     updateControls();
     buildPageShells();
     await syncVisiblePages();
