@@ -6,6 +6,8 @@ const DEFAULT_ZOOM = 1;
 const ZOOM_STEP = 0.12;
 const MIN_ZOOM = 0.72;
 const MAX_ZOOM = 2.1;
+const MOBILE_HIGH_ZOOM_BATCH_SIZE = 1;
+const MOBILE_MEDIUM_ZOOM_BATCH_SIZE = 2;
 const VIEWPORT_RENDER_MARGIN = 1.5;
 const PAGE_BUFFER = 2;
 const DESKTOP_BATCH_SIZE = 30;
@@ -45,7 +47,18 @@ async function renderReader(root) {
 
   const isMobileLayout = () => mobileLayout.matches;
   const getPageShells = () => Array.from(stage.querySelectorAll('[data-page-number]'));
-  const getBatchSize = () => (isMobileLayout() ? MOBILE_BATCH_SIZE : DESKTOP_BATCH_SIZE);
+  const getMobileBatchSize = () => {
+    if (zoomLevel >= 1.8) {
+      return MOBILE_HIGH_ZOOM_BATCH_SIZE;
+    }
+
+    if (zoomLevel >= 1.35) {
+      return MOBILE_MEDIUM_ZOOM_BATCH_SIZE;
+    }
+
+    return MOBILE_BATCH_SIZE;
+  };
+  const getBatchSize = () => (isMobileLayout() ? getMobileBatchSize() : DESKTOP_BATCH_SIZE);
   const getBatchEnd = () => Math.min((pdfDocument?.numPages || 0), batchStart + getBatchSize() - 1);
   const getBatchStartForPage = (pageNumber) => Math.floor((pageNumber - 1) / getBatchSize()) * getBatchSize() + 1;
 
@@ -97,13 +110,14 @@ async function renderReader(root) {
 
     if (isMobileLayout()) {
       const batchEnd = getBatchEnd();
+      const mobileBatchSize = getBatchSize();
       pageLabel.textContent = `Pages ${batchStart}-${batchEnd} of ${pdfDocument.numPages} | ${Math.round(zoomLevel * 100)}%`;
       prevButtons.forEach((button) => {
-        button.textContent = `Previous ${MOBILE_BATCH_SIZE}`;
+        button.textContent = `Previous ${mobileBatchSize}`;
         button.disabled = batchStart <= 1 || isRendering;
       });
       nextButtons.forEach((button) => {
-        button.textContent = `Next ${MOBILE_BATCH_SIZE}`;
+        button.textContent = `Next ${mobileBatchSize}`;
         button.disabled = batchEnd >= pdfDocument.numPages || isRendering;
       });
       return;
@@ -196,6 +210,16 @@ async function renderReader(root) {
     }
   };
 
+  const releaseStageCanvases = () => {
+    stage.querySelectorAll('canvas').forEach((canvas) => {
+      canvas.width = 0;
+      canvas.height = 0;
+    });
+    stage.querySelectorAll('[data-ebook-canvas-host]').forEach((host) => {
+      host.innerHTML = '';
+    });
+  };
+
   const buildPageShells = () => {
     if (!pdfDocument) {
       return;
@@ -207,6 +231,7 @@ async function renderReader(root) {
     }
 
     stage.innerHTML = '';
+    pdfDocument.cleanup?.();
 
     try {
       const startPage = batchStart;
@@ -349,6 +374,7 @@ async function renderReader(root) {
   };
 
   const rebuildReader = async ({ scrollToTop = false } = {}) => {
+    releaseStageCanvases();
     pageStates.clear();
     buildPageShells();
     await syncVisiblePages();
