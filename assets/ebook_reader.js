@@ -9,7 +9,7 @@ const MAX_ZOOM = 2.1;
 const VIEWPORT_RENDER_MARGIN = 1.5;
 const PAGE_BUFFER = 2;
 const DESKTOP_BATCH_SIZE = 30;
-const MOBILE_BATCH_SIZE = 30;
+const MOBILE_BATCH_SIZE = 5;
 const MOBILE_LAYOUT_QUERY = '(max-width: 768px)';
 
 async function renderReader(root) {
