@@ -680,6 +680,7 @@ function apply_book_incident_resolution(mysqli $conn, array $incident, string $r
     $bookId = (int) ($incident['book_id'] ?? 0);
     $bookCopyId = (int) ($incident['book_copy_id'] ?? $incident['effective_book_copy_id'] ?? 0);
     $borrowStatus = trim((string) ($incident['borrow_status'] ?? ''));
+    $workflowStatus = book_incident_normalize_workflow_status((string) ($incident['workflow_status'] ?? 'open'));
     $resolutionAction = trim((string) ($incident['resolution_action'] ?? 'none'));
     $inventoryAppliedAt = trim((string) ($incident['inventory_applied_at'] ?? ''));
     $borrowClosedAt = trim((string) ($incident['borrow_closed_at'] ?? ''));
@@ -688,7 +689,9 @@ function apply_book_incident_resolution(mysqli $conn, array $incident, string $r
         return ['ok' => false, 'message' => 'Incident is missing its linked borrow or book record.'];
     }
 
-    $shouldCloseBorrow = $borrowClosedAt === '' && in_array($borrowStatus, ['borrowed', 'return_requested'], true);
+    $shouldCloseBorrow = $workflowStatus === 'closed'
+        && $borrowClosedAt === ''
+        && in_array($borrowStatus, ['borrowed', 'return_requested'], true);
     if ($shouldCloseBorrow) {
         $returnDate = date('Y-m-d', strtotime($resolvedAt));
         $closeStmt = $conn->prepare("
@@ -824,6 +827,7 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
     try {
         $workingIncident = $incident;
         $workingIncident['resolution_action'] = $resolutionAction;
+        $workingIncident['workflow_status'] = $workflowStatus;
 
         if ($inventoryHandledAt !== null) {
             $applyResult = apply_book_incident_resolution($conn, $workingIncident, $inventoryHandledAt);
@@ -837,7 +841,7 @@ function update_librarian_book_incident(mysqli $conn, int $incidentId, int $acto
         $resolvedAtValue = trim((string) ($incident['resolved_at'] ?? '')) !== '' ? (string) $incident['resolved_at'] : $resolvedAt;
         $resolvedByValue = (int) ($incident['resolved_by'] ?? 0) > 0 ? (int) $incident['resolved_by'] : $resolvedBy;
         $inventoryAppliedAtValue = trim((string) ($incident['inventory_applied_at'] ?? '')) !== '' ? (string) $incident['inventory_applied_at'] : $inventoryHandledAt;
-        $borrowClosedAtValue = trim((string) ($incident['borrow_closed_at'] ?? '')) !== '' ? (string) $incident['borrow_closed_at'] : $inventoryHandledAt;
+        $borrowClosedAtValue = trim((string) ($incident['borrow_closed_at'] ?? '')) !== '' ? (string) $incident['borrow_closed_at'] : $resolvedAt;
         $updateStmt = $conn->prepare("
             UPDATE book_incidents
             SET severity = ?,
@@ -989,15 +993,13 @@ function review_admin_incident_payment(mysqli $conn, int $incidentId, int $payme
             pay.proof_path,
             pay.status,
             pay.incident_id,
-            bi.assessed_fee,
-            bi.settlement_status,
-            bi.workflow_status,
-            bi.book_id,
-            bi.resolution_notes,
+            bi.*,
+            br.status AS borrow_status,
             b.title,
             u.role AS member_role
         FROM payments pay
         JOIN book_incidents bi ON bi.id = pay.incident_id
+        JOIN borrows br ON br.id = bi.borrow_id
         JOIN books b ON b.id = bi.book_id
         JOIN users u ON u.id = pay.user_id
         WHERE pay.id = ?
@@ -1080,16 +1082,29 @@ function review_admin_incident_payment(mysqli $conn, int $incidentId, int $payme
         $stmt->close();
 
         $resolvedAt = date('Y-m-d H:i:s');
+        $resolvedIncident = $current;
+        $resolvedIncident['assessed_fee'] = $paymentAmount;
+        $resolvedIncident['settlement_status'] = 'paid';
+        $resolvedIncident['workflow_status'] = 'closed';
+        $resolvedIncident['resolved_at'] = $resolvedAt;
+        $resolvedIncident['resolved_by'] = $actorUserId;
+        $applyResult = apply_book_incident_resolution($conn, $resolvedIncident, $resolvedAt);
+        if (($applyResult['ok'] ?? false) !== true) {
+            throw new RuntimeException((string) ($applyResult['message'] ?? 'resolution_failed'));
+        }
+
         $incidentSync = $conn->prepare("
             UPDATE book_incidents
             SET assessed_fee = ?,
                 settlement_status = 'paid',
                 workflow_status = 'closed',
                 resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
-                resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
+                resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END,
+                inventory_applied_at = CASE WHEN inventory_applied_at IS NULL THEN ? ELSE inventory_applied_at END,
+                borrow_closed_at = CASE WHEN borrow_closed_at IS NULL THEN ? ELSE borrow_closed_at END
             WHERE id = ?
         ");
-        $incidentSync->bind_param('dsii', $paymentAmount, $resolvedAt, $actorUserId, $incidentId);
+        $incidentSync->bind_param('dsissi', $paymentAmount, $resolvedAt, $actorUserId, $resolvedAt, $resolvedAt, $incidentId);
         $incidentSync->execute();
         $incidentSync->close();
 
@@ -1134,8 +1149,9 @@ function update_admin_incident_settlement(mysqli $conn, int $incidentId, int $ac
     }
 
     $incidentStmt = $conn->prepare("
-        SELECT bi.*, b.title, u.role AS member_role
+        SELECT bi.*, br.status AS borrow_status, b.title, u.role AS member_role
         FROM book_incidents bi
+        JOIN borrows br ON br.id = bi.borrow_id
         JOIN books b ON b.id = bi.book_id
         JOIN users u ON u.id = bi.user_id
         WHERE bi.id = ?
@@ -1158,41 +1174,67 @@ function update_admin_incident_settlement(mysqli $conn, int $incidentId, int $ac
         ? 'for_payment'
         : 'closed';
 
-    $updateStmt = $conn->prepare("
-        UPDATE book_incidents
-        SET settlement_status = ?,
-            workflow_status = ?,
-            resolution_notes = CASE
-                WHEN ? <> '' THEN CONCAT(COALESCE(resolution_notes, ''), CASE WHEN COALESCE(resolution_notes, '') = '' THEN '' ELSE '\n\n' END, ?)
-                ELSE resolution_notes
-            END,
-            resolved_at = CASE
-                WHEN ? = 'closed' AND resolved_at IS NULL THEN ?
-                ELSE resolved_at
-            END,
-            resolved_by = CASE
-                WHEN ? = 'closed' THEN ?
-                ELSE resolved_by
-            END
-        WHERE id = ?
-    ");
     $resolvedAt = date('Y-m-d H:i:s');
-    $updateStmt->bind_param(
-        'ssssssisi',
-        $settlementStatus,
-        $newWorkflow,
-        $resolutionNotes,
-        $resolutionNotes,
-        $newWorkflow,
-        $resolvedAt,
-        $newWorkflow,
-        $actorUserId,
-        $incidentId
-    );
-    $ok = $updateStmt->execute();
-    $updateStmt->close();
+    $conn->begin_transaction();
+    try {
+        if ($newWorkflow === 'closed') {
+            $resolvedIncident = $incident;
+            $resolvedIncident['workflow_status'] = $newWorkflow;
+            $resolvedIncident['settlement_status'] = $settlementStatus;
+            $resolvedIncident['resolved_at'] = $resolvedAt;
+            $resolvedIncident['resolved_by'] = $actorUserId;
+            $applyResult = apply_book_incident_resolution($conn, $resolvedIncident, $resolvedAt);
+            if (($applyResult['ok'] ?? false) !== true) {
+                throw new RuntimeException((string) ($applyResult['message'] ?? 'resolution_failed'));
+            }
+        }
 
-    if (!$ok) {
+        $updateStmt = $conn->prepare("
+            UPDATE book_incidents
+            SET settlement_status = ?,
+                workflow_status = ?,
+                resolution_notes = CASE
+                    WHEN ? <> '' THEN CONCAT(COALESCE(resolution_notes, ''), CASE WHEN COALESCE(resolution_notes, '') = '' THEN '' ELSE '\n\n' END, ?)
+                    ELSE resolution_notes
+                END,
+                resolved_at = CASE
+                    WHEN ? = 'closed' AND resolved_at IS NULL THEN ?
+                    ELSE resolved_at
+                END,
+                resolved_by = CASE
+                    WHEN ? = 'closed' THEN ?
+                    ELSE resolved_by
+                END,
+                borrow_closed_at = CASE
+                    WHEN ? = 'closed' AND borrow_closed_at IS NULL THEN ?
+                    ELSE borrow_closed_at
+                END
+            WHERE id = ?
+        ");
+        $updateStmt->bind_param(
+            'ssssssisssi',
+            $settlementStatus,
+            $newWorkflow,
+            $resolutionNotes,
+            $resolutionNotes,
+            $newWorkflow,
+            $resolvedAt,
+            $newWorkflow,
+            $actorUserId,
+            $newWorkflow,
+            $resolvedAt,
+            $incidentId
+        );
+        $ok = $updateStmt->execute();
+        $updateStmt->close();
+
+        if (!$ok) {
+            throw new RuntimeException('settlement_update_failed');
+        }
+
+        $conn->commit();
+    } catch (Throwable $exception) {
+        $conn->rollback();
         return ['ok' => false, 'message' => 'Unable to update the settlement status right now.'];
     }
 

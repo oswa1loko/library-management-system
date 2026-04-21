@@ -201,18 +201,47 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             if ((int) ($current['incident_id'] ?? 0) > 0) {
                 $incidentId = (int) $current['incident_id'];
                 $resolvedAt = date('Y-m-d H:i:s');
+                $incidentFetch = $conn->prepare("
+                    SELECT bi.*, br.status AS borrow_status
+                    FROM book_incidents bi
+                    JOIN borrows br ON br.id = bi.borrow_id
+                    WHERE bi.id = ?
+                    LIMIT 1
+                ");
+                $incidentFetch->bind_param('i', $incidentId);
+                $incidentFetch->execute();
+                $incidentRecord = $incidentFetch->get_result()->fetch_assoc();
+                $incidentFetch->close();
+
+                if (!$incidentRecord) {
+                    throw new RuntimeException('incident_not_found');
+                }
+
+                $resolvedIncident = $incidentRecord;
+                $resolvedIncident['assessed_fee'] = round((float) $current['amount'], 2);
+                $resolvedIncident['settlement_status'] = 'paid';
+                $resolvedIncident['workflow_status'] = 'closed';
+                $resolvedIncident['resolved_at'] = $resolvedAt;
+                $resolvedIncident['resolved_by'] = (int) ($_SESSION['user_id'] ?? 0);
+                $applyResult = apply_book_incident_resolution($conn, $resolvedIncident, $resolvedAt);
+                if (($applyResult['ok'] ?? false) !== true) {
+                    throw new RuntimeException((string) ($applyResult['message'] ?? 'resolution_failed'));
+                }
+
                 $incidentSync = $conn->prepare("
                     UPDATE book_incidents
                     SET assessed_fee = ?,
                         settlement_status = 'paid',
                         workflow_status = 'closed',
                         resolved_at = CASE WHEN resolved_at IS NULL THEN ? ELSE resolved_at END,
-                        resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END
+                        resolved_by = CASE WHEN resolved_by IS NULL THEN ? ELSE resolved_by END,
+                        inventory_applied_at = CASE WHEN inventory_applied_at IS NULL THEN ? ELSE inventory_applied_at END,
+                        borrow_closed_at = CASE WHEN borrow_closed_at IS NULL THEN ? ELSE borrow_closed_at END
                     WHERE id = ?
                 ");
                 $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
                 $approvedAmount = round((float) $current['amount'], 2);
-                $incidentSync->bind_param('dsii', $approvedAmount, $resolvedAt, $actorUserId, $incidentId);
+                $incidentSync->bind_param('dsissi', $approvedAmount, $resolvedAt, $actorUserId, $resolvedAt, $resolvedAt, $incidentId);
                 $incidentSync->execute();
                 $incidentSync->close();
             }
