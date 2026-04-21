@@ -67,6 +67,44 @@
           <tr><td colspan="11" class="muted">No users matched your filters.</td></tr>
         <?php endif; ?>
         <?php while ($user = $users->fetch_assoc()): ?>
+          <?php
+            $isCurrentUser = (int) ($user['id'] ?? 0) === (int) ($_SESSION['user_id'] ?? 0);
+            $isAdminUser = (string) ($user['role'] ?? '') === 'admin';
+            $isInactiveUser = (string) ($user['account_status'] ?? 'active') === 'inactive';
+            $hasRecordBlockers = (int) ($user['active_borrow_count'] ?? 0) > 0
+              || (int) ($user['unpaid_penalty_count'] ?? 0) > 0
+              || (int) ($user['pending_payment_count'] ?? 0) > 0;
+            $deleteDisabledReason = '';
+            $deactivateDisabledReason = '';
+
+            if ($isCurrentUser) {
+              $deleteDisabledReason = 'You cannot delete the account you are currently using.';
+              if (!$isInactiveUser) {
+                $deactivateDisabledReason = 'You cannot deactivate the account you are currently using.';
+              }
+            }
+
+            if ($deleteDisabledReason === '' && $hasRecordBlockers) {
+              $deleteDisabledReason = 'Resolve active borrow, penalty, and payment records first.';
+            }
+
+            if ($isAdminUser) {
+              $totalAdmins = (int) ($user['total_admins'] ?? 0);
+              $activeAdmins = (int) ($user['active_admins'] ?? 0);
+
+              if ($deleteDisabledReason === '' && $totalAdmins <= 1) {
+                $deleteDisabledReason = 'You cannot delete the last admin account.';
+              }
+
+              if ($deleteDisabledReason === '' && !$isInactiveUser && $activeAdmins <= 1) {
+                $deleteDisabledReason = 'You cannot delete the last active admin account.';
+              }
+
+              if ($deactivateDisabledReason === '' && !$isInactiveUser && $activeAdmins <= 1) {
+                $deactivateDisabledReason = 'You cannot deactivate the last active admin account.';
+              }
+            }
+          ?>
           <tr>
             <td>
               <input
@@ -102,8 +140,11 @@
             <td><?php echo h(format_display_date((string) $user['created_at'])); ?></td>
             <td>
               <div class="inline-actions manage-users-actions">
-                <?php if ((int) ($user['active_borrow_count'] ?? 0) > 0 || (int) ($user['unpaid_penalty_count'] ?? 0) > 0 || (int) ($user['pending_payment_count'] ?? 0) > 0): ?>
+                <?php if ($hasRecordBlockers): ?>
                   <span class="chip">Delete locked</span>
+                <?php endif; ?>
+                <?php if ($isAdminUser): ?>
+                  <span class="chip">Prefer deactivate</span>
                 <?php endif; ?>
                 <?php if (($user['role'] ?? '') === 'student'): ?>
                   <a class="button secondary" href="view_user.php?id=<?php echo (int) $user['id']; ?>">View Profile</a>
@@ -115,7 +156,13 @@
                   <?php if ((string) ($user['account_status'] ?? 'active') === 'inactive'): ?>
                     <button type="submit" class="button secondary" name="set_status" value="1">Reactivate</button>
                   <?php else: ?>
-                    <button type="submit" class="button secondary" name="set_status" value="1">Deactivate</button>
+                    <button
+                      type="submit"
+                      class="button secondary"
+                      name="set_status"
+                      value="1"
+                      <?php echo $deactivateDisabledReason !== '' ? 'disabled title="' . h($deactivateDisabledReason) . '"' : ''; ?>
+                    >Deactivate</button>
                   <?php endif; ?>
                 </form>
                 <?php if ((int) ($user['password_setup_required'] ?? 0) === 1): ?>
@@ -131,7 +178,7 @@
                     class="danger"
                     name="delete"
                     value="1"
-                    <?php echo ((int) ($user['active_borrow_count'] ?? 0) > 0 || (int) ($user['unpaid_penalty_count'] ?? 0) > 0 || (int) ($user['pending_payment_count'] ?? 0) > 0) ? 'disabled title="Resolve active borrow, penalty, and payment records first."' : ''; ?>
+                    <?php echo $deleteDisabledReason !== '' ? 'disabled title="' . h($deleteDisabledReason) . '"' : ''; ?>
                   >Delete</button>
                 </form>
               </div>

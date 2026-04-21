@@ -348,15 +348,75 @@ function manage_accounts_delete_blockers(mysqli $conn, int $userId): array
     return $blockers;
 }
 
+function manage_accounts_admin_safety_counts(mysqli $conn): array
+{
+    $result = $conn->query("
+        SELECT
+            COUNT(*) AS total_admins,
+            SUM(CASE WHEN account_status <> 'inactive' THEN 1 ELSE 0 END) AS active_admins
+        FROM users
+        WHERE role = 'admin'
+    ");
+
+    $row = $result ? $result->fetch_assoc() : [];
+
+    return [
+        'total_admins' => (int) ($row['total_admins'] ?? 0),
+        'active_admins' => (int) ($row['active_admins'] ?? 0),
+    ];
+}
+
+function manage_accounts_delete_guard_message(array $user, array $adminSafety): string
+{
+    if ((string) ($user['role'] ?? '') !== 'admin') {
+        return '';
+    }
+
+    $isActiveAdmin = (string) ($user['account_status'] ?? 'active') !== 'inactive';
+    $totalAdmins = (int) ($adminSafety['total_admins'] ?? 0);
+    $activeAdmins = (int) ($adminSafety['active_admins'] ?? 0);
+
+    if ($totalAdmins <= 1) {
+        return 'You cannot delete the last admin account.';
+    }
+
+    if ($isActiveAdmin && $activeAdmins <= 1) {
+        return 'You cannot delete the last active admin account. Create or reactivate another admin first.';
+    }
+
+    return '';
+}
+
+function manage_accounts_deactivate_guard_message(array $user, string $nextStatus, int $actorUserId, array $adminSafety): string
+{
+    if ($nextStatus !== 'inactive') {
+        return '';
+    }
+
+    $userId = (int) ($user['id'] ?? 0);
+    if ($actorUserId > 0 && $userId === $actorUserId) {
+        return 'You cannot deactivate the account you are currently using.';
+    }
+
+    if ((string) ($user['role'] ?? '') !== 'admin') {
+        return '';
+    }
+
+    $isActiveAdmin = (string) ($user['account_status'] ?? 'active') !== 'inactive';
+    $activeAdmins = (int) ($adminSafety['active_admins'] ?? 0);
+
+    if ($isActiveAdmin && $activeAdmins <= 1) {
+        return 'You cannot deactivate the last active admin account. Create or reactivate another admin first.';
+    }
+
+    return '';
+}
+
 function manage_accounts_set_account_status(mysqli $conn, int $userId, string $status, int $actorUserId): array
 {
     $status = $status === 'inactive' ? 'inactive' : 'active';
     if ($userId <= 0) {
         return ['ok' => false, 'message' => 'Invalid user selected.'];
-    }
-
-    if ($actorUserId > 0 && $userId === $actorUserId && $status === 'inactive') {
-        return ['ok' => false, 'message' => 'You cannot deactivate the account you are currently using.'];
     }
 
     $lookup = $conn->prepare("SELECT id, fullname, username, role, account_status FROM users WHERE id = ? LIMIT 1");
@@ -367,6 +427,16 @@ function manage_accounts_set_account_status(mysqli $conn, int $userId, string $s
 
     if (!$user) {
         return ['ok' => false, 'message' => 'User not found.'];
+    }
+
+    $deactivateGuardMessage = manage_accounts_deactivate_guard_message(
+        $user,
+        $status,
+        $actorUserId,
+        manage_accounts_admin_safety_counts($conn)
+    );
+    if ($deactivateGuardMessage !== '') {
+        return ['ok' => false, 'message' => $deactivateGuardMessage];
     }
 
     if ((string) ($user['account_status'] ?? 'active') === $status) {
@@ -424,12 +494,13 @@ if (isset($_POST['delete'])) {
     if ($id > 0 && (int) ($_SESSION['user_id'] ?? 0) === $id) {
         manage_accounts_push_notice($noticeItems, 'error', 'You cannot delete the account you are currently using.');
     } elseif ($id > 0) {
-        $lookup = $conn->prepare("SELECT username, role FROM users WHERE id = ? LIMIT 1");
+        $lookup = $conn->prepare("SELECT id, username, role, account_status FROM users WHERE id = ? LIMIT 1");
         $lookup->bind_param('i', $id);
         $lookup->execute();
         $deletedUser = $lookup->get_result()->fetch_assoc();
         $lookup->close();
         $blockers = manage_accounts_delete_blockers($conn, $id);
+        $deleteGuardMessage = manage_accounts_delete_guard_message($deletedUser ?: [], manage_accounts_admin_safety_counts($conn));
 
         if ($blockers !== []) {
             manage_accounts_push_notice(
@@ -437,6 +508,8 @@ if (isset($_POST['delete'])) {
                 'error',
                 'User cannot be deleted yet because this account still has ' . implode(', ', $blockers) . '.'
             );
+        } elseif ($deleteGuardMessage !== '') {
+            manage_accounts_push_notice($noticeItems, 'error', $deleteGuardMessage);
         } else {
             $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
             $stmt->bind_param('i', $id);
@@ -616,6 +689,7 @@ $stats = $conn->query("
       SUM(account_status = 'inactive') AS inactive_users
     FROM users
 ")->fetch_assoc();
+$adminSafety = manage_accounts_admin_safety_counts($conn);
 
 $sql = "
     SELECT
@@ -631,8 +705,17 @@ $sql = "
         u.created_at,
         COALESCE(active_borrows.total, 0) AS active_borrow_count,
         COALESCE(unpaid_penalties.total, 0) AS unpaid_penalty_count,
-        COALESCE(pending_payments.total, 0) AS pending_payment_count
+        COALESCE(pending_payments.total, 0) AS pending_payment_count,
+        admin_safety.total_admins,
+        admin_safety.active_admins
     FROM users u
+    CROSS JOIN (
+        SELECT
+            COUNT(*) AS total_admins,
+            SUM(CASE WHEN account_status <> 'inactive' THEN 1 ELSE 0 END) AS active_admins
+        FROM users
+        WHERE role = 'admin'
+    ) admin_safety
     LEFT JOIN (
         SELECT user_id, COUNT(*) AS total
         FROM borrows
@@ -721,6 +804,9 @@ $filterQueryString = manage_accounts_filter_query($search, $roleFilter);
   ?>
 
   <div class="stack">
+    <div class="notice warning">
+      Keep at least one active admin account in the system at all times. Deactivate accounts before deleting them whenever possible. Active admins available: <?php echo (int) ($adminSafety['active_admins'] ?? 0); ?>.
+    </div>
     <?php require __DIR__ . '/partials/notices.php'; ?>
     <?php require __DIR__ . '/partials/manage_accounts_stats.php'; ?>
 
