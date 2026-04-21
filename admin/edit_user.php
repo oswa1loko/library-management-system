@@ -162,10 +162,10 @@ if (isset($_POST['update'])) {
                 <span class="ui-select-caret" aria-hidden="true"></span>
               </div>
             </div>
-            <div>
+            <div id="courseField" <?php echo ($editUser['role'] ?? '') === 'student' ? '' : 'hidden'; ?>>
               <label for="course">Program</label>
               <div class="ui-select-shell">
-                <select id="course" name="course" class="ui-select">
+                <select id="course" name="course" class="ui-select" <?php echo ($editUser['role'] ?? '') === 'student' ? 'required' : 'disabled'; ?>>
                   <option value="">Select program</option>
                   <?php foreach ($courseOptions as $courseValue => $courseLabel): ?>
                     <option value="<?php echo h($courseValue); ?>" <?php echo ((string) ($editUser['course'] ?? '')) === $courseValue ? 'selected' : ''; ?>><?php echo h($courseLabel); ?></option>
@@ -215,6 +215,31 @@ if (isset($_POST['update'])) {
     </div>
   </div>
 </div>
+<script>
+(() => {
+  const roleSelect = document.getElementById('role');
+  const courseField = document.getElementById('courseField');
+  const courseSelect = document.getElementById('course');
+
+  if (!roleSelect || !courseField || !courseSelect) {
+    return;
+  }
+
+  const syncCourseField = () => {
+    const requiresProgram = roleSelect.value === 'student';
+    courseField.hidden = !requiresProgram;
+    courseSelect.disabled = !requiresProgram;
+    courseSelect.required = requiresProgram;
+
+    if (!requiresProgram) {
+      courseSelect.value = '';
+    }
+  };
+
+  roleSelect.addEventListener('change', syncCourseField);
+  syncCourseField();
+})();
+</script>
 </body>
 </html>
 
