@@ -372,19 +372,7 @@ function manage_accounts_delete_guard_message(array $user, array $adminSafety): 
         return '';
     }
 
-    $isActiveAdmin = (string) ($user['account_status'] ?? 'active') !== 'inactive';
-    $totalAdmins = (int) ($adminSafety['total_admins'] ?? 0);
-    $activeAdmins = (int) ($adminSafety['active_admins'] ?? 0);
-
-    if ($totalAdmins <= 1) {
-        return 'You cannot delete the last admin account.';
-    }
-
-    if ($isActiveAdmin && $activeAdmins <= 1) {
-        return 'You cannot delete the last active admin account. Create or reactivate another admin first.';
-    }
-
-    return '';
+    return 'Admin accounts cannot be deleted from Manage Accounts. Deactivate the account instead.';
 }
 
 function manage_accounts_deactivate_guard_message(array $user, string $nextStatus, int $actorUserId, array $adminSafety): string
@@ -805,7 +793,7 @@ $filterQueryString = manage_accounts_filter_query($search, $roleFilter);
 
   <div class="stack">
     <div class="notice warning">
-      Keep at least one active admin account in the system at all times. Deactivate accounts before deleting them whenever possible. Active admins available: <?php echo (int) ($adminSafety['active_admins'] ?? 0); ?>.
+      Keep at least one active admin account in the system at all times. Admin accounts are deactivate/reactivate only in this page and cannot be deleted here. Active admins available: <?php echo (int) ($adminSafety['active_admins'] ?? 0); ?>.
     </div>
     <?php require __DIR__ . '/partials/notices.php'; ?>
     <?php require __DIR__ . '/partials/manage_accounts_stats.php'; ?>

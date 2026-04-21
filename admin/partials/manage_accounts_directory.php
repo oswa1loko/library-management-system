@@ -89,16 +89,8 @@
             }
 
             if ($isAdminUser) {
-              $totalAdmins = (int) ($user['total_admins'] ?? 0);
               $activeAdmins = (int) ($user['active_admins'] ?? 0);
-
-              if ($deleteDisabledReason === '' && $totalAdmins <= 1) {
-                $deleteDisabledReason = 'You cannot delete the last admin account.';
-              }
-
-              if ($deleteDisabledReason === '' && !$isInactiveUser && $activeAdmins <= 1) {
-                $deleteDisabledReason = 'You cannot delete the last active admin account.';
-              }
+              $deleteDisabledReason = 'Admin accounts cannot be deleted from Manage Accounts. Deactivate the account instead.';
 
               if ($deactivateDisabledReason === '' && !$isInactiveUser && $activeAdmins <= 1) {
                 $deactivateDisabledReason = 'You cannot deactivate the last active admin account.';
@@ -144,7 +136,7 @@
                   <span class="chip">Delete locked</span>
                 <?php endif; ?>
                 <?php if ($isAdminUser): ?>
-                  <span class="chip">Prefer deactivate</span>
+                  <span class="chip">Deactivate only</span>
                 <?php endif; ?>
                 <?php if (($user['role'] ?? '') === 'student'): ?>
                   <a class="button secondary" href="view_user.php?id=<?php echo (int) $user['id']; ?>">View Profile</a>
