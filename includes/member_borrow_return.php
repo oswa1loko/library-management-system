@@ -144,37 +144,35 @@ $activeBatchStmt = $conn->prepare("
       br.borrow_date,
       br.due_at,
       br.due_date,
-      COALESCE(incident_summary.open_incident_count, 0) AS open_incident_count,
-      COALESCE(incident_summary.open_incident_type, '') AS open_incident_type,
+      (
+        SELECT COUNT(*)
+        FROM book_incidents bi
+        WHERE (
+          bi.borrow_id = br.id
+          OR (br.book_copy_id IS NOT NULL AND br.book_copy_id > 0 AND bi.book_copy_id = br.book_copy_id)
+        )
+          AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
+      ) AS open_incident_count,
+      (
+        SELECT bi.incident_type
+        FROM book_incidents bi
+        WHERE (
+          bi.borrow_id = br.id
+          OR (br.book_copy_id IS NOT NULL AND br.book_copy_id > 0 AND bi.book_copy_id = br.book_copy_id)
+        )
+          AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
+        ORDER BY bi.id DESC
+        LIMIT 1
+      ) AS open_incident_type,
       b.title,
       b.author
     FROM borrows br
     JOIN books b ON b.id = br.book_id
-    LEFT JOIN (
-      SELECT
-        br_inner.id AS borrow_id,
-        COUNT(DISTINCT bi.id) AS open_incident_count,
-        SUBSTRING_INDEX(
-          GROUP_CONCAT(bi.incident_type ORDER BY bi.id DESC SEPARATOR '||'),
-          '||',
-          1
-        ) AS open_incident_type
-      FROM borrows br_inner
-      LEFT JOIN book_incidents bi
-        ON (
-          bi.borrow_id = br_inner.id
-          OR (br_inner.book_copy_id IS NOT NULL AND br_inner.book_copy_id > 0 AND bi.book_copy_id = br_inner.book_copy_id)
-        )
-        AND bi.workflow_status IN ('open', 'for_payment', 'reported', 'under_review', 'awaiting_settlement')
-      WHERE br_inner.user_id = ?
-        AND br_inner.status IN ('borrowed', 'return_requested')
-      GROUP BY br_inner.id
-    ) incident_summary ON incident_summary.borrow_id = br.id
     WHERE br.user_id = ?
       AND br.status IN ('borrowed', 'return_requested')
     ORDER BY COALESCE(br.approved_at, br.requested_at, br.created_at) DESC, br.id ASC
 ");
-$activeBatchStmt->bind_param('ii', $userId, $userId);
+$activeBatchStmt->bind_param('i', $userId);
 $activeBatchStmt->execute();
 $activeBatchRows = $activeBatchStmt->get_result();
 $activeBatchStmt->close();
