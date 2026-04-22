@@ -38,12 +38,12 @@ EMAIL REMINDERS
 - The system now supports due-soon reminder emails 1 day before the due date.
 - Daily runner:
   php scripts/due_reminder_sync.php
-- Gmail SMTP setup values:
-  LIBRARY_SMTP_HOST=smtp.gmail.com
-  LIBRARY_SMTP_PORT=587
-  LIBRARY_SMTP_SECURE=tls
-  LIBRARY_SMTP_USERNAME=yourgmail@gmail.com
-  LIBRARY_SMTP_PASSWORD=your-gmail-app-password
-  LIBRARY_MAIL_FROM_ADDRESS=yourgmail@gmail.com
+- Hostinger SMTP setup values:
+  LIBRARY_SMTP_HOST=smtp.hostinger.com
+  LIBRARY_SMTP_PORT=465
+  LIBRARY_SMTP_SECURE=ssl
+  LIBRARY_SMTP_USERNAME=admin@yourdomain.com
+  LIBRARY_SMTP_PASSWORD=your-hostinger-mailbox-password
+  LIBRARY_MAIL_FROM_ADDRESS=admin@yourdomain.com
   LIBRARY_MAIL_FROM_NAME=Library Management System
-- Use a Gmail App Password, not your normal Gmail password.
+- Use the actual Hostinger mailbox password for that email account.
