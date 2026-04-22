@@ -792,42 +792,6 @@ function library_email_signature(): string
     return library_runtime_value('LIBRARY_EMAIL_SIGNATURE', 'Library Services Team');
 }
 
-function library_email_logo_url(): string
-{
-    return app_public_url('assets/images/regismarielogo.png');
-}
-
-function library_wrap_html_email(string $subject, string $htmlBody): string
-{
-    $subject = trim($subject);
-    $htmlBody = trim($htmlBody);
-    $logoUrl = library_email_logo_url();
-    $brandName = library_mail_from_name();
-
-    return '<!DOCTYPE html>'
-        . '<html lang="en">'
-        . '<head>'
-        . '<meta charset="UTF-8">'
-        . '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-        . '<title>' . h($subject !== '' ? $subject : $brandName) . '</title>'
-        . '</head>'
-        . '<body style="margin:0;padding:24px;background:#edf4fb;font-family:Segoe UI,Arial,sans-serif;color:#10233a;">'
-        . '<div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #d8e4f0;border-radius:22px;overflow:hidden;">'
-        . '<div style="padding:24px 28px;background:linear-gradient(135deg,#0f2c4f 0%,#163d6b 100%);">'
-        . '<div style="display:flex;align-items:center;gap:14px;">'
-        . '<img src="' . h($logoUrl) . '" alt="' . h($brandName) . ' logo" style="display:block;width:58px;height:58px;border-radius:14px;background:#ffffff;padding:6px;object-fit:contain;">'
-        . '<div>'
-        . '<div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#b8d7f4;">Automated Email</div>'
-        . '<div style="font-size:22px;font-weight:700;color:#ffffff;">' . h($brandName) . '</div>'
-        . '</div>'
-        . '</div>'
-        . '</div>'
-        . '<div style="padding:28px;">' . $htmlBody . '</div>'
-        . '</div>'
-        . '</body>'
-        . '</html>';
-}
-
 function mask_email_address(string $email): string
 {
     $email = trim($email);
@@ -1852,10 +1816,7 @@ function send_library_email_with_mailer(\PHPMailer\PHPMailer\PHPMailer $mail, st
     try {
         $mail->clearAllRecipients();
         $mail->Subject = $subject;
-        $bodyHtml = $htmlBody !== null && trim($htmlBody) !== ''
-            ? trim($htmlBody)
-            : nl2br(h($textBody));
-        $mail->Body = library_wrap_html_email($subject, $bodyHtml);
+        $mail->Body = $htmlBody !== null && trim($htmlBody) !== '' ? $htmlBody : nl2br(h($textBody));
         $mail->AltBody = $textBody;
         $mail->isHTML(true);
         $mail->addAddress($to);
