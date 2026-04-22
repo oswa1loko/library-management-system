@@ -242,6 +242,8 @@
     panel.className = 'student-notification-panel';
     panel.hidden = true;
     panel.dataset.panelOpen = 'false';
+    panel.dataset.notificationsLoaded = 'false';
+    panel.dataset.notificationsPrefetched = 'false';
     panel.innerHTML =
       '<div class="student-notification-panel-head">' +
         '<strong>Notifications</strong>' +
@@ -464,11 +466,23 @@
   }
 
   function loadStudentNotifications(panel) {
+    var options = arguments.length > 1 && arguments[1] ? arguments[1] : {};
     var config = getMemberNotificationConfig();
     var body = panel.querySelector('.student-notification-panel-body');
+    var shouldForce = options.force === true;
+    var isBackgroundLoad = options.background === true;
+
+    if (!shouldForce && panel.dataset.notificationsLoaded === 'true') {
+      return Promise.resolve();
+    }
+
+    if (panel._notificationLoadPromise) {
+      return panel._notificationLoadPromise;
+    }
+
     var requestId = String(++memberNotificationLoadSequence);
     panel.dataset.notificationRequestId = requestId;
-    if (body) {
+    if (body && !isBackgroundLoad) {
       body.innerHTML = '<div class="student-notification-empty">Loading notifications...</div>';
     }
 
@@ -476,10 +490,10 @@
       if (body) {
         body.innerHTML = '<div class="student-notification-empty">Notifications are not available here.</div>';
       }
-      return;
+      return Promise.resolve();
     }
 
-    window.fetch(withNoCache(config.feedUrl), {
+    panel._notificationLoadPromise = window.fetch(withNoCache(config.feedUrl), {
       cache: 'no-store',
       credentials: 'same-origin',
       headers: {
@@ -498,6 +512,7 @@
           return;
         }
 
+        panel.dataset.notificationsLoaded = 'true';
         renderStudentNotifications(panel, payload);
         updateStudentNotificationBadges(payload.unread_count || 0);
       })
@@ -509,7 +524,12 @@
         if (body) {
           body.innerHTML = '<div class="student-notification-empty">Unable to load notifications right now.</div>';
         }
+      })
+      .finally(function () {
+        panel._notificationLoadPromise = null;
       });
+
+    return panel._notificationLoadPromise;
   }
 
   function markStudentNotificationRead(panel, notificationId, options) {
@@ -544,7 +564,8 @@
 
         updateStudentNotificationBadges(payload.unread_count || 0);
         if (shouldReload) {
-          loadStudentNotifications(panel);
+          panel.dataset.notificationsLoaded = 'false';
+          loadStudentNotifications(panel, { force: true });
         }
       });
   }
@@ -565,7 +586,10 @@
     });
     shortcut.dataset.notificationBound = 'true';
     shortcut.setAttribute('data-notification-role', (getMemberNotificationConfig() || {}).role || 'member');
-    loadStudentNotifications(panel);
+    if (panel.dataset.notificationsPrefetched !== 'true') {
+      panel.dataset.notificationsPrefetched = 'true';
+      loadStudentNotifications(panel, { background: true });
+    }
   }
 
   function attachExistingNotificationShortcuts() {

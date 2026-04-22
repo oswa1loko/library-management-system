@@ -290,7 +290,8 @@ function initBorrowSelection() {
     applyFilter();
     hideSearchSuggestions();
     if (matchedOption) {
-      window.location.assign(buildFilterUrl(exactBookId));
+      syncFiltersInUrl();
+      focusFirstVisibleBook();
       return;
     }
 
@@ -407,7 +408,8 @@ function initBorrowSelection() {
       exactMatchBookIds = [];
       categorySelect.value = '';
       hideSearchSuggestions();
-      window.location.assign(buildFilterUrl(''));
+      applyFilter();
+      syncFiltersInUrl();
       return;
     }
 
@@ -418,7 +420,8 @@ function initBorrowSelection() {
 
     if (exactMatchBookIds.length === 1 && exactBookId !== '') {
       hideSearchSuggestions();
-      window.location.assign(buildFilterUrl(exactBookId));
+      applyFilter();
+      syncFiltersInUrl();
       return;
     }
 
@@ -505,7 +508,9 @@ function initBorrowSelection() {
       exactBookId = '';
       exactMatchBookIds = [];
       hideSearchSuggestions();
-      window.location.assign(buildFilterUrl(''));
+      applyFilter();
+      syncFiltersInUrl();
+      focusFirstVisibleBook();
     });
   }
 
