@@ -2682,6 +2682,11 @@ body.auth-page > .theme-toggle{
   padding-right:54px;
 }
 
+.password-field-input::-ms-reveal,
+.password-field-input::-ms-clear{
+  display:none;
+}
+
 .password-toggle{
   position:absolute;
   top:50%;
