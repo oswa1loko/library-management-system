@@ -18,6 +18,106 @@ function payments_filter_query(string $search, string $statusFilter, string $rol
     return $query !== '' ? '?' . $query : '';
 }
 
+function payment_amounts_match(float $left, float $right): bool
+{
+    return abs(round($left, 2) - round($right, 2)) < 0.01;
+}
+
+function resolve_payment_penalty_links(mysqli $conn, array $payment): array
+{
+    $paymentId = (int) ($payment['id'] ?? 0);
+    $representativePenaltyId = (int) ($payment['penalty_id'] ?? 0);
+    $paymentAmount = round((float) ($payment['amount'] ?? 0), 2);
+    $userId = (int) ($payment['user_id'] ?? 0);
+
+    if ($paymentId <= 0 || $representativePenaltyId <= 0 || $paymentAmount <= 0 || $userId <= 0) {
+        return ['ok' => false, 'penalty_ids' => [], 'message' => 'This payment is missing penalty details.'];
+    }
+
+    $linkedPenaltyIds = [];
+    $linkedPenaltyStmt = $conn->prepare("SELECT penalty_id FROM payment_penalty_links WHERE payment_id = ? ORDER BY penalty_id ASC");
+    $linkedPenaltyStmt->bind_param('i', $paymentId);
+    $linkedPenaltyStmt->execute();
+    $linkedPenaltyRows = $linkedPenaltyStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $linkedPenaltyStmt->close();
+
+    foreach ($linkedPenaltyRows as $linkedPenaltyRow) {
+        $linkedPenaltyIds[] = (int) ($linkedPenaltyRow['penalty_id'] ?? 0);
+    }
+
+    $linkedPenaltyIds = array_values(array_filter(array_unique($linkedPenaltyIds)));
+    if ($linkedPenaltyIds !== []) {
+        return ['ok' => true, 'penalty_ids' => $linkedPenaltyIds, 'message' => ''];
+    }
+
+    $representativeStmt = $conn->prepare("
+        SELECT
+            p.amount,
+            p.status,
+            br.book_id,
+            br.status AS borrow_status
+        FROM penalties p
+        JOIN borrows br ON br.id = p.borrow_id
+        WHERE p.id = ?
+          AND p.user_id = ?
+        LIMIT 1
+    ");
+    $representativeStmt->bind_param('ii', $representativePenaltyId, $userId);
+    $representativeStmt->execute();
+    $representativePenalty = $representativeStmt->get_result()->fetch_assoc();
+    $representativeStmt->close();
+
+    if (!$representativePenalty) {
+        return ['ok' => false, 'penalty_ids' => [], 'message' => 'The linked penalty record was not found.'];
+    }
+
+    $representativeAmount = round((float) ($representativePenalty['amount'] ?? 0), 2);
+    if (payment_amounts_match($paymentAmount, $representativeAmount)) {
+        return ['ok' => true, 'penalty_ids' => [$representativePenaltyId], 'message' => ''];
+    }
+
+    $bookId = (int) ($representativePenalty['book_id'] ?? 0);
+    if ($bookId <= 0) {
+        return ['ok' => false, 'penalty_ids' => [], 'message' => 'Grouped payment links are missing and the book group cannot be identified.'];
+    }
+
+    $groupStmt = $conn->prepare("
+        SELECT p.id, p.amount
+        FROM penalties p
+        JOIN borrows br ON br.id = p.borrow_id
+        WHERE p.user_id = ?
+          AND br.book_id = ?
+          AND p.status = 'unpaid'
+          AND br.status = 'returned'
+        ORDER BY p.id ASC
+    ");
+    $groupStmt->bind_param('ii', $userId, $bookId);
+    $groupStmt->execute();
+    $groupRows = $groupStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $groupStmt->close();
+
+    $groupPenaltyIds = [];
+    $groupAmount = 0.0;
+    foreach ($groupRows as $groupRow) {
+        $groupPenaltyIds[] = (int) ($groupRow['id'] ?? 0);
+        $groupAmount += (float) ($groupRow['amount'] ?? 0);
+    }
+    $groupPenaltyIds = array_values(array_filter(array_unique($groupPenaltyIds)));
+
+    if ($groupPenaltyIds === [] || !payment_amounts_match($groupAmount, $paymentAmount)) {
+        return ['ok' => false, 'penalty_ids' => [], 'message' => 'Grouped payment links are missing and the matching penalty group could not be verified.'];
+    }
+
+    $linkStmt = $conn->prepare("INSERT IGNORE INTO payment_penalty_links (payment_id, penalty_id) VALUES (?, ?)");
+    foreach ($groupPenaltyIds as $groupPenaltyId) {
+        $linkStmt->bind_param('ii', $paymentId, $groupPenaltyId);
+        $linkStmt->execute();
+    }
+    $linkStmt->close();
+
+    return ['ok' => true, 'penalty_ids' => $groupPenaltyIds, 'message' => ''];
+}
+
 $search = trim($_GET['search'] ?? '');
 $statusFilter = trim($_GET['status'] ?? '');
 $roleFilter = trim($_GET['role'] ?? '');
@@ -40,7 +140,7 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     $id = (int) ($_POST['id'] ?? 0);
     $newStatus = isset($_POST['approve']) ? 'approved' : 'rejected';
 
-    $fetch = $conn->prepare("SELECT penalty_id, incident_id, payment_batch, amount, proof_path, status, user_id FROM payments WHERE id = ? LIMIT 1");
+    $fetch = $conn->prepare("SELECT id, penalty_id, incident_id, payment_batch, amount, proof_path, status, user_id FROM payments WHERE id = ? LIMIT 1");
     $fetch->bind_param('i', $id);
     $fetch->execute();
     $current = $fetch->get_result()->fetch_assoc();
@@ -55,20 +155,14 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
     }
 
     $linkedPenaltyIds = [];
-    $linkedPenaltyStmt = $conn->prepare("SELECT penalty_id FROM payment_penalty_links WHERE payment_id = ? ORDER BY penalty_id ASC");
-    $linkedPenaltyStmt->bind_param('i', $id);
-    $linkedPenaltyStmt->execute();
-    $linkedPenaltyRows = $linkedPenaltyStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $linkedPenaltyStmt->close();
-
-    foreach ($linkedPenaltyRows as $linkedPenaltyRow) {
-        $linkedPenaltyIds[] = (int) ($linkedPenaltyRow['penalty_id'] ?? 0);
+    if ((int) ($current['incident_id'] ?? 0) <= 0 && (int) ($current['penalty_id'] ?? 0) > 0) {
+        $linkResolution = resolve_payment_penalty_links($conn, $current);
+        if (($linkResolution['ok'] ?? false) !== true) {
+            header('Location: ' . $redirectPrefix . 'notice=' . urlencode((string) ($linkResolution['message'] ?? 'This payment can no longer be approved safely.')) . '&notice_type=error');
+            exit;
+        }
+        $linkedPenaltyIds = $linkResolution['penalty_ids'];
     }
-
-    if ($linkedPenaltyIds === [] && (int) ($current['penalty_id'] ?? 0) > 0) {
-        $linkedPenaltyIds[] = (int) $current['penalty_id'];
-    }
-    $linkedPenaltyIds = array_values(array_filter(array_unique($linkedPenaltyIds)));
 
     if ($newStatus === 'approved' && $linkedPenaltyIds !== []) {
         $placeholders = implode(',', array_fill(0, count($linkedPenaltyIds), '?'));
