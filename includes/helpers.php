@@ -1588,6 +1588,130 @@ function send_borrow_approval_email(mysqli $conn, int $borrowId): bool
     );
 }
 
+function build_return_confirmation_email_payload(mysqli $conn, array $borrowIds): ?array
+{
+    $borrowIds = array_values(array_filter(array_unique(array_map('intval', $borrowIds)), static fn(int $borrowId): bool => $borrowId > 0));
+    if ($borrowIds === []) {
+        set_library_mail_last_error('Missing return record.');
+        return null;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($borrowIds), '?'));
+    $types = str_repeat('i', count($borrowIds));
+    $stmt = $conn->prepare("
+        SELECT
+            br.id,
+            br.return_date,
+            br.returned_at,
+            br.return_batch,
+            u.fullname,
+            u.email,
+            u.role,
+            b.title,
+            b.author
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        JOIN books b ON b.id = br.book_id
+        WHERE br.id IN ($placeholders)
+          AND br.status = 'returned'
+        ORDER BY b.title ASC, br.id ASC
+    ");
+    $stmt->bind_param($types, ...$borrowIds);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    if ($rows === []) {
+        set_library_mail_last_error('Returned borrow details were not found.');
+        return null;
+    }
+
+    $firstRow = $rows[0];
+    $email = trim((string) ($firstRow['email'] ?? ''));
+    if ($email === '' || !is_valid_email_address($email)) {
+        set_library_mail_last_error('Borrower email address is missing or invalid.');
+        return null;
+    }
+
+    $fullName = trim((string) ($firstRow['fullname'] ?? 'Library Member'));
+    $roleLabel = role_label((string) ($firstRow['role'] ?? ''));
+    $returnBatch = trim((string) ($firstRow['return_batch'] ?? ''));
+    $titleCounts = [];
+    $returnedAtValues = [];
+
+    foreach ($rows as $row) {
+        $title = trim((string) ($row['title'] ?? 'Library Book'));
+        $title = $title !== '' ? $title : 'Library Book';
+        $titleCounts[$title] = ($titleCounts[$title] ?? 0) + 1;
+        $returnedAt = trim((string) (($row['returned_at'] ?? '') ?: ($row['return_date'] ?? '')));
+        if ($returnedAt !== '') {
+            $returnedAtValues[] = $returnedAt;
+        }
+    }
+
+    rsort($returnedAtValues);
+    $confirmedAt = format_display_datetime($returnedAtValues[0] ?? '', format_display_date((string) ($firstRow['return_date'] ?? '')));
+    $totalCopies = count($rows);
+    $copyLabel = $totalCopies === 1 ? '1 copy' : $totalCopies . ' copies';
+    $bookLines = [];
+    foreach ($titleCounts as $title => $count) {
+        $bookLines[] = $title . ' (' . ($count === 1 ? '1 copy' : $count . ' copies') . ')';
+    }
+    $bookSummary = implode(', ', $bookLines);
+    $referenceLabel = $returnBatch !== '' ? format_batch_reference($returnBatch, 'Return Ref') : ('Borrow #' . (int) ($firstRow['id'] ?? 0));
+
+    $subject = 'Return Confirmed - ' . ($bookLines[0] ?? 'Library Book');
+    $message = "Good day, {$fullName}.\n\n"
+        . "This is to confirm that your returned library item(s) have been received and confirmed by the Regis Marie College Library.\n\n"
+        . "Return reference: {$referenceLabel}\n"
+        . "Returned item(s): {$bookSummary}\n"
+        . "Total confirmed: {$copyLabel}\n"
+        . "Confirmation date: {$confirmedAt}\n"
+        . "Final status: Returned\n"
+        . "Account type: {$roleLabel}\n\n"
+        . "Your borrow record has been updated in the library system. Please keep this email for your reference.\n\n"
+        . "Thank you.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+        . '<p>This is to confirm that your returned library item(s) have been <strong>received and confirmed</strong> by the <strong>Regis Marie College Library</strong>.</p>'
+        . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
+        . '<p style="margin:0 0 8px;"><strong>Return reference:</strong> ' . h($referenceLabel) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Returned item(s):</strong> ' . h($bookSummary) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Total confirmed:</strong> ' . h($copyLabel) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Confirmation date:</strong> ' . h($confirmedAt) . '</p>'
+        . '<p style="margin:0;"><strong>Final status:</strong> Returned</p>'
+        . '</div>'
+        . '<p><strong>Account type:</strong> ' . h($roleLabel) . '</p>'
+        . '<p>Your borrow record has been updated in the library system. Please keep this email for your reference.</p>'
+        . '<p>Thank you.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return [
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function send_return_confirmation_email(mysqli $conn, array $borrowIds): bool
+{
+    $payload = build_return_confirmation_email_payload($conn, $borrowIds);
+    if (!$payload) {
+        return false;
+    }
+
+    return send_library_email(
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
 function build_incident_payment_approval_email_payload(mysqli $conn, int $paymentId): ?array
 {
     if ($paymentId <= 0) {

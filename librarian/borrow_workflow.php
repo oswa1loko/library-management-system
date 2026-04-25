@@ -231,6 +231,9 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
             }
 
             $msg = 'Borrow record marked as returned.';
+            if (send_return_confirmation_email($conn, [$borrowId])) {
+                $msg .= ' The return confirmation email was sent.';
+            }
         } catch (Throwable $e) {
             $conn->rollback();
             $msg = 'Unable to mark this borrow record as returned right now.';
@@ -573,6 +576,10 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                     }
 
                     $msg = count($confirmed) . ' return' . (count($confirmed) === 1 ? '' : 's') . ' confirmed from this batch.';
+                    $confirmedBorrowIds = array_map(static fn(array $result): int => (int) ($result['borrow_id'] ?? 0), $confirmed);
+                    if (send_return_confirmation_email($conn, $confirmedBorrowIds)) {
+                        $msg .= ' The return confirmation email was sent.';
+                    }
                 } catch (Throwable $e) {
                     $conn->rollback();
                     $msg = 'Unable to confirm this return batch right now.';
@@ -659,6 +666,10 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                     }
 
                     $msg = count($confirmed) . ' cop' . (count($confirmed) === 1 ? 'y was' : 'ies were') . ' confirmed for this book.';
+                    $confirmedBorrowIds = array_map(static fn(array $result): int => (int) ($result['borrow_id'] ?? 0), $confirmed);
+                    if (send_return_confirmation_email($conn, $confirmedBorrowIds)) {
+                        $msg .= ' The return confirmation email was sent.';
+                    }
                 } catch (Throwable $e) {
                     $conn->rollback();
                     $msg = 'Unable to confirm this grouped return right now.';
