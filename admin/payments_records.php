@@ -376,6 +376,8 @@ if (isset($_POST['approve']) || isset($_POST['reject'])) {
             $conn->commit();
             if ($changed && (int) ($current['incident_id'] ?? 0) > 0) {
                 send_incident_payment_approval_email($conn, $id);
+            } elseif ($changed && (int) ($current['penalty_id'] ?? 0) > 0) {
+                send_penalty_payment_approval_email($conn, $id);
             }
         } catch (Throwable $exception) {
             $conn->rollback();

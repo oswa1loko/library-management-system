@@ -1705,6 +1705,155 @@ function send_incident_payment_approval_email(mysqli $conn, int $paymentId): boo
     );
 }
 
+function build_penalty_payment_approval_email_payload(mysqli $conn, int $paymentId): ?array
+{
+    if ($paymentId <= 0) {
+        set_library_mail_last_error('Invalid penalty payment reference.');
+        return null;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT
+            pay.id AS payment_id,
+            pay.amount,
+            pay.status,
+            pay.created_at,
+            u.fullname,
+            u.email,
+            u.role
+        FROM payments pay
+        JOIN users u ON u.id = pay.user_id
+        WHERE pay.id = ?
+          AND (pay.incident_id IS NULL OR pay.incident_id = 0)
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $paymentId);
+    $stmt->execute();
+    $payment = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$payment) {
+        set_library_mail_last_error('Penalty payment email details were not found.');
+        return null;
+    }
+
+    $email = trim((string) ($payment['email'] ?? ''));
+    if ($email === '' || !is_valid_email_address($email)) {
+        set_library_mail_last_error('Member email address is missing or invalid.');
+        return null;
+    }
+
+    if ((string) ($payment['status'] ?? '') !== 'approved') {
+        set_library_mail_last_error('Penalty payment has not been approved yet.');
+        return null;
+    }
+
+    $penaltyStmt = $conn->prepare("
+        SELECT
+            p.id,
+            p.amount,
+            b.title
+        FROM (
+            SELECT payment_id, penalty_id FROM payment_penalty_links
+            UNION ALL
+            SELECT id AS payment_id, penalty_id
+            FROM payments
+            WHERE penalty_id IS NOT NULL
+        ) linked
+        JOIN penalties p ON p.id = linked.penalty_id
+        LEFT JOIN borrows br ON br.id = p.borrow_id
+        LEFT JOIN books b ON b.id = br.book_id
+        WHERE linked.payment_id = ?
+        GROUP BY p.id, p.amount, b.title
+        ORDER BY p.id ASC
+    ");
+    $penaltyStmt->bind_param('i', $paymentId);
+    $penaltyStmt->execute();
+    $penaltyRows = $penaltyStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $penaltyStmt->close();
+
+    if ($penaltyRows === []) {
+        set_library_mail_last_error('Linked penalty details were not found.');
+        return null;
+    }
+
+    $fullName = trim((string) ($payment['fullname'] ?? 'Library Member'));
+    $roleLabel = role_label((string) ($payment['role'] ?? ''));
+    $paidAmount = format_currency((float) ($payment['amount'] ?? 0));
+    $approvedAt = format_display_datetime((string) ($payment['created_at'] ?? ''));
+    $copyCount = count($penaltyRows);
+    $copyLabel = $copyCount === 1 ? '1 penalty record' : $copyCount . ' penalty records';
+    $titleMap = [];
+    $penaltyIds = [];
+
+    foreach ($penaltyRows as $penaltyRow) {
+        $penaltyIds[] = '#' . (int) ($penaltyRow['id'] ?? 0);
+        $title = trim((string) ($penaltyRow['title'] ?? ''));
+        if ($title !== '') {
+            $titleMap[$title] = true;
+        }
+    }
+
+    $titles = array_keys($titleMap);
+    $titleLabel = $titles === [] ? 'Overdue penalty' : implode(', ', $titles);
+    $penaltyList = implode(', ', $penaltyIds);
+
+    $subject = 'Penalty Payment Confirmed - ' . ($titles[0] ?? 'Library Penalty');
+    $message = "Good day, {$fullName}.\n\n"
+        . "This is to confirm that your overdue penalty payment has been successfully received and approved by the Regis Marie College Library.\n\n"
+        . "Payment reference: #{$paymentId}\n"
+        . "Book title(s): {$titleLabel}\n"
+        . "Covered penalties: {$penaltyList}\n"
+        . "Covered records: {$copyLabel}\n"
+        . "Paid amount: {$paidAmount}\n"
+        . "Approval date: {$approvedAt}\n"
+        . "Final status: Paid\n"
+        . "Account type: {$roleLabel}\n\n"
+        . "Your covered penalty record(s) have been marked as settled in the library system. Please keep this email for your reference.\n\n"
+        . "Thank you.\n\n"
+        . library_email_signature();
+
+    $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
+        . '<p>Good day, <strong>' . h($fullName) . '</strong>.</p>'
+        . '<p>This is to confirm that your overdue penalty payment has been <strong>successfully received and approved</strong> by the <strong>Regis Marie College Library</strong>.</p>'
+        . '<div style="margin:16px 0;padding:16px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;">'
+        . '<p style="margin:0 0 8px;"><strong>Payment reference:</strong> #' . (int) $paymentId . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Book title(s):</strong> ' . h($titleLabel) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Covered penalties:</strong> ' . h($penaltyList) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Covered records:</strong> ' . h($copyLabel) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Paid amount:</strong> ' . h($paidAmount) . '</p>'
+        . '<p style="margin:0 0 8px;"><strong>Approval date:</strong> ' . h($approvedAt) . '</p>'
+        . '<p style="margin:0;"><strong>Final status:</strong> Paid</p>'
+        . '</div>'
+        . '<p><strong>Account type:</strong> ' . h($roleLabel) . '</p>'
+        . '<p>Your covered penalty record(s) have been marked as <strong>settled</strong> in the library system. Please keep this email for your reference.</p>'
+        . '<p>Thank you.</p>'
+        . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
+        . '</div>';
+
+    return [
+        'to' => $email,
+        'subject' => $subject,
+        'text' => $message,
+        'html' => $htmlMessage,
+    ];
+}
+
+function send_penalty_payment_approval_email(mysqli $conn, int $paymentId): bool
+{
+    $payload = build_penalty_payment_approval_email_payload($conn, $paymentId);
+    if (!$payload) {
+        return false;
+    }
+
+    return send_library_email(
+        (string) $payload['to'],
+        (string) $payload['subject'],
+        (string) $payload['text'],
+        (string) $payload['html']
+    );
+}
+
 function enqueue_email_job(
     mysqli $conn,
     string $jobType,
