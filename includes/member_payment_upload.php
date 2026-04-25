@@ -146,10 +146,10 @@ if (isset($_POST['pay_penalty'])) {
     $amount = (float) ($_POST['penalty_amount'] ?? 0);
 
     if ($bookId <= 0) {
-        $msg = 'Select a grouped penalty first.';
+        $msg = 'Select a penalty payment first.';
         $msgType = 'error';
     } elseif ($amount <= 0) {
-        $msg = 'Enter a valid grouped penalty amount.';
+        $msg = 'Enter a valid penalty amount.';
         $msgType = 'error';
     } else {
         $groupCheck = $conn->prepare("
@@ -201,10 +201,10 @@ if (isset($_POST['pay_penalty'])) {
         $expectedAmount = round($expectedAmount, 2);
 
         if ($eligiblePenaltyIds === []) {
-            $msg = 'No payable grouped penalties are available for this book right now.';
+            $msg = 'No payable penalties are available for this book right now.';
             $msgType = 'error';
         } elseif (round($amount, 2) !== $expectedAmount) {
-            $msg = 'Payment amount must match the full grouped penalty amount.';
+            $msg = 'Payment amount must match the full penalty amount.';
             $msgType = 'error';
         } else {
             $upload = upload_payment_proof($_FILES['proof'] ?? [], $userId);
@@ -251,7 +251,7 @@ if (isset($_POST['pay_penalty'])) {
                 } catch (Throwable $e) {
                     $conn->rollback();
                     remove_relative_file($proofPath);
-                    $msg = 'Unable to save grouped payment right now.';
+                    $msg = 'Unable to save penalty payment right now.';
                     $msgType = 'error';
                 }
             }
@@ -657,16 +657,16 @@ if ($focusedIncidentId > 0) {
           <div class="dashboard-icon icon-payments" aria-hidden="true"></div>
           <div>
             <span class="chip">Penalty Payments</span>
-            <h3 class="heading-top-md">Pay Grouped Penalties</h3>
+            <h3 class="heading-top-md">Pay Penalties</h3>
           </div>
         </div>
         <form method="post" enctype="multipart/form-data" class="stack chips-row member-workspace-form">
           <div>
-            <label for="payment_group_book_id">Penalty Group</label>
+            <label for="payment_group_book_id">Penalty / Book Group</label>
             <div class="ui-select-shell">
               <select id="payment_group_book_id" name="payment_group_book_id" class="ui-select" required <?php echo count($payablePenaltyOptions) > 0 ? '' : 'disabled'; ?>>
                 <?php if (count($payablePenaltyOptions) > 0): ?>
-                  <option value="" disabled selected>Select a grouped penalty</option>
+                  <option value="" disabled selected>Select a penalty</option>
                   <?php foreach ($payablePenaltyOptions as $option): ?>
                     <option value="<?php echo (int) $option['book_id']; ?>">
                       <?php echo h($option['title']); ?> - <?php echo (int) $option['copy_count']; ?> cop<?php echo (int) $option['copy_count'] === 1 ? 'y' : 'ies'; ?> - <?php echo h(format_currency($option['amount'])); ?>
@@ -681,7 +681,7 @@ if ($focusedIncidentId > 0) {
           </div>
           <div>
             <label for="penalty_amount">Amount</label>
-            <input id="penalty_amount" type="number" step="0.01" name="penalty_amount" placeholder="Enter grouped penalty amount" <?php echo count($payablePenaltyOptions) > 0 ? 'required' : 'disabled'; ?>>
+            <input id="penalty_amount" type="number" step="0.01" name="penalty_amount" placeholder="Enter penalty amount" <?php echo count($payablePenaltyOptions) > 0 ? 'required' : 'disabled'; ?>>
           </div>
           <div>
             <label for="penalty_proof">Proof of payment</label>
@@ -692,7 +692,7 @@ if ($focusedIncidentId > 0) {
             <span class="muted">Accepted files: JPG, JPEG, PNG, PDF up to 5MB.</span>
           </div>
           <?php if (count($payablePenaltyOptions) === 0): ?>
-            <div class="notice warning">No grouped penalties are currently eligible for payment.</div>
+            <div class="notice warning">No penalties are currently eligible for payment.</div>
           <?php endif; ?>
         </form>
       </div>
@@ -752,10 +752,10 @@ if ($focusedIncidentId > 0) {
         </div>
         <div class="stack">
           <div class="empty-state">Payment proof files are stored locally in <code>uploads/proofs</code>.</div>
-          <div class="empty-state">Grouped penalties only open after the linked borrow record is marked as returned.</div>
+          <div class="empty-state">Penalty payments only open after the linked borrow record is marked as returned.</div>
           <div class="empty-state">Incident payments only open after the librarian sets the assessed fee in Book Incidents.</div>
           <div class="empty-state">Pending submissions still need admin approval before balances are fully settled.</div>
-          <div class="empty-state">Grouped penalties and incident fees use separate forms to avoid payment mix-ups.</div>
+          <div class="empty-state">Penalty payments and incident fees use separate forms to avoid payment mix-ups.</div>
         </div>
       </div>
     </div>
@@ -962,7 +962,7 @@ if ($focusedIncidentId > 0) {
               } else {
                   echo h($notificationPaymentContext === 'incident'
                     ? 'This notification points you to the lost or damaged fee section so you can review the latest incident payment status or submit the next required proof.'
-                    : 'This notification points you to the grouped penalty payment section so you can review the latest status or submit a new payment proof if needed.');
+                    : 'This notification points you to the penalty payment section so you can review the latest status or submit a new payment proof if needed.');
               }
             ?>
           </p>
@@ -1049,7 +1049,7 @@ if ($focusedIncidentId > 0) {
                   } else {
                       echo h($notificationPaymentContext === 'incident'
                         ? 'Review the incident payment form below, confirm the assessed fee amount, then upload a valid proof if the case is still payable.'
-                        : 'Review the grouped penalty form below, make sure the amount matches the total due, then upload your payment proof for admin review.');
+                        : 'Review the penalty payment form below, make sure the amount matches the total due, then upload your payment proof for admin review.');
                   }
                 ?>
               </span>
