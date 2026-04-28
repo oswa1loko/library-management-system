@@ -8238,11 +8238,26 @@ button.catalog-search-suggestion{
 }
 
 .member-incident-print-header{
-  display:grid;
-  gap:4px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:14px;
   padding-bottom:16px;
   border-bottom:2px solid #111827;
-  text-align:center;
+  text-align:left;
+}
+
+.member-incident-print-header img{
+  width:58px;
+  height:58px;
+  object-fit:cover;
+  border:1px solid #d1d5db;
+  border-radius:999px;
+}
+
+.member-incident-print-header div{
+  display:grid;
+  gap:4px;
 }
 
 .member-incident-print-header p,
@@ -8312,25 +8327,6 @@ button.catalog-search-suggestion{
   min-height:44px;
   font-size:13px;
   line-height:1.55;
-}
-
-.member-incident-print-footer{
-  display:grid;
-  grid-template-columns:repeat(2, minmax(0, 1fr));
-  gap:42px;
-  margin-top:54px;
-}
-
-.member-incident-print-footer div{
-  border-top:1px solid #111827;
-  text-align:center;
-}
-
-.member-incident-print-footer span{
-  display:block;
-  padding-top:7px;
-  color:#374151;
-  font-size:12px;
 }
 
 .member-dashboard-overview .stat-card,

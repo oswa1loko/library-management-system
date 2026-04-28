@@ -317,9 +317,12 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
               <div class="member-incident-print-source" data-incident-print-source="<?php echo (int) $incident['id']; ?>" hidden>
                 <article class="member-incident-print-report">
                   <header class="member-incident-print-header">
-                    <p>Regis Marie College Library</p>
-                    <h1>Book Incident Report</h1>
-                    <span>Generated <?php echo h(format_display_datetime(date('Y-m-d H:i:s'))); ?></span>
+                    <img src="<?php echo h(app_url('assets/images/RMLOGO.jfif')); ?>" alt="Regis Marie College logo">
+                    <div>
+                      <p>Regis Marie College Library</p>
+                      <h1>Book Incident Report</h1>
+                      <span>Generated <?php echo h(format_display_datetime(date('Y-m-d H:i:s'))); ?></span>
+                    </div>
                   </header>
                   <section class="member-incident-print-grid">
                     <div><strong>Incident ID</strong><span>#<?php echo (int) $incident['id']; ?></span></div>
@@ -345,10 +348,6 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
                     <h2>Resolution Notes</h2>
                     <p><?php echo trim((string) ($incident['resolution_notes'] ?? '')) !== '' ? nl2br(h((string) $incident['resolution_notes'])) : 'No resolution notes yet.'; ?></p>
                   </section>
-                  <footer class="member-incident-print-footer">
-                    <div><span>Borrower Signature</span></div>
-                    <div><span>Library Staff Signature</span></div>
-                  </footer>
                 </article>
               </div>
               <div class="stack member-return-batch-list">
