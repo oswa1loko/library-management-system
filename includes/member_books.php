@@ -41,10 +41,14 @@ if (isset($_POST['borrow'])) {
     $requestedCopies = array_sum($bookQuantities);
     $days = (int) ($_POST['days'] ?? 7);
     $days = max(1, min($days, 30));
+    $borrowAgreementAccepted = (string) ($_POST['borrow_agreement'] ?? '') === '1';
     $apiToken = ensure_member_api_token($conn, $userId);
 
     if ($bookIds === []) {
         $msg = 'Select at least one book first.';
+        $msgType = 'error';
+    } elseif (!$borrowAgreementAccepted) {
+        $msg = 'Please confirm the borrowing agreement before submitting your request.';
         $msgType = 'error';
     } elseif ($requestedCopies > $requestedBookLimit) {
         $limitLabel = $requestedBookLimit === 1 ? '1 book copy' : $requestedBookLimit . ' book copies';
@@ -60,6 +64,7 @@ if (isset($_POST['borrow'])) {
             'book_ids' => $bookIds,
             'book_qty' => $bookQuantities,
             'days' => $days,
+            'borrow_agreement' => '1',
         ], $apiToken);
 
         $json = $response['json'] ?? null;
@@ -482,8 +487,12 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <label for="modal_days">Days to borrow</label>
           <input id="modal_days" type="number" name="days" value="7" min="1" max="30">
         </div>
+        <label class="checkbox-line member-borrow-agreement" for="borrow_agreement">
+          <input id="borrow_agreement" type="checkbox" name="borrow_agreement" value="1" required data-borrow-agreement>
+          <span>I confirm that I will take care of this book, return it on or before the due date, and accept any penalty for late return, loss, or damage.</span>
+        </label>
         <div class="inline-actions member-workspace-actions">
-          <button type="submit" name="borrow" value="1">Request This Book</button>
+          <button type="submit" name="borrow" value="1" disabled data-borrow-submit>Request This Book</button>
           <span class="muted">Available stock is reduced only after librarian approval.</span>
         </div>
       </form>

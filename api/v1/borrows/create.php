@@ -24,6 +24,10 @@ $bookIds = array_values(array_unique(array_filter(array_map('intval', $bookIdsRa
     return $id > 0;
 })));
 
+if ((string) ($_POST['borrow_agreement'] ?? '') !== '1') {
+    api_error('Please confirm the borrowing agreement before submitting your request.', 422);
+}
+
 if ($bookIds === []) {
     api_error('Select at least one book.', 422);
 }

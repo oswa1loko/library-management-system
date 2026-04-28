@@ -35,6 +35,8 @@ function initBorrowSelection() {
   const modalCover = document.querySelector('[data-book-modal-cover]');
   const modalCoverPlaceholder = document.querySelector('[data-book-modal-cover-placeholder]');
   const modalQty = document.querySelector('[data-book-modal-qty]');
+  const borrowAgreement = document.querySelector('[data-borrow-agreement]');
+  const borrowSubmit = document.querySelector('[data-borrow-submit]');
   const resultsPanel = document.querySelector('[data-book-results-panel]');
   let activeSuggestionIndex = -1;
   let syncUrlTimer = null;
@@ -346,6 +348,14 @@ function initBorrowSelection() {
     document.body.classList.remove('modal-open');
   };
 
+  const updateBorrowSubmitState = () => {
+    if (!borrowSubmit) {
+      return;
+    }
+
+    borrowSubmit.disabled = !!borrowAgreement && !borrowAgreement.checked;
+  };
+
   const populateQtyOptions = (maxQty) => {
     if (!modalQty) {
       return;
@@ -376,6 +386,10 @@ function initBorrowSelection() {
     const maxQty = Math.max(1, parseInt(trigger.getAttribute('data-book-max-qty') || '1', 10));
 
     modalIdInput.value = bookId;
+    if (borrowAgreement) {
+      borrowAgreement.checked = false;
+    }
+    updateBorrowSubmitState();
     modalTitle.textContent = `Request ${title}`;
     modalBookTitle.textContent = title;
     modalBookMeta.textContent = [author, category].filter(Boolean).join(' - ');
@@ -521,6 +535,11 @@ function initBorrowSelection() {
   modalCloseButtons.forEach((node) => {
     node.addEventListener('click', closeModal);
   });
+
+  if (borrowAgreement) {
+    borrowAgreement.addEventListener('change', updateBorrowSubmitState);
+    updateBorrowSubmitState();
+  }
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {

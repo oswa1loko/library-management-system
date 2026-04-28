@@ -8929,6 +8929,25 @@ button.member-book-search-suggestion{
   display:none !important;
 }
 
+.member-borrow-agreement{
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr);
+  gap:10px;
+  align-items:start;
+  margin:2px 0 0;
+  padding:12px;
+  border:1px solid rgba(148,163,184,0.24);
+  border-radius:14px;
+  background:rgba(15,23,42,0.26);
+  color:var(--muted);
+  font-size:.88rem;
+  line-height:1.45;
+}
+
+.member-borrow-agreement input{
+  margin-top:3px;
+}
+
 body.modal-open{
   overflow:hidden;
 }
