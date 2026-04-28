@@ -818,8 +818,254 @@ function is_valid_email_address(string $email): bool
 
 function role_requires_login_otp(string $role): bool
 {
+    return role_uses_risk_based_otp($role);
+}
+
+function role_uses_risk_based_otp(string $role): bool
+{
     $role = canonical_role($role);
     return in_array($role, ['student', 'faculty'], true);
+}
+
+function trusted_device_cookie_name(): string
+{
+    return 'library_trusted_device';
+}
+
+function trusted_device_cookie_lifetime_days(): int
+{
+    $value = (int) library_runtime_value('LIBRARY_TRUSTED_DEVICE_DAYS');
+    return $value >= 7 ? min($value, 365) : 90;
+}
+
+function trusted_device_expiry_datetime(): string
+{
+    return date('Y-m-d H:i:s', strtotime('+' . trusted_device_cookie_lifetime_days() . ' days'));
+}
+
+function trusted_device_cookie_expires_at(): int
+{
+    return time() + (trusted_device_cookie_lifetime_days() * 86400);
+}
+
+function current_device_label(): string
+{
+    $userAgent = trim((string) ($_SERVER['HTTP_USER_AGENT'] ?? 'Browser'));
+    if ($userAgent === '') {
+        return 'Browser';
+    }
+
+    return substr($userAgent, 0, 120);
+}
+
+function set_trusted_device_cookie(string $value, int $expiresAt): void
+{
+    $path = app_base_path();
+    $path = $path !== '' ? $path . '/' : '/';
+    $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+
+    setcookie(trusted_device_cookie_name(), $value, [
+        'expires' => $expiresAt,
+        'path' => $path,
+        'secure' => $isSecure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+
+    $_COOKIE[trusted_device_cookie_name()] = $value;
+}
+
+function clear_current_trusted_device_cookie(): void
+{
+    $path = app_base_path();
+    $path = $path !== '' ? $path . '/' : '/';
+    $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+
+    setcookie(trusted_device_cookie_name(), '', [
+        'expires' => time() - 3600,
+        'path' => $path,
+        'secure' => $isSecure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+
+    unset($_COOKIE[trusted_device_cookie_name()]);
+}
+
+function parse_trusted_device_cookie(): ?array
+{
+    $raw = trim((string) ($_COOKIE[trusted_device_cookie_name()] ?? ''));
+    if ($raw === '' || strpos($raw, ':') === false) {
+        return null;
+    }
+
+    [$selector, $token] = array_pad(explode(':', $raw, 2), 2, '');
+    $selector = trim($selector);
+    $token = trim($token);
+
+    if ($selector === '' || $token === '') {
+        return null;
+    }
+
+    return [
+        'selector' => $selector,
+        'token' => $token,
+    ];
+}
+
+function remove_trusted_device_by_selector(mysqli $conn, string $selector): void
+{
+    $selector = trim($selector);
+    if ($selector === '' || !table_exists($conn, 'trusted_devices')) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        DELETE FROM trusted_devices
+        WHERE device_selector = ?
+    ");
+    $stmt->bind_param('s', $selector);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function revoke_all_trusted_devices(mysqli $conn, int $userId): void
+{
+    if ($userId <= 0 || !table_exists($conn, 'trusted_devices')) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        DELETE FROM trusted_devices
+        WHERE user_id = ?
+    ");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function remember_current_trusted_device(mysqli $conn, int $userId): bool
+{
+    if ($userId <= 0 || !table_exists($conn, 'trusted_devices')) {
+        return false;
+    }
+
+    $cleanupExpired = $conn->prepare("
+        DELETE FROM trusted_devices
+        WHERE expires_at <= NOW()
+    ");
+    $cleanupExpired->execute();
+    $cleanupExpired->close();
+
+    $selector = bin2hex(random_bytes(12));
+    $token = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $token);
+    $label = current_device_label();
+    $expiresAt = trusted_device_expiry_datetime();
+
+    $stmt = $conn->prepare("
+        INSERT INTO trusted_devices (user_id, device_selector, device_token_hash, device_label, last_used_at, expires_at)
+        VALUES (?, ?, ?, ?, NOW(), ?)
+    ");
+    $stmt->bind_param('issss', $userId, $selector, $tokenHash, $label, $expiresAt);
+    $ok = $stmt->execute();
+    $stmt->close();
+
+    if (!$ok) {
+        return false;
+    }
+
+    set_trusted_device_cookie($selector . ':' . $token, trusted_device_cookie_expires_at());
+    return true;
+}
+
+function is_current_device_trusted_for_user(mysqli $conn, int $userId): bool
+{
+    if ($userId <= 0 || !table_exists($conn, 'trusted_devices')) {
+        return false;
+    }
+
+    $cookie = parse_trusted_device_cookie();
+    if (!$cookie) {
+        return false;
+    }
+
+    $selector = (string) ($cookie['selector'] ?? '');
+    $token = (string) ($cookie['token'] ?? '');
+    $stmt = $conn->prepare("
+        SELECT device_token_hash, expires_at
+        FROM trusted_devices
+        WHERE user_id = ?
+          AND device_selector = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('is', $userId, $selector);
+    $stmt->execute();
+    $stmt->bind_result($tokenHash, $expiresAt);
+    $found = $stmt->fetch();
+    $stmt->close();
+
+    if (!$found || trim((string) $tokenHash) === '' || trim((string) $expiresAt) === '') {
+        clear_current_trusted_device_cookie();
+        return false;
+    }
+
+    if (strtotime((string) $expiresAt) < time() || !hash_equals((string) $tokenHash, hash('sha256', $token))) {
+        remove_trusted_device_by_selector($conn, $selector);
+        clear_current_trusted_device_cookie();
+        return false;
+    }
+
+    $label = current_device_label();
+    $refreshExpiresAt = trusted_device_expiry_datetime();
+    $touch = $conn->prepare("
+        UPDATE trusted_devices
+        SET last_used_at = NOW(),
+            device_label = ?,
+            expires_at = ?
+        WHERE user_id = ?
+          AND device_selector = ?
+        LIMIT 1
+    ");
+    $touch->bind_param('ssis', $label, $refreshExpiresAt, $userId, $selector);
+    $touch->execute();
+    $touch->close();
+
+    set_trusted_device_cookie($selector . ':' . $token, trusted_device_cookie_expires_at());
+    return true;
+}
+
+function should_challenge_login_with_otp(mysqli $conn, int $userId, string $role): bool
+{
+    if (!role_uses_risk_based_otp($role)) {
+        return false;
+    }
+
+    return !is_current_device_trusted_for_user($conn, $userId);
+}
+
+function security_otp_context_copy(string $reason): array
+{
+    $reason = trim($reason);
+    $map = [
+        'login_new_device' => [
+            'subject' => 'New Device Login Verification Code',
+            'line' => 'Use this verification code to finish signing in from a new browser or device:',
+        ],
+        'password_reset' => [
+            'subject' => 'Password Reset Verification Code',
+            'line' => 'Use this verification code to finish resetting your library password:',
+        ],
+        'password_change' => [
+            'subject' => 'Password Change Verification Code',
+            'line' => 'Use this verification code to approve the password change for your library account:',
+        ],
+    ];
+
+    return $map[$reason] ?? [
+        'subject' => 'Your Library Verification Code',
+        'line' => 'Use this verification code to continue with your library account request:',
+    ];
 }
 
 function generate_login_otp_code(): string
@@ -917,7 +1163,7 @@ function issue_login_otp(mysqli $conn, int $userId): array
 
 function send_login_otp_email(string $email, string $fullName, string $role, string $otpCode): bool
 {
-    $payload = build_login_otp_email_payload($email, $fullName, $role, $otpCode);
+    $payload = build_security_otp_email_payload($email, $fullName, $role, $otpCode, 'login_new_device');
     if (!$payload) {
         return false;
     }
@@ -932,36 +1178,43 @@ function send_login_otp_email(string $email, string $fullName, string $role, str
 
 function build_login_otp_email_payload(string $email, string $fullName, string $role, string $otpCode): ?array
 {
+    return build_security_otp_email_payload($email, $fullName, $role, $otpCode, 'login_new_device');
+}
+
+function build_security_otp_email_payload(string $email, string $fullName, string $role, string $otpCode, string $reason = 'login_new_device'): ?array
+{
     $email = trim($email);
     $fullName = trim($fullName);
     $otpCode = trim($otpCode);
 
     if (!is_valid_email_address($email) || $otpCode === '') {
-        set_library_mail_last_error('Missing or invalid login OTP recipient.');
+        set_library_mail_last_error('Missing or invalid security OTP recipient.');
         return null;
     }
 
     $roleLabel = role_label($role);
-    $subject = 'Your Library Login Verification Code';
+    $copy = security_otp_context_copy($reason);
+    $subject = (string) ($copy['subject'] ?? 'Your Library Verification Code');
+    $instruction = (string) ($copy['line'] ?? 'Use this verification code to continue with your library account request:');
     $message = "Hello {$fullName},\n\n"
-        . "Use this verification code to finish logging in to the library portal:\n\n"
+        . $instruction . "\n\n"
         . "{$otpCode}\n\n"
         . "This code is valid for 10 minutes.\n\n"
         . "Role: {$roleLabel}\n\n"
         . "Do not share this code with anyone.\n\n"
-        . "If you did not try to log in, you may ignore this email.\n\n"
+        . "If you did not request this action, you may ignore this email.\n\n"
         . library_email_signature();
 
     $htmlMessage = '<div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#10233a;">'
         . '<p>Hello <strong>' . h($fullName) . '</strong>,</p>'
-        . '<p>Use this verification code to finish logging in to the library portal:</p>'
+        . '<p>' . h($instruction) . '</p>'
         . '<div style="margin:16px 0;padding:14px 18px;border-radius:14px;background:#f7fbff;border:1px solid #d7e6f5;font-size:28px;font-weight:800;letter-spacing:0.22em;text-align:center;">'
         . h($otpCode)
         . '</div>'
         . '<p>This code is valid for <strong>10 minutes</strong>.</p>'
         . '<p><strong>Role:</strong> ' . h($roleLabel) . '</p>'
         . '<p><strong>Do not share this code with anyone.</strong></p>'
-        . '<p style="color:#5c7188;">If you did not try to log in, you may ignore this email.</p>'
+        . '<p style="color:#5c7188;">If you did not request this action, you may ignore this email.</p>'
         . '<p style="margin-top:22px;">' . h(library_email_signature()) . '</p>'
         . '</div>';
 
@@ -975,7 +1228,12 @@ function build_login_otp_email_payload(string $email, string $fullName, string $
 
 function enqueue_login_otp_email_job(mysqli $conn, string $email, string $fullName, string $role, string $otpCode): bool
 {
-    $payload = build_login_otp_email_payload($email, $fullName, $role, $otpCode);
+    return enqueue_security_otp_email_job($conn, $email, $fullName, $role, $otpCode, 'login_new_device');
+}
+
+function enqueue_security_otp_email_job(mysqli $conn, string $email, string $fullName, string $role, string $otpCode, string $reason = 'login_new_device'): bool
+{
+    $payload = build_security_otp_email_payload($email, $fullName, $role, $otpCode, $reason);
     if (!$payload) {
         return false;
     }
@@ -1144,6 +1402,25 @@ function complete_password_setup(mysqli $conn, int $userId, int $tokenId, string
     $password = trim($password);
     $purpose = trim($purpose) !== '' ? trim($purpose) : 'account_setup';
     if ($userId <= 0 || $tokenId <= 0 || $password === '') {
+        return false;
+    }
+
+    $tokenCheck = $conn->prepare("
+        SELECT id
+        FROM password_setup_tokens
+        WHERE id = ?
+          AND user_id = ?
+          AND purpose = ?
+          AND used_at IS NULL
+          AND expires_at > NOW()
+        LIMIT 1
+    ");
+    $tokenCheck->bind_param('iis', $tokenId, $userId, $purpose);
+    $tokenCheck->execute();
+    $tokenRow = $tokenCheck->get_result()->fetch_assoc();
+    $tokenCheck->close();
+
+    if (!$tokenRow) {
         return false;
     }
 

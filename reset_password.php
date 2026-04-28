@@ -7,10 +7,116 @@ $password = trim((string) ($_POST['password'] ?? ''));
 $confirmPassword = trim((string) ($_POST['confirm_password'] ?? ''));
 $error = '';
 $info = '';
+$enteredOtpCode = preg_replace('/\D+/', '', (string) ($_POST['otp_code'] ?? ''));
 $tokenRecord = $token !== '' ? find_password_setup_token($conn, $token, 'password_reset') : null;
+$pendingResetOtp = is_array($_SESSION['pending_password_reset_otp'] ?? null) ? $_SESSION['pending_password_reset_otp'] : null;
+$otpResendCooldown = login_otp_resend_cooldown_seconds();
+$otpMaxAttempts = login_otp_max_attempts();
+
+if ($pendingResetOtp && (string) ($pendingResetOtp['token'] ?? '') !== $token) {
+    unset($_SESSION['pending_password_reset_otp']);
+    $pendingResetOtp = null;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!$tokenRecord) {
+    if (isset($_POST['back_to_reset_form'])) {
+        if ($pendingResetOtp) {
+            clear_login_otp($conn, (int) ($pendingResetOtp['user_id'] ?? 0));
+        }
+        unset($_SESSION['pending_password_reset_otp']);
+        header('Location: ' . app_url('reset_password.php?token=' . urlencode($token)));
+        exit;
+    } elseif (isset($_POST['verify_otp']) || isset($_POST['resend_otp'])) {
+        if (!$pendingResetOtp) {
+            $error = 'Your verification session has expired. Please request the password reset step again.';
+        } else {
+            $pendingUserId = (int) ($pendingResetOtp['user_id'] ?? 0);
+            $pendingEmail = (string) ($pendingResetOtp['email'] ?? '');
+            $pendingFullName = (string) ($pendingResetOtp['fullname'] ?? '');
+            $pendingRole = (string) ($pendingResetOtp['role'] ?? '');
+            $pendingToken = (string) ($pendingResetOtp['token'] ?? '');
+            $pendingPassword = (string) ($pendingResetOtp['password'] ?? '');
+            $otpAttempts = max(0, (int) ($pendingResetOtp['otp_attempts'] ?? 0));
+
+            if (!is_valid_email_address($pendingEmail)) {
+                clear_login_otp($conn, $pendingUserId);
+                unset($_SESSION['pending_password_reset_otp']);
+                $pendingResetOtp = null;
+                $error = 'This account does not have a valid email address for verification.';
+            } elseif (isset($_POST['resend_otp'])) {
+                $resendWaitSeconds = get_login_otp_resend_wait_seconds($conn, $pendingUserId);
+                if ($resendWaitSeconds > 0) {
+                    $error = 'Please wait ' . $resendWaitSeconds . ' seconds before requesting a new verification code.';
+                } else {
+                    $issued = issue_login_otp($conn, $pendingUserId);
+                    $queued = enqueue_security_otp_email_job($conn, $pendingEmail, $pendingFullName, $pendingRole, $issued['code'], 'password_reset');
+                    if ($queued) {
+                        process_pending_email_jobs($conn, 1);
+                        $_SESSION['pending_password_reset_otp']['otp_attempts'] = 0;
+                        $pendingResetOtp = $_SESSION['pending_password_reset_otp'];
+                        $info = 'A new verification code is being sent to ' . $pendingEmail . '.';
+                    } else {
+                        $error = 'Unable to resend the verification code right now.';
+                    }
+                }
+            } else {
+                $freshTokenRecord = $pendingToken !== '' ? find_password_setup_token($conn, $pendingToken, 'password_reset') : null;
+                if (!$freshTokenRecord) {
+                    clear_login_otp($conn, $pendingUserId);
+                    unset($_SESSION['pending_password_reset_otp']);
+                    $pendingResetOtp = null;
+                    $error = 'This password reset link is invalid or has already expired. Request a new reset link from the login page.';
+                } elseif ($enteredOtpCode === '') {
+                    $error = 'Enter the verification code sent to your email.';
+                } elseif (!verify_login_otp($conn, $pendingUserId, $enteredOtpCode)) {
+                    $otpAttempts++;
+                    $_SESSION['pending_password_reset_otp']['otp_attempts'] = $otpAttempts;
+                    $pendingResetOtp = $_SESSION['pending_password_reset_otp'];
+                    if ($otpAttempts >= $otpMaxAttempts) {
+                        clear_login_otp($conn, $pendingUserId);
+                        unset($_SESSION['pending_password_reset_otp']);
+                        $pendingResetOtp = null;
+                        $error = 'Too many invalid verification attempts. Request the password reset step again.';
+                    } else {
+                        $remainingAttempts = $otpMaxAttempts - $otpAttempts;
+                        $error = 'Invalid or expired verification code. ' . $remainingAttempts . ' attempt' . ($remainingAttempts === 1 ? '' : 's') . ' remaining.';
+                    }
+                } else {
+                    $completed = complete_password_setup(
+                        $conn,
+                        (int) ($freshTokenRecord['user_id'] ?? 0),
+                        (int) ($freshTokenRecord['id'] ?? 0),
+                        $pendingPassword,
+                        'password_reset'
+                    );
+
+                    clear_login_otp($conn, $pendingUserId);
+                    unset($_SESSION['pending_password_reset_otp']);
+                    $pendingResetOtp = null;
+
+                    if ($completed) {
+                        revoke_all_trusted_devices($conn, $pendingUserId);
+                        clear_current_trusted_device_cookie();
+                        audit_log($conn, 'auth.password_reset.complete', [
+                            'user_id' => (int) ($freshTokenRecord['user_id'] ?? 0),
+                            'username' => (string) ($freshTokenRecord['username'] ?? ''),
+                            'role' => (string) ($freshTokenRecord['role'] ?? ''),
+                        ]);
+
+                        $_SESSION['loginpage_flash'] = [
+                            'type' => 'info',
+                            'message' => 'Password reset successfully. You can now log in with your new password.',
+                        ];
+
+                        header('Location: ' . app_url('loginpage.php'));
+                        exit;
+                    }
+
+                    $error = 'Unable to save the new password right now. Please try again.';
+                }
+            }
+        }
+    } elseif (!$tokenRecord) {
         $error = 'This password reset link is invalid or has already expired. Request a new reset link from the login page.';
     } elseif ($password === '' || $confirmPassword === '') {
         $error = 'Enter and confirm the new password.';
@@ -19,37 +125,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($password !== $confirmPassword) {
         $error = 'Passwords do not match.';
     } else {
-        $completed = complete_password_setup(
-            $conn,
-            (int) ($tokenRecord['user_id'] ?? 0),
-            (int) ($tokenRecord['id'] ?? 0),
-            $password,
-            'password_reset'
-        );
+        $userEmail = trim((string) ($tokenRecord['email'] ?? ''));
+        if (!is_valid_email_address($userEmail)) {
+            $error = 'This account does not have a valid email address for verification.';
+        } else {
+            $issued = issue_login_otp($conn, (int) ($tokenRecord['user_id'] ?? 0));
+            $queued = enqueue_security_otp_email_job(
+                $conn,
+                $userEmail,
+                (string) ($tokenRecord['fullname'] ?? ''),
+                (string) ($tokenRecord['role'] ?? ''),
+                (string) ($issued['code'] ?? ''),
+                'password_reset'
+            );
 
-        if ($completed) {
-            audit_log($conn, 'auth.password_reset.complete', [
-                'user_id' => (int) ($tokenRecord['user_id'] ?? 0),
-                'username' => (string) ($tokenRecord['username'] ?? ''),
-                'role' => (string) ($tokenRecord['role'] ?? ''),
-            ]);
+            if ($queued) {
+                process_pending_email_jobs($conn, 1);
+                $_SESSION['pending_password_reset_otp'] = [
+                    'user_id' => (int) ($tokenRecord['user_id'] ?? 0),
+                    'fullname' => (string) ($tokenRecord['fullname'] ?? ''),
+                    'email' => $userEmail,
+                    'role' => (string) ($tokenRecord['role'] ?? ''),
+                    'username' => (string) ($tokenRecord['username'] ?? ''),
+                    'token' => $token,
+                    'password' => $password,
+                    'otp_attempts' => 0,
+                ];
+                header('Location: ' . app_url('reset_password.php?token=' . urlencode($token)));
+                exit;
+            }
 
-            $_SESSION['loginpage_flash'] = [
-                'type' => 'info',
-                'message' => 'Password reset successfully. You can now log in with your new password.',
-            ];
-
-            header('Location: ' . app_url('loginpage.php'));
-            exit;
+            clear_login_otp($conn, (int) ($tokenRecord['user_id'] ?? 0));
+            $error = 'Unable to send the verification code right now. Please try again.';
         }
-
-        $error = 'Unable to save the new password right now. Please try again.';
     }
 }
 
 if ($tokenRecord && $info === '') {
     $info = 'Resetting password for ' . (string) ($tokenRecord['fullname'] ?? 'your account') . ' (' . role_label((string) ($tokenRecord['role'] ?? '')) . ').';
 }
+
+$isOtpStep = $pendingResetOtp !== null;
+$otpResendWaitSeconds = $isOtpStep ? get_login_otp_resend_wait_seconds($conn, (int) ($pendingResetOtp['user_id'] ?? 0)) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,8 +183,14 @@ if ($tokenRecord && $info === '') {
     <div class="split auth-split">
       <div class="auth-panel auth-panel-main">
         <p class="muted auth-kicker">Password Recovery</p>
-        <h2 class="auth-title">Set a New Password</h2>
-        <p class="muted auth-intro">Choose a new password for your library account. After saving, use it the next time you log in.</p>
+        <h2 class="auth-title"><?php echo $isOtpStep ? 'Verify Password Reset' : 'Set a New Password'; ?></h2>
+        <p class="muted auth-intro">
+          <?php if ($isOtpStep): ?>
+            Enter the 6-digit code sent to <?php echo h((string) ($pendingResetOtp['email'] ?? 'your email')); ?> to finish resetting your password.
+          <?php else: ?>
+            Choose a new password for your library account. After saving, use it the next time you log in.
+          <?php endif; ?>
+        </p>
 
         <?php if ($info !== ''): ?>
           <div class="notice info"><?php echo h($info); ?></div>
@@ -77,7 +200,58 @@ if ($tokenRecord && $info === '') {
           <div class="notice error"><?php echo h($error); ?></div>
         <?php endif; ?>
 
-        <?php if ($tokenRecord): ?>
+        <?php if ($isOtpStep): ?>
+          <form method="post" class="stack auth-form auth-form-otp" autocomplete="off">
+            <input type="hidden" name="token" value="<?php echo h($token); ?>">
+            <div>
+              <label for="otp_code">Verification Code</label>
+              <input id="otp_code" type="hidden" name="otp_code" value="<?php echo h(substr($enteredOtpCode, 0, 6)); ?>" data-otp-hidden>
+              <div class="otp-code-group" data-otp-group>
+                <?php for ($otpIndex = 0; $otpIndex < 6; $otpIndex++): ?>
+                  <input
+                    type="text"
+                    class="otp-code-slot"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="1"
+                    autocomplete="one-time-code"
+                    aria-label="Verification code digit <?php echo $otpIndex + 1; ?>"
+                    value="<?php echo h(substr($enteredOtpCode, $otpIndex, 1)); ?>"
+                    data-otp-slot
+                  >
+                <?php endfor; ?>
+              </div>
+            </div>
+            <div class="inline-actions auth-inline-actions">
+              <button type="submit" name="verify_otp" value="1">Verify Code</button>
+              <button
+                type="submit"
+                name="resend_otp"
+                value="1"
+                class="button secondary"
+                formnovalidate
+                <?php echo $otpResendWaitSeconds > 0 ? 'disabled aria-disabled="true"' : ''; ?>
+                data-resend-button
+              >
+                Resend Code
+              </button>
+            </div>
+            <div
+              class="otp-resend-status<?php echo $otpResendWaitSeconds > 0 ? ' is-active' : ''; ?>"
+              data-resend-status
+              data-wait-seconds="<?php echo $otpResendWaitSeconds; ?>"
+            >
+              <?php if ($otpResendWaitSeconds > 0): ?>
+                Resend available in <strong data-resend-countdown><?php echo $otpResendWaitSeconds; ?></strong> seconds.
+              <?php endif; ?>
+            </div>
+            <button type="submit" name="back_to_reset_form" value="1" class="auth-back-link" formnovalidate>
+              <span aria-hidden="true">&larr;</span>
+              <span>Return to Reset Form</span>
+            </button>
+          </form>
+          <div class="footer-note">Verification codes are valid for 10 minutes. For security, a new code can be requested once every <?php echo $otpResendCooldown; ?> seconds.</div>
+        <?php elseif ($tokenRecord): ?>
           <form method="post" class="stack auth-form" autocomplete="off">
             <input type="hidden" name="token" value="<?php echo h($token); ?>">
             <div>
@@ -171,8 +345,8 @@ if ($tokenRecord && $info === '') {
           <div class="auth-role-item auth-role-item-compact">
             <span class="auth-role-marker" aria-hidden="true"></span>
             <div>
-              <strong>Private password setup</strong>
-              <span>No plain password is ever sent through email during recovery.</span>
+              <strong>Email verification</strong>
+              <span>Sensitive password recovery now asks for a one-time code before the new password is saved.</span>
             </div>
           </div>
           <div class="auth-role-item auth-role-item-compact">
@@ -216,7 +390,128 @@ if ($tokenRecord && $info === '') {
       }
     });
   });
+
+  const hiddenOtpInput = document.querySelector('[data-otp-hidden]');
+  const otpSlots = Array.from(document.querySelectorAll('[data-otp-slot]'));
+  const otpForm = hiddenOtpInput ? hiddenOtpInput.closest('form') : null;
+  const status = document.querySelector('[data-resend-status]');
+  const button = document.querySelector('[data-resend-button]');
+
+  const syncOtpValue = () => {
+    if (!hiddenOtpInput || otpSlots.length === 0) {
+      return;
+    }
+    hiddenOtpInput.value = otpSlots.map((slot) => slot.value.replace(/\D/g, '').slice(0, 1)).join('');
+  };
+
+  const submitOtpFormIfComplete = () => {
+    if (!otpForm || !hiddenOtpInput) {
+      return;
+    }
+    if (hiddenOtpInput.value.length === otpSlots.length) {
+      const verifyButton = otpForm.querySelector('button[name="verify_otp"]');
+      if (verifyButton) {
+        verifyButton.click();
+      } else {
+        otpForm.submit();
+      }
+    }
+  };
+
+  if (hiddenOtpInput && otpSlots.length > 0) {
+    otpSlots.forEach((slot, index) => {
+      slot.addEventListener('input', () => {
+        slot.value = slot.value.replace(/\D/g, '').slice(0, 1);
+        syncOtpValue();
+        if (slot.value !== '' && otpSlots[index + 1]) {
+          otpSlots[index + 1].focus();
+          otpSlots[index + 1].select();
+        }
+        submitOtpFormIfComplete();
+      });
+
+      slot.addEventListener('keydown', (event) => {
+        if (event.key === 'Backspace' && slot.value === '' && otpSlots[index - 1]) {
+          otpSlots[index - 1].focus();
+          otpSlots[index - 1].select();
+        }
+        if (event.key === 'ArrowLeft' && otpSlots[index - 1]) {
+          event.preventDefault();
+          otpSlots[index - 1].focus();
+          otpSlots[index - 1].select();
+        }
+        if (event.key === 'ArrowRight' && otpSlots[index + 1]) {
+          event.preventDefault();
+          otpSlots[index + 1].focus();
+          otpSlots[index + 1].select();
+        }
+      });
+
+      slot.addEventListener('focus', () => {
+        slot.select();
+      });
+
+      slot.addEventListener('paste', (event) => {
+        event.preventDefault();
+        const pastedValue = (event.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, otpSlots.length);
+        if (pastedValue === '') {
+          return;
+        }
+        otpSlots.forEach((otpSlot, otpIndex) => {
+          otpSlot.value = pastedValue[otpIndex] ?? '';
+        });
+        syncOtpValue();
+        const targetIndex = Math.min(pastedValue.length, otpSlots.length) - 1;
+        if (targetIndex >= 0) {
+          otpSlots[targetIndex].focus();
+          otpSlots[targetIndex].select();
+        }
+        submitOtpFormIfComplete();
+      });
+    });
+
+    syncOtpValue();
+    const firstEmptySlot = otpSlots.find((slot) => slot.value === '');
+    (firstEmptySlot || otpSlots[0]).focus();
+    (firstEmptySlot || otpSlots[0]).select();
+  }
+
+  if (!status || !button) {
+    return;
+  }
+
+  let remaining = Number(status.dataset.waitSeconds || '0');
+  if (!Number.isFinite(remaining) || remaining <= 0) {
+    return;
+  }
+
+  const render = () => {
+    if (remaining > 0) {
+      status.classList.add('is-active');
+      status.innerHTML = 'Resend available in <strong data-resend-countdown>' + remaining + '</strong> seconds.';
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      return;
+    }
+
+    status.classList.remove('is-active');
+    status.textContent = 'You can request a new verification code now.';
+    button.disabled = false;
+    button.removeAttribute('aria-disabled');
+  };
+
+  render();
+  const timer = window.setInterval(() => {
+    remaining -= 1;
+    render();
+    if (remaining <= 0) {
+      window.clearInterval(timer);
+    }
+  }, 1000);
 })();
 </script>
+<?php if ($isOtpStep): ?>
+<script src="<?php echo h(app_url('assets/login_email_queue_worker.js')); ?>"></script>
+<?php endif; ?>
 </body>
 </html>

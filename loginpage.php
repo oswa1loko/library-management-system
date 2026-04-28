@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pendingEmail = (string) ($pendingOtp['email'] ?? '');
             $pendingRole = (string) ($pendingOtp['role'] ?? '');
             $pendingFullName = (string) ($pendingOtp['fullname'] ?? '');
+            $pendingOtpReason = (string) ($pendingOtp['otp_reason'] ?? 'login_new_device');
             $otpAttempts = max(0, (int) ($pendingOtp['otp_attempts'] ?? 0));
 
             if (!is_valid_email_address($pendingEmail)) {
@@ -72,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Please wait ' . $resendWaitSeconds . ' seconds before requesting a new verification code.';
                 } else {
                     $issued = issue_login_otp($conn, $pendingUserId);
-                    $queued = enqueue_login_otp_email_job($conn, $pendingEmail, $pendingFullName, $pendingRole, $issued['code']);
+                    $queued = enqueue_security_otp_email_job($conn, $pendingEmail, $pendingFullName, $pendingRole, $issued['code'], $pendingOtpReason);
 
                     if ($queued) {
                         process_pending_email_jobs($conn, 1);
@@ -116,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     library_rate_limit_clear('login_otp_verify:' . library_rate_limit_client_ip() . ':' . $pendingUserId);
                     unset($_SESSION['pending_login_otp']);
                     session_regenerate_id(true);
+                    remember_current_trusted_device($conn, $pendingUserId);
                     $_SESSION['user_id'] = $pendingUserId;
                     $_SESSION['username'] = $pendingUsername;
                     $_SESSION['email'] = $pendingEmail;
@@ -168,14 +170,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     if ($ok) {
-                        if (role_requires_login_otp($dbRole)) {
+                        if (should_challenge_login_with_otp($conn, (int) $id, $dbRole)) {
                             if (!is_valid_email_address($dbEmail)) {
                                 clear_login_otp($conn, (int) $id);
                                 $error = 'This account does not have a valid email address for verification. Please contact the librarian.';
                             } else {
                                 library_rate_limit_clear($loginRateLimitKey);
                                 $issued = issue_login_otp($conn, (int) $id);
-                                $queued = enqueue_login_otp_email_job($conn, $dbEmail, $dbFullName, $dbRole, $issued['code']);
+                                $queued = enqueue_security_otp_email_job($conn, $dbEmail, $dbFullName, $dbRole, $issued['code'], 'login_new_device');
 
                                 if ($queued) {
                                     process_pending_email_jobs($conn, 1);
@@ -185,9 +187,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         'username' => $dbUsername,
                                         'email' => $dbEmail,
                                         'role' => $dbRole,
+                                        'otp_reason' => 'login_new_device',
                                         'otp_attempts' => 0,
                                     ];
-                                    loginpage_set_flash('info', 'Verification code is being sent to ' . $dbEmail . '.');
+                                    loginpage_set_flash('info', 'Verification code is being sent to ' . $dbEmail . ' for this new device.');
                                     $stmt->close();
                                     header('Location: ' . app_url('loginpage.php'));
                                     exit;
@@ -259,12 +262,12 @@ if ($isOtpStep) {
     <div class="split auth-split">
       <div class="auth-panel auth-panel-main<?php echo $isOtpStep ? ' auth-panel-main-otp' : ''; ?>">
         <p class="muted auth-kicker"><?php echo $isOtpStep ? 'Account Verification' : 'Secure Access'; ?></p>
-        <h2 class="auth-title"><?php echo $isOtpStep ? 'Verify Login Code' : 'Library Login'; ?></h2>
+        <h2 class="auth-title"><?php echo $isOtpStep ? 'Verify New Device' : 'Library Login'; ?></h2>
         <p class="muted auth-intro">
           <?php if ($isOtpStep): ?>
-            Enter the 6-digit code sent to <?php echo h((string) ($pendingOtp['email'] ?? 'your email')); ?> to complete your login.
+            Enter the 6-digit code sent to <?php echo h((string) ($pendingOtp['email'] ?? 'your email')); ?> to confirm this browser or device before logging in.
           <?php else: ?>
-            Sign in with your email or username and password. New accounts must set a password from the invitation email first. Student and faculty accounts receive a one-time verification code after login.
+            Sign in with your email or username and password. New accounts must set a password from the invitation email first. Student and faculty accounts are only asked for OTP on new devices or sensitive password actions.
           <?php endif; ?>
         </p>
 

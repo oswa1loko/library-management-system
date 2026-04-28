@@ -774,6 +774,21 @@ function ensure_library_schema(mysqli $conn): void
     ");
 
     $conn->query("
+        CREATE TABLE IF NOT EXISTS trusted_devices (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            device_selector CHAR(24) NOT NULL UNIQUE,
+            device_token_hash CHAR(64) NOT NULL,
+            device_label VARCHAR(120) DEFAULT NULL,
+            last_used_at DATETIME DEFAULT NULL,
+            expires_at DATETIME NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_trusted_devices_user (user_id),
+            INDEX idx_trusted_devices_expires (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    $conn->query("
         CREATE TABLE IF NOT EXISTS ebooks (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
