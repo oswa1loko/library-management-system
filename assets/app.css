@@ -8226,6 +8226,113 @@ button.catalog-search-suggestion{
   border-radius:24px;
 }
 
+.member-incident-print-host,
+.member-incident-print-source{
+  display:none;
+}
+
+.member-incident-print-report{
+  color:#111827;
+  background:#fff;
+  font-family:Arial, Helvetica, sans-serif;
+}
+
+.member-incident-print-header{
+  display:grid;
+  gap:4px;
+  padding-bottom:16px;
+  border-bottom:2px solid #111827;
+  text-align:center;
+}
+
+.member-incident-print-header p,
+.member-incident-print-header h1,
+.member-incident-print-header span{
+  margin:0;
+}
+
+.member-incident-print-header p{
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.member-incident-print-header h1{
+  font-size:24px;
+}
+
+.member-incident-print-header span{
+  color:#4b5563;
+  font-size:12px;
+}
+
+.member-incident-print-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:0;
+  margin-top:18px;
+  border:1px solid #d1d5db;
+  border-bottom:0;
+  border-right:0;
+}
+
+.member-incident-print-grid > div{
+  display:grid;
+  gap:4px;
+  min-height:54px;
+  padding:9px 10px;
+  border-right:1px solid #d1d5db;
+  border-bottom:1px solid #d1d5db;
+}
+
+.member-incident-print-grid strong{
+  color:#374151;
+  font-size:11px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+
+.member-incident-print-grid span{
+  font-size:13px;
+}
+
+.member-incident-print-block{
+  margin-top:16px;
+  padding:12px;
+  border:1px solid #d1d5db;
+}
+
+.member-incident-print-block h2{
+  margin:0 0 8px;
+  font-size:14px;
+}
+
+.member-incident-print-block p{
+  margin:0;
+  min-height:44px;
+  font-size:13px;
+  line-height:1.55;
+}
+
+.member-incident-print-footer{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:42px;
+  margin-top:54px;
+}
+
+.member-incident-print-footer div{
+  border-top:1px solid #111827;
+  text-align:center;
+}
+
+.member-incident-print-footer span{
+  display:block;
+  padding-top:7px;
+  color:#374151;
+  font-size:12px;
+}
+
 .member-dashboard-overview .stat-card,
 .member-workspace-overview .stat-card{
   min-height:164px;
@@ -11222,6 +11329,31 @@ body.modal-open{
   .panel{
     padding:16px !important;
     margin-bottom:14px !important;
+  }
+
+  body.is-printing-incident-report > *:not(.member-incident-print-host){
+    display:none !important;
+  }
+
+  body.is-printing-incident-report .member-incident-print-host{
+    display:block !important;
+    padding:0 !important;
+  }
+
+  body.is-printing-incident-report .member-incident-print-report{
+    display:block !important;
+    width:100%;
+    color:#000 !important;
+    background:#fff !important;
+  }
+
+  body.is-printing-incident-report .member-incident-print-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.is-printing-incident-report .member-incident-print-block,
+  body.is-printing-incident-report .member-incident-print-grid > div{
+    break-inside:avoid;
   }
 }
 .ebook-grid {

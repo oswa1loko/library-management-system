@@ -303,6 +303,7 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
                   </div>
                 </div>
                 <div class="stack flow-gap-sm">
+                  <button type="button" class="button secondary" data-incident-print-button data-incident-print-id="<?php echo (int) $incident['id']; ?>">Print Report</button>
                   <span class="badge">
                     <span class="status-dot <?php echo h(book_incident_status_dot_class((string) ($incident['workflow_status'] ?? 'open'))); ?>"></span>
                     Case: <?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?>
@@ -312,6 +313,43 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
                     Payment: <?php echo h(book_incident_payment_stage_label($incident)); ?>
                   </span>
                 </div>
+              </div>
+              <div class="member-incident-print-source" data-incident-print-source="<?php echo (int) $incident['id']; ?>" hidden>
+                <article class="member-incident-print-report">
+                  <header class="member-incident-print-header">
+                    <p>Regis Marie College Library</p>
+                    <h1>Book Incident Report</h1>
+                    <span>Generated <?php echo h(format_display_datetime(date('Y-m-d H:i:s'))); ?></span>
+                  </header>
+                  <section class="member-incident-print-grid">
+                    <div><strong>Incident ID</strong><span>#<?php echo (int) $incident['id']; ?></span></div>
+                    <div><strong>Borrow ID</strong><span>#<?php echo (int) $incident['borrow_id']; ?></span></div>
+                    <div><strong>Borrower Role</strong><span><?php echo h(role_label($role)); ?></span></div>
+                    <div><strong>Reported At</strong><span><?php echo h(format_display_datetime((string) ($incident['reported_at'] ?? ''))); ?></span></div>
+                    <div><strong>Book Title</strong><span><?php echo h((string) ($incident['title'] ?? '')); ?></span></div>
+                    <div><strong>Copy / Reference</strong><span><?php echo h(trim((string) ($incident['copy_id'] ?? '')) !== '' ? (string) $incident['copy_id'] : (trim((string) ($incident['barcode'] ?? '')) !== '' ? (string) $incident['barcode'] : '-')); ?></span></div>
+                    <div><strong>Incident Type</strong><span><?php echo h(book_incident_type_label((string) ($incident['incident_type'] ?? ''))); ?></span></div>
+                    <div><strong>Severity</strong><span><?php echo h(book_incident_severity_label((string) ($incident['severity'] ?? ''))); ?></span></div>
+                    <div><strong>Case Status</strong><span><?php echo h(book_incident_workflow_label((string) ($incident['workflow_status'] ?? 'open'))); ?></span></div>
+                    <div><strong>Payment Status</strong><span><?php echo h(book_incident_payment_stage_label($incident)); ?></span></div>
+                    <div><strong>Assessed Fee</strong><span><?php echo h(format_currency($incident['assessed_fee'] ?? 0)); ?></span></div>
+                    <div><strong>Borrow Status</strong><span><?php echo h(ucfirst((string) ($incident['borrow_status'] ?? 'n/a'))); ?></span></div>
+                    <div><strong>Resolution Action</strong><span><?php echo h(book_incident_resolution_label((string) ($incident['resolution_action'] ?? 'none'))); ?></span></div>
+                    <div><strong>Damage Photo</strong><span><?php echo trim((string) ($incident['incident_photo_path'] ?? '')) !== '' ? 'Uploaded' : 'None'; ?></span></div>
+                  </section>
+                  <section class="member-incident-print-block">
+                    <h2>Description</h2>
+                    <p><?php echo nl2br(h((string) ($incident['description'] ?? ''))); ?></p>
+                  </section>
+                  <section class="member-incident-print-block">
+                    <h2>Resolution Notes</h2>
+                    <p><?php echo trim((string) ($incident['resolution_notes'] ?? '')) !== '' ? nl2br(h((string) $incident['resolution_notes'])) : 'No resolution notes yet.'; ?></p>
+                  </section>
+                  <footer class="member-incident-print-footer">
+                    <div><span>Borrower Signature</span></div>
+                    <div><span>Library Staff Signature</span></div>
+                  </footer>
+                </article>
               </div>
               <div class="stack member-return-batch-list">
                 <div class="empty-state member-return-batch-item">
@@ -346,6 +384,7 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
     </div>
   </div>
 </div>
+<div class="member-incident-print-host" data-incident-print-host aria-hidden="true"></div>
 <?php if ($openedFromNotification && $focusedIncident): ?>
   <div class="desk-modal" data-member-notification-page-modal>
     <a class="desk-modal-backdrop" href="<?php echo h($bookIncidentsBaseHref); ?>" aria-label="Close incident details"></a>
@@ -356,7 +395,10 @@ $bookIncidentsBaseHref = app_url($role . '/book_incidents.php');
           <h3 id="member-incident-notification-modal-title" class="heading-card"><?php echo h((string) ($focusedIncident['title'] ?? 'Book incident')); ?></h3>
           <p class="muted">This incident record was opened directly from your notification so you can review the latest case and payment status immediately.</p>
         </div>
-        <a class="button secondary" href="<?php echo h($bookIncidentsBaseHref); ?>">Close</a>
+        <div class="inline-actions">
+          <button type="button" class="button secondary" data-incident-print-button data-incident-print-id="<?php echo (int) ($focusedIncident['id'] ?? 0); ?>">Print Report</button>
+          <a class="button secondary" href="<?php echo h($bookIncidentsBaseHref); ?>">Close</a>
+        </div>
       </div>
       <div class="panel member-return-batch-card member-notification-page-card">
         <div class="member-return-batch-head">
@@ -458,6 +500,32 @@ document.addEventListener('DOMContentLoaded', function () {
   } catch (error) {
     focusedIncident.scrollIntoView();
   }
+});
+
+document.addEventListener('click', function (event) {
+  var printButton = event.target.closest('[data-incident-print-button]');
+  if (!printButton) {
+    return;
+  }
+
+  var incidentId = printButton.getAttribute('data-incident-print-id') || '';
+  var source = document.querySelector('[data-incident-print-source="' + incidentId + '"]');
+  var host = document.querySelector('[data-incident-print-host]');
+  if (!source || !host) {
+    return;
+  }
+
+  host.innerHTML = source.innerHTML;
+  document.body.classList.add('is-printing-incident-report');
+  window.print();
+});
+
+window.addEventListener('afterprint', function () {
+  var host = document.querySelector('[data-incident-print-host]');
+  if (host) {
+    host.innerHTML = '';
+  }
+  document.body.classList.remove('is-printing-incident-report');
 });
 </script>
 </body>
