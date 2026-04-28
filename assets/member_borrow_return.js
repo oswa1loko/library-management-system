@@ -37,9 +37,12 @@ function initBorrowSelection() {
   const modalQty = document.querySelector('[data-book-modal-qty]');
   const borrowAgreement = document.querySelector('[data-borrow-agreement]');
   const borrowSubmit = document.querySelector('[data-borrow-submit]');
+  const borrowTermsStatus = document.querySelector('[data-borrow-terms-status]');
   const termsModal = document.querySelector('[data-borrow-terms-modal]');
   const termsOpenButtons = Array.from(document.querySelectorAll('[data-borrow-terms-open]'));
   const termsCloseButtons = Array.from(document.querySelectorAll('[data-borrow-terms-close]'));
+  const termsAcceptCheckbox = document.querySelector('[data-borrow-terms-accept]');
+  const termsAcceptButton = document.querySelector('[data-borrow-terms-accept-button]');
   const resultsPanel = document.querySelector('[data-book-results-panel]');
   let activeSuggestionIndex = -1;
   let syncUrlTimer = null;
@@ -378,7 +381,43 @@ function initBorrowSelection() {
       return;
     }
 
-    borrowSubmit.disabled = !!borrowAgreement && !borrowAgreement.checked;
+    const accepted = borrowAgreement ? borrowAgreement.value === '1' : true;
+    borrowSubmit.disabled = !accepted;
+
+    if (borrowTermsStatus) {
+      borrowTermsStatus.textContent = accepted ? 'Terms accepted.' : 'Review and accept the terms before submitting.';
+      borrowTermsStatus.classList.toggle('is-accepted', accepted);
+    }
+  };
+
+  const updateTermsAcceptState = () => {
+    if (!termsAcceptButton || !termsAcceptCheckbox) {
+      return;
+    }
+
+    termsAcceptButton.disabled = !termsAcceptCheckbox.checked;
+  };
+
+  const resetBorrowAgreement = () => {
+    if (borrowAgreement) {
+      borrowAgreement.value = '0';
+    }
+
+    if (termsAcceptCheckbox) {
+      termsAcceptCheckbox.checked = false;
+    }
+
+    updateTermsAcceptState();
+    updateBorrowSubmitState();
+  };
+
+  const acceptBorrowTerms = () => {
+    if (borrowAgreement) {
+      borrowAgreement.value = '1';
+    }
+
+    updateBorrowSubmitState();
+    closeTermsModal();
   };
 
   const populateQtyOptions = (maxQty) => {
@@ -411,10 +450,7 @@ function initBorrowSelection() {
     const maxQty = Math.max(1, parseInt(trigger.getAttribute('data-book-max-qty') || '1', 10));
 
     modalIdInput.value = bookId;
-    if (borrowAgreement) {
-      borrowAgreement.checked = false;
-    }
-    updateBorrowSubmitState();
+    resetBorrowAgreement();
     modalTitle.textContent = `Request ${title}`;
     modalBookTitle.textContent = title;
     modalBookMeta.textContent = [author, category].filter(Boolean).join(' - ');
@@ -574,8 +610,16 @@ function initBorrowSelection() {
   });
 
   if (borrowAgreement) {
-    borrowAgreement.addEventListener('change', updateBorrowSubmitState);
     updateBorrowSubmitState();
+  }
+
+  if (termsAcceptCheckbox) {
+    termsAcceptCheckbox.addEventListener('change', updateTermsAcceptState);
+    updateTermsAcceptState();
+  }
+
+  if (termsAcceptButton) {
+    termsAcceptButton.addEventListener('click', acceptBorrowTerms);
   }
 
   document.addEventListener('keydown', (event) => {

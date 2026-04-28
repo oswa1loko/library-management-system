@@ -526,12 +526,13 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <label for="modal_days">Days to borrow</label>
           <input id="modal_days" type="number" name="days" value="7" min="1" max="30">
         </div>
-        <div class="member-borrow-agreement">
-          <input id="borrow_agreement" type="checkbox" name="borrow_agreement" value="1" required data-borrow-agreement>
-          <label for="borrow_agreement">
-            I agree to the borrowing rules and accept the penalties for overdue returns, lost books, or damaged books.
-          </label>
-          <button type="button" class="button secondary member-terms-link" data-borrow-terms-open>View Terms</button>
+        <div class="member-borrow-agreement" data-borrow-agreement-summary>
+          <input id="borrow_agreement" type="hidden" name="borrow_agreement" value="0" data-borrow-agreement>
+          <div>
+            <strong>Borrowing Terms</strong>
+            <span class="muted" data-borrow-terms-status>Review and accept the terms before submitting.</span>
+          </div>
+          <button type="button" class="button secondary member-terms-link" data-borrow-terms-open>Review Terms</button>
         </div>
         <div class="inline-actions member-workspace-actions">
           <button type="submit" name="borrow" value="1" disabled data-borrow-submit>Request This Book</button>
@@ -586,6 +587,13 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <li>Incident payments must be reviewed and approved before the incident is considered settled.</li>
         </ul>
       </section>
+      <div class="member-terms-acceptance">
+        <label for="borrow_terms_accept">
+          <input id="borrow_terms_accept" type="checkbox" data-borrow-terms-accept>
+          <span>I have read and agree to the borrowing terms and penalties.</span>
+        </label>
+        <button type="button" class="button" data-borrow-terms-accept-button disabled>Accept Terms</button>
+      </div>
     </div>
   </div>
 </div>
