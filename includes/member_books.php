@@ -530,7 +530,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <input id="borrow_agreement" type="hidden" name="borrow_agreement" value="0" data-borrow-agreement>
           <div>
             <strong>Borrowing Terms</strong>
-            <span class="muted" data-borrow-terms-status>Review and accept the terms before submitting.</span>
+            <span class="muted" data-borrow-terms-status>Review and accept the terms and conditions to enable this request.</span>
           </div>
           <button type="button" class="button secondary member-terms-link" data-borrow-terms-open>Review Terms</button>
         </div>

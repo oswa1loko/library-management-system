@@ -385,7 +385,9 @@ function initBorrowSelection() {
     borrowSubmit.disabled = !accepted;
 
     if (borrowTermsStatus) {
-      borrowTermsStatus.textContent = accepted ? 'Terms accepted.' : 'Review and accept the terms before submitting.';
+      borrowTermsStatus.textContent = accepted
+        ? 'Terms accepted. You can now request this book.'
+        : 'Review and accept the terms and conditions to enable this request.';
       borrowTermsStatus.classList.toggle('is-accepted', accepted);
     }
   };
