@@ -191,12 +191,42 @@ if ($blockedBooksStmt) {
     }
 }
 
+$studentActiveBorrowBookIds = [];
+$studentHasActiveBorrowHold = false;
+if ($role === 'student') {
+    $activeBorrowBooksStmt = $conn->prepare("
+        SELECT DISTINCT book_id
+        FROM borrows
+        WHERE user_id = ?
+          AND status IN ('pending', 'borrowed', 'return_requested')
+    ");
+    if ($activeBorrowBooksStmt) {
+        $activeBorrowBooksStmt->bind_param('i', $userId);
+        $activeBorrowBooksStmt->execute();
+        $activeBorrowBooks = $activeBorrowBooksStmt->get_result();
+        while ($activeBorrowBooks && ($activeBorrowBookRow = $activeBorrowBooks->fetch_assoc())) {
+            $activeBorrowBookId = (int) ($activeBorrowBookRow['book_id'] ?? 0);
+            if ($activeBorrowBookId > 0) {
+                $studentActiveBorrowBookIds[$activeBorrowBookId] = true;
+            }
+        }
+        $activeBorrowBooksStmt->close();
+    }
+    $studentHasActiveBorrowHold = $studentActiveBorrowBookIds !== [];
+}
+
 $availableBooks = [];
 $unavailableBooks = [];
 while ($books && ($bookRow = $books->fetch_assoc())) {
     $bookId = (int) ($bookRow['id'] ?? 0);
     $bookRow['blocked_for_penalty'] = isset($blockedBookIds[$bookId]) ? 1 : 0;
-    if ((int) ($bookRow['qty_available'] ?? 0) > 0 && (int) ($bookRow['blocked_for_penalty'] ?? 0) !== 1) {
+    $bookRow['blocked_for_active_borrow'] = $studentHasActiveBorrowHold ? 1 : 0;
+    $bookRow['student_active_borrowed_title'] = isset($studentActiveBorrowBookIds[$bookId]) ? 1 : 0;
+    if (
+        (int) ($bookRow['qty_available'] ?? 0) > 0
+        && (int) ($bookRow['blocked_for_penalty'] ?? 0) !== 1
+        && (int) ($bookRow['blocked_for_active_borrow'] ?? 0) !== 1
+    ) {
         $availableBooks[] = $bookRow;
     } else {
         $unavailableBooks[] = $bookRow;
@@ -428,7 +458,22 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                               <span class="member-book-description"><?php echo h((string) $book['description']); ?></span>
                             <?php endif; ?>
                             <span class="member-book-option-meta">
-                              <span class="badge"><?php echo (int) ($book['blocked_for_penalty'] ?? 0) === 1 ? 'Penalty hold' : 'Unavailable'; ?></span>
+                              <?php
+                                $unavailableBadge = 'Unavailable';
+                                if ((int) ($book['blocked_for_active_borrow'] ?? 0) === 1) {
+                                    $unavailableBadge = (int) ($book['student_active_borrowed_title'] ?? 0) === 1 ? 'Borrowed' : 'Borrowing hold';
+                                } elseif ((int) ($book['blocked_for_penalty'] ?? 0) === 1) {
+                                    $unavailableBadge = 'Penalty hold';
+                                }
+                              ?>
+                              <span class="badge"><?php echo h($unavailableBadge); ?></span>
+                              <?php if ((int) ($book['blocked_for_active_borrow'] ?? 0) === 1): ?>
+                                <span class="muted">
+                                  <?php echo (int) ($book['student_active_borrowed_title'] ?? 0) === 1
+                                      ? 'This title is already in your active borrow records.'
+                                      : 'Return your current borrowed/requested book before borrowing another.'; ?>
+                                </span>
+                              <?php endif; ?>
                               <?php if ((int) ($book['blocked_for_penalty'] ?? 0) === 1): ?>
                                 <span class="muted">Settle the unpaid penalty for this title before borrowing it again.</span>
                               <?php endif; ?>
