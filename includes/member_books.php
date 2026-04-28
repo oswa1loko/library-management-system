@@ -15,7 +15,7 @@ $userId = (int) ($_SESSION['user_id'] ?? 0);
 $role = (string) $_SESSION['role'];
 $msg = '';
 $msgType = 'success';
-$requestedBookLimit = 5;
+$requestedBookLimit = $role === 'student' ? 1 : 5;
 
 if (isset($_POST['borrow'])) {
     $bookIdsRaw = $_POST['book_ids'] ?? ($_POST['book_id'] ?? []);
@@ -30,10 +30,10 @@ if (isset($_POST['borrow'])) {
     $bookQuantities = [];
     if (is_array($bookQtyRaw)) {
         foreach ($bookIds as $bookId) {
-            $bookQuantities[$bookId] = max(1, min(5, (int) ($bookQtyRaw[$bookId] ?? 1)));
+            $bookQuantities[$bookId] = max(1, min($requestedBookLimit, (int) ($bookQtyRaw[$bookId] ?? 1)));
         }
     } else {
-        $singleQty = max(1, min(5, (int) $bookQtyRaw));
+        $singleQty = max(1, min($requestedBookLimit, (int) $bookQtyRaw));
         foreach ($bookIds as $bookId) {
             $bookQuantities[$bookId] = $singleQty;
         }
@@ -48,7 +48,9 @@ if (isset($_POST['borrow'])) {
         $msgType = 'error';
     } elseif ($requestedCopies > $requestedBookLimit) {
         $limitLabel = $requestedBookLimit === 1 ? '1 book copy' : $requestedBookLimit . ' book copies';
-        $msg = 'You can only request up to ' . $limitLabel . ' in this submission.';
+        $msg = $role === 'student'
+            ? 'Students can only request 1 book and cannot request again while they still have a pending borrow, borrowed book, return request, or unpaid penalty.'
+            : 'You can only request up to ' . $limitLabel . ' in this submission.';
         $msgType = 'error';
     } elseif ($apiToken === '') {
         $msg = 'Unable to initialize API token right now.';
@@ -375,7 +377,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                           data-book-description="<?php echo h((string) ($book['description'] ?? '')); ?>"
                           data-book-cover="<?php echo h(app_url((string) ($book['cover_path'] ?? ''))); ?>"
                           data-book-available="<?php echo (int) $book['qty_available']; ?>"
-                          data-book-max-qty="<?php echo max(1, min(5, (int) $book['qty_available'])); ?>"
+                          data-book-max-qty="<?php echo max(1, min($requestedBookLimit, (int) $book['qty_available'])); ?>"
                           data-book-search-text="<?php echo h(strtolower($book['title'] . ' ' . $book['author'] . ' ' . $book['category'])); ?>"
                           data-book-category-value="<?php echo h(normalize_member_book_category((string) $book['category'])); ?>"
                         >
@@ -452,7 +454,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
       <div>
         <p class="muted eyebrow-compact">Borrow Request</p>
         <h3 id="member-borrow-modal-title" class="heading-card" data-book-modal-title>Request a Book</h3>
-        <p class="muted">Set the quantity and borrowing period, then submit your request for librarian approval.</p>
+        <p class="muted"><?php echo $role === 'student' ? 'Submit your request for librarian approval.' : 'Set the quantity and borrowing period, then submit your request for librarian approval.'; ?></p>
       </div>
       <button type="button" class="button secondary" data-book-modal-close>Close</button>
     </div>
@@ -494,6 +496,10 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
 window.memberBookSearchOptions = <?php echo json_encode($bookSearchSuggestions, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 window.memberBookInitialFilter = <?php echo json_encode([
     'bookId' => $initialBookFilter,
+], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+window.memberBorrowRules = <?php echo json_encode([
+    'role' => $role,
+    'maxCopiesPerRequest' => $requestedBookLimit,
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 </script>
 </body>

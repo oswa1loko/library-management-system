@@ -11,6 +11,10 @@ function initBorrowSelection() {
 
   const searchSuggestions = document.querySelector('[data-book-search-suggestions]');
   const searchOptions = Array.isArray(window.memberBookSearchOptions) ? window.memberBookSearchOptions : [];
+  const borrowRules = window.memberBorrowRules && typeof window.memberBorrowRules === 'object'
+    ? window.memberBorrowRules
+    : {};
+  const maxCopiesPerRequest = Math.max(1, parseInt(borrowRules.maxCopiesPerRequest || '5', 10));
   const initialFilterState = window.memberBookInitialFilter && typeof window.memberBookInitialFilter === 'object'
     ? window.memberBookInitialFilter
     : {};
@@ -347,8 +351,9 @@ function initBorrowSelection() {
       return;
     }
 
+    const effectiveMaxQty = Math.max(1, Math.min(maxCopiesPerRequest, maxQty));
     modalQty.innerHTML = '';
-    for (let qty = 1; qty <= maxQty; qty += 1) {
+    for (let qty = 1; qty <= effectiveMaxQty; qty += 1) {
       const option = document.createElement('option');
       option.value = String(qty);
       option.textContent = `${qty} cop${qty === 1 ? 'y' : 'ies'}`;

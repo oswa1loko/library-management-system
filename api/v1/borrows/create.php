@@ -32,6 +32,43 @@ $bookQuantities = [];
 foreach ($bookIds as $bookId) {
     $bookQuantities[$bookId] = max(1, min(5, (int) ($bookQtyRaw[$bookId] ?? 1)));
 }
+$requestedCopies = array_sum($bookQuantities);
+
+if ((string) ($user['role'] ?? '') === 'student') {
+    if ($requestedCopies > 1) {
+        api_error('Students can only request 1 book at a time.', 409);
+    }
+
+    $activeBorrowStmt = $conn->prepare("
+        SELECT COUNT(*) AS active_count
+        FROM borrows
+        WHERE user_id = ?
+          AND status IN ('pending', 'borrowed', 'return_requested')
+    ");
+    $activeBorrowStmt->bind_param('i', $user['id']);
+    $activeBorrowStmt->execute();
+    $activeBorrowRow = $activeBorrowStmt->get_result()->fetch_assoc();
+    $activeBorrowStmt->close();
+
+    if ((int) ($activeBorrowRow['active_count'] ?? 0) > 0) {
+        api_error('Students cannot request another book while they still have a pending, borrowed, or return-requested book.', 409);
+    }
+
+    $unpaidPenaltyStmt = $conn->prepare("
+        SELECT COUNT(*) AS penalty_count
+        FROM penalties
+        WHERE user_id = ?
+          AND status = 'unpaid'
+    ");
+    $unpaidPenaltyStmt->bind_param('i', $user['id']);
+    $unpaidPenaltyStmt->execute();
+    $unpaidPenaltyRow = $unpaidPenaltyStmt->get_result()->fetch_assoc();
+    $unpaidPenaltyStmt->close();
+
+    if ((int) ($unpaidPenaltyRow['penalty_count'] ?? 0) > 0) {
+        api_error('Students cannot request a book while they still have an unpaid penalty.', 409);
+    }
+}
 
 $placeholders = implode(',', array_fill(0, count($bookIds), '?'));
 $bookTypes = str_repeat('i', count($bookIds));
