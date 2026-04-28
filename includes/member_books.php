@@ -526,15 +526,66 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <label for="modal_days">Days to borrow</label>
           <input id="modal_days" type="number" name="days" value="7" min="1" max="30">
         </div>
-        <label class="checkbox-line member-borrow-agreement" for="borrow_agreement">
+        <div class="member-borrow-agreement">
           <input id="borrow_agreement" type="checkbox" name="borrow_agreement" value="1" required data-borrow-agreement>
-          <span>I confirm that I will take care of this book, return it on or before the due date, and accept any penalty for late return, loss, or damage.</span>
-        </label>
+          <label for="borrow_agreement">
+            I agree to the borrowing rules and accept the penalties for overdue returns, lost books, or damaged books.
+          </label>
+          <button type="button" class="button secondary member-terms-link" data-borrow-terms-open>View Terms</button>
+        </div>
         <div class="inline-actions member-workspace-actions">
           <button type="submit" name="borrow" value="1" disabled data-borrow-submit>Request This Book</button>
           <span class="muted">Available stock is reduced only after librarian approval.</span>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+<div class="desk-modal member-terms-modal" data-borrow-terms-modal hidden>
+  <div class="desk-modal-backdrop" data-borrow-terms-close></div>
+  <div class="desk-modal-dialog panel member-terms-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="borrow-terms-title">
+    <div class="desk-modal-head">
+      <div>
+        <p class="muted eyebrow-compact">Borrowing Agreement</p>
+        <h3 id="borrow-terms-title" class="heading-card">Terms and Conditions</h3>
+        <p class="muted">Review the borrowing rules before submitting your request.</p>
+      </div>
+      <button type="button" class="button secondary" data-borrow-terms-close>Close</button>
+    </div>
+    <div class="member-terms-content">
+      <section>
+        <h4>Borrowing Rules</h4>
+        <ul>
+          <li>Borrow requests are subject to librarian approval before pickup.</li>
+          <li>Students may only have one active borrowed or requested book at a time.</li>
+          <li>Books must be handled carefully and returned in the same condition as received.</li>
+          <li>Available stock is reduced only after the librarian approves the request.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Return and Due Date Rules</h4>
+        <ul>
+          <li>The borrower must return the book on or before the approved due date.</li>
+          <li>A return request is not final until the librarian confirms the physical book return.</li>
+          <li>Unreturned books may keep the borrower from making another request.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Overdue Penalties</h4>
+        <ul>
+          <li>Overdue books are charged PHP 2.00 per overdue day.</li>
+          <li>Overdue penalties remain unpaid until the payment is submitted and approved.</li>
+          <li>Unpaid penalties may prevent new borrowing requests.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Book Incident Penalties</h4>
+        <ul>
+          <li>Lost or damaged books must be reported through the Book Incidents page.</li>
+          <li>Incident fees are assessed after librarian review based on the reported loss or damage.</li>
+          <li>Incident payments must be reviewed and approved before the incident is considered settled.</li>
+        </ul>
+      </section>
     </div>
   </div>
 </div>

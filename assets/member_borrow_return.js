@@ -37,6 +37,9 @@ function initBorrowSelection() {
   const modalQty = document.querySelector('[data-book-modal-qty]');
   const borrowAgreement = document.querySelector('[data-borrow-agreement]');
   const borrowSubmit = document.querySelector('[data-borrow-submit]');
+  const termsModal = document.querySelector('[data-borrow-terms-modal]');
+  const termsOpenButtons = Array.from(document.querySelectorAll('[data-borrow-terms-open]'));
+  const termsCloseButtons = Array.from(document.querySelectorAll('[data-borrow-terms-close]'));
   const resultsPanel = document.querySelector('[data-book-results-panel]');
   let activeSuggestionIndex = -1;
   let syncUrlTimer = null;
@@ -345,7 +348,29 @@ function initBorrowSelection() {
     }
 
     modal.hidden = true;
-    document.body.classList.remove('modal-open');
+    if (!termsModal || termsModal.hidden) {
+      document.body.classList.remove('modal-open');
+    }
+  };
+
+  const openTermsModal = () => {
+    if (!termsModal) {
+      return;
+    }
+
+    termsModal.hidden = false;
+    document.body.classList.add('modal-open');
+  };
+
+  const closeTermsModal = () => {
+    if (!termsModal) {
+      return;
+    }
+
+    termsModal.hidden = true;
+    if (!modal || modal.hidden) {
+      document.body.classList.remove('modal-open');
+    }
   };
 
   const updateBorrowSubmitState = () => {
@@ -536,6 +561,18 @@ function initBorrowSelection() {
     node.addEventListener('click', closeModal);
   });
 
+  termsOpenButtons.forEach((node) => {
+    node.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openTermsModal();
+    });
+  });
+
+  termsCloseButtons.forEach((node) => {
+    node.addEventListener('click', closeTermsModal);
+  });
+
   if (borrowAgreement) {
     borrowAgreement.addEventListener('change', updateBorrowSubmitState);
     updateBorrowSubmitState();
@@ -543,6 +580,10 @@ function initBorrowSelection() {
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
+      if (termsModal && !termsModal.hidden) {
+        closeTermsModal();
+        return;
+      }
       closeModal();
     }
   });

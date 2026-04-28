@@ -8931,9 +8931,9 @@ button.member-book-search-suggestion{
 
 .member-borrow-agreement{
   display:grid;
-  grid-template-columns:auto minmax(0, 1fr);
+  grid-template-columns:auto minmax(0, 1fr) auto;
   gap:10px;
-  align-items:start;
+  align-items:center;
   margin:2px 0 0;
   padding:12px;
   border:1px solid rgba(148,163,184,0.24);
@@ -8945,7 +8945,56 @@ button.member-book-search-suggestion{
 }
 
 .member-borrow-agreement input{
-  margin-top:3px;
+  margin:0;
+}
+
+.member-borrow-agreement label{
+  min-width:0;
+}
+
+.member-terms-link{
+  white-space:nowrap;
+  padding:.48rem .7rem;
+  min-height:34px;
+  font-size:.78rem;
+}
+
+.member-terms-modal{
+  z-index:1400;
+}
+
+.member-terms-modal-dialog{
+  width:min(760px, calc(100vw - 32px));
+}
+
+.member-terms-content{
+  display:grid;
+  gap:14px;
+}
+
+.member-terms-content section{
+  display:grid;
+  gap:8px;
+  padding:14px;
+  border:1px solid rgba(148,163,184,0.18);
+  border-radius:16px;
+  background:rgba(15,23,42,0.22);
+}
+
+.member-terms-content h4{
+  margin:0;
+  font-size:.96rem;
+}
+
+.member-terms-content ul{
+  margin:0;
+  padding-left:1.1rem;
+  color:var(--muted);
+  line-height:1.5;
+}
+
+.member-terms-content li + li{
+  margin-top:5px;
 }
 
 body.modal-open{
@@ -9002,6 +9051,15 @@ body.modal-open{
   .member-borrow-modal-cover .member-book-option-cover{
     width:92px;
     height:128px;
+  }
+
+  .member-borrow-agreement{
+    grid-template-columns:auto minmax(0, 1fr);
+  }
+
+  .member-terms-link{
+    grid-column:2;
+    justify-self:start;
   }
 }
 
@@ -9069,6 +9127,36 @@ body.modal-open{
 
   .member-borrow-modal-dialog .member-workspace-actions > *{
     width:100%;
+  }
+
+  .desk-modal-dialog.member-terms-modal-dialog{
+    width:100%;
+    max-height:min(100dvh, 100vh);
+    min-height:min(78dvh, 640px);
+    border-radius:18px 18px 0 0;
+  }
+
+  .member-terms-modal-dialog .desk-modal-head{
+    position:sticky;
+    top:0;
+    z-index:2;
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:10px;
+    padding-bottom:12px;
+    background:inherit;
+  }
+
+  .member-terms-modal-dialog .desk-modal-head > .button.secondary{
+    justify-self:end;
+  }
+
+  .member-terms-content{
+    padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .member-terms-content section{
+    padding:12px;
   }
 }
 
