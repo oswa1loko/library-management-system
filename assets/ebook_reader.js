@@ -13,9 +13,11 @@ const PAGE_BUFFER = 2;
 const DESKTOP_BATCH_SIZE = 30;
 const MOBILE_BATCH_SIZE = 5;
 const MOBILE_LAYOUT_QUERY = '(max-width: 768px)';
+const SCREENSHOT_LIMIT = 5;
 
 async function renderReader(root) {
   const pdfUrl = root.dataset.pdfUrl || '';
+  const pdfTitle = root.dataset.pdfTitle || 'this eBook';
   const stage = root.querySelector('[data-ebook-stage]');
   const loading = root.querySelector('[data-ebook-loading]');
   const pageLabel = root.querySelector('[data-ebook-page-label]');
@@ -40,10 +42,16 @@ async function renderReader(root) {
   let scrollFrame = 0;
   let batchStart = 1;
   let lastWindowWidth = window.innerWidth;
+  let screenshotAttempts = 0;
+  let readerLocked = false;
+  let privacyOverlay = null;
+  let screenshotToast = null;
+  let screenshotToastTimer = 0;
   const pageStates = new Map();
   const pageMetrics = new Map();
   const mobileLayout = window.matchMedia(MOBILE_LAYOUT_QUERY);
   let lastLayoutMode = mobileLayout.matches ? 'mobile' : 'desktop';
+  const storageKey = `librarymanage.ebook.screenshotAttempts.${btoa(unescape(encodeURIComponent(pdfUrl))).slice(0, 80)}`;
 
   const isMobileLayout = () => mobileLayout.matches;
   const getPageShells = () => Array.from(stage.querySelectorAll('[data-page-number]'));
@@ -61,6 +69,125 @@ async function renderReader(root) {
   const getBatchSize = () => (isMobileLayout() ? getMobileBatchSize() : DESKTOP_BATCH_SIZE);
   const getBatchEnd = () => Math.min((pdfDocument?.numPages || 0), batchStart + getBatchSize() - 1);
   const getBatchStartForPage = (pageNumber) => Math.floor((pageNumber - 1) / getBatchSize()) * getBatchSize() + 1;
+
+  const getStoredScreenshotAttempts = () => {
+    try {
+      return Math.max(0, parseInt(window.localStorage.getItem(storageKey) || '0', 10));
+    } catch (error) {
+      return 0;
+    }
+  };
+
+  const storeScreenshotAttempts = (value) => {
+    try {
+      window.localStorage.setItem(storageKey, String(Math.max(0, value)));
+    } catch (error) {
+      // Storage can be unavailable in private browsing; in-memory tracking still applies.
+    }
+  };
+
+  const ensurePrivacyOverlay = () => {
+    if (privacyOverlay) {
+      return privacyOverlay;
+    }
+
+    privacyOverlay = document.createElement('div');
+    privacyOverlay.className = 'ebook-reader-privacy-overlay';
+    privacyOverlay.setAttribute('aria-live', 'polite');
+    privacyOverlay.innerHTML = `
+      <div class="ebook-reader-privacy-card">
+        <strong data-ebook-privacy-title>Reader Protected</strong>
+        <span data-ebook-privacy-message>This eBook is hidden while the reader is inactive.</span>
+      </div>
+    `;
+    root.appendChild(privacyOverlay);
+    return privacyOverlay;
+  };
+
+  const setPrivacyOverlay = (visible, title = 'Reader Protected', message = 'This eBook is hidden while the reader is inactive.', locked = false) => {
+    const overlay = ensurePrivacyOverlay();
+    const titleNode = overlay.querySelector('[data-ebook-privacy-title]');
+    const messageNode = overlay.querySelector('[data-ebook-privacy-message]');
+
+    if (titleNode) {
+      titleNode.textContent = title;
+    }
+
+    if (messageNode) {
+      messageNode.textContent = message;
+    }
+
+    overlay.classList.toggle('is-locked', locked);
+    overlay.hidden = !visible;
+    root.classList.toggle('is-privacy-covered', visible);
+    root.classList.toggle('is-screenshot-locked', locked);
+  };
+
+  const hidePrivacyOverlay = () => {
+    if (readerLocked) {
+      return;
+    }
+
+    setPrivacyOverlay(false);
+  };
+
+  const showScreenshotToast = (message) => {
+    if (!screenshotToast) {
+      screenshotToast = document.createElement('div');
+      screenshotToast.className = 'ebook-reader-protection-toast';
+      screenshotToast.setAttribute('role', 'status');
+      screenshotToast.setAttribute('aria-live', 'polite');
+      root.appendChild(screenshotToast);
+    }
+
+    screenshotToast.textContent = message;
+    screenshotToast.hidden = false;
+    window.clearTimeout(screenshotToastTimer);
+    screenshotToastTimer = window.setTimeout(() => {
+      if (screenshotToast) {
+        screenshotToast.hidden = true;
+      }
+    }, 3200);
+  };
+
+  const lockReaderForScreenshots = () => {
+    readerLocked = true;
+    releaseStageCanvases();
+    setPrivacyOverlay(
+      true,
+      'Screenshot Limit Reached',
+      `${pdfTitle} has been locked after ${SCREENSHOT_LIMIT} screenshot or print attempts.`,
+      true
+    );
+    pageLabel.textContent = 'Reader locked';
+    [fitWidthButton, zoomOutButton, zoomInButton, pageJumpButton, pageInput, ...prevButtons, ...nextButtons]
+      .filter(Boolean)
+      .forEach((control) => {
+        control.disabled = true;
+      });
+  };
+
+  const registerScreenshotAttempt = (reason) => {
+    if (readerLocked) {
+      return;
+    }
+
+    screenshotAttempts = Math.max(screenshotAttempts, getStoredScreenshotAttempts()) + 1;
+    storeScreenshotAttempts(screenshotAttempts);
+
+    if (screenshotAttempts >= SCREENSHOT_LIMIT) {
+      lockReaderForScreenshots();
+      return;
+    }
+
+    const remaining = Math.max(0, SCREENSHOT_LIMIT - screenshotAttempts);
+    showScreenshotToast(`${reason} blocked. ${remaining} screenshot attempt${remaining === 1 ? '' : 's'} remaining before reader lock.`);
+  };
+
+  screenshotAttempts = getStoredScreenshotAttempts();
+  if (screenshotAttempts >= SCREENSHOT_LIMIT) {
+    readerLocked = true;
+  }
 
   const getScaleForDimensions = (baseWidth) => {
     const stageWidth = Math.max(stage.clientWidth || 0, 320);
@@ -100,7 +227,7 @@ async function renderReader(root) {
   };
 
   const updateControls = () => {
-    if (!pdfDocument) {
+    if (!pdfDocument || readerLocked) {
       return;
     }
 
@@ -478,6 +605,18 @@ async function renderReader(root) {
   }
 
   document.addEventListener('keydown', async (event) => {
+    if (event.key === 'PrintScreen') {
+      event.preventDefault();
+      registerScreenshotAttempt('Screenshot attempt');
+      return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
+      event.preventDefault();
+      registerScreenshotAttempt('Print attempt');
+      return;
+    }
+
     const target = event.target;
     const tagName = target instanceof HTMLElement ? target.tagName : '';
     const isTypingTarget =
@@ -502,6 +641,34 @@ async function renderReader(root) {
       event.preventDefault();
       await goToNextPage();
     }
+  });
+
+  root.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    showScreenshotToast('Right-click is disabled in the eBook reader.');
+  });
+
+  window.addEventListener('blur', () => {
+    if (readerLocked) {
+      return;
+    }
+
+    setPrivacyOverlay(true, 'Reader Hidden', 'Return to this tab to continue reading.');
+  });
+
+  window.addEventListener('focus', hidePrivacyOverlay);
+
+  document.addEventListener('visibilitychange', () => {
+    if (readerLocked) {
+      return;
+    }
+
+    if (document.hidden) {
+      setPrivacyOverlay(true, 'Reader Hidden', 'This eBook is hidden while the tab is inactive.');
+      return;
+    }
+
+    hidePrivacyOverlay();
   });
 
   zoomOutButton.addEventListener('click', async () => {
@@ -579,6 +746,10 @@ async function renderReader(root) {
       withCredentials: true,
     }).promise;
     loading.remove();
+    if (readerLocked) {
+      lockReaderForScreenshots();
+      return;
+    }
 
     for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
       const page = await pdfDocument.getPage(pageNumber);

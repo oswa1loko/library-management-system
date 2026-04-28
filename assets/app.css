@@ -11441,6 +11441,7 @@ body.payment-proof-screen{
   gap: 14px;
   max-width: 1240px;
   margin: 0 auto;
+  position: relative;
 }
 
 .sr-only {
@@ -11810,6 +11811,74 @@ body.ebook-reader-screen {
   display: flex;
   justify-content: center;
   gap: 12px;
+}
+
+.ebook-reader-privacy-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  padding: 24px;
+  border-radius: 28px;
+  background: #000;
+  color: #fff;
+  text-align: center;
+}
+
+.ebook-reader-privacy-overlay[hidden],
+.ebook-reader-protection-toast[hidden] {
+  display: none !important;
+}
+
+.ebook-reader-privacy-card {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 440px);
+  padding: 24px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 18px;
+  background: rgba(10,10,10,0.88);
+}
+
+.ebook-reader-privacy-card strong {
+  font-size: 1.18rem;
+  line-height: 1.25;
+}
+
+.ebook-reader-privacy-card span {
+  color: rgba(255,255,255,0.76);
+  line-height: 1.5;
+}
+
+.ebook-reader-privacy-overlay.is-locked {
+  position: fixed;
+  border-radius: 0;
+}
+
+.ebook-reader-shell.is-screenshot-locked .ebook-reader-toolbar,
+.ebook-reader-shell.is-screenshot-locked .ebook-reader-stage-wrap,
+.ebook-reader-shell.is-screenshot-locked .ebook-reader-page-controls {
+  opacity: 0.16;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ebook-reader-protection-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1450;
+  width: min(360px, calc(100vw - 32px));
+  padding: 13px 15px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 14px;
+  background: rgba(5,16,30,0.94);
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.32);
+  font-size: .9rem;
+  line-height: 1.45;
 }
 
 .ebook-reader-mobile-open {
