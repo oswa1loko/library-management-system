@@ -351,6 +351,13 @@ if ($selectedBorrowerId > 0) {
               $hasOverdue = (int) ($borrower['overdue_count'] ?? 0) > 0;
               $penaltyBalance = (float) ($borrower['unpaid_penalty_total'] ?? 0);
               $incidentBalance = (float) ($borrower['incident_balance'] ?? 0);
+              $balanceParts = [];
+              if ($penaltyBalance > 0) {
+                  $balanceParts[] = 'Penalty ' . format_currency($penaltyBalance);
+              }
+              if ($incidentBalance > 0) {
+                  $balanceParts[] = 'Incident ' . format_currency($incidentBalance);
+              }
               ?>
               <tr class="borrower-row<?php echo $hasOverdue ? ' is-overdue' : ''; ?>" data-row-href="<?php echo h($borrowerModalHref); ?>" tabindex="0" aria-label="View books for <?php echo h((string) $borrower['fullname']); ?>">
                 <td>
@@ -373,7 +380,11 @@ if ($selectedBorrowerId > 0) {
                 <td>
                   <span class="muted borrower-balance-label">Current Balance</span>
                   <strong class="label-block"><?php echo h(format_currency($penaltyBalance + $incidentBalance)); ?></strong>
-                  <span class="muted borrower-balance-breakdown">Penalty <?php echo h(format_currency($penaltyBalance)); ?> | Incident <?php echo h(format_currency($incidentBalance)); ?></span>
+                  <?php if ($balanceParts !== []): ?>
+                    <span class="muted borrower-balance-breakdown"><?php echo h(implode(' | ', $balanceParts)); ?></span>
+                  <?php else: ?>
+                    <span class="muted borrower-balance-breakdown">No unpaid balance</span>
+                  <?php endif; ?>
                 </td>
                 <td><span class="muted"><?php echo h($titlePreview !== '' ? $titlePreview : 'No active titles'); ?></span></td>
                 <td>
