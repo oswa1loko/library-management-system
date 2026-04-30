@@ -8,6 +8,7 @@ require_role('librarian');
 $search = trim((string) ($_GET['search'] ?? ''));
 $roleFilter = trim((string) ($_GET['role'] ?? 'all'));
 $statusFilter = trim((string) ($_GET['status'] ?? 'all'));
+$selectedBorrowerId = max(0, (int) ($_GET['borrower_id'] ?? 0));
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 20;
 
@@ -128,6 +129,57 @@ if ($types !== '') {
 $stmt->execute();
 $borrowers = $stmt->get_result();
 $pageQuery = $_GET;
+$closeQuery = $pageQuery;
+unset($closeQuery['borrower_id']);
+$closeHref = 'borrowers.php' . ($closeQuery !== [] ? '?' . http_build_query($closeQuery) : '');
+$selectedBorrower = null;
+$selectedBorrowRecords = [];
+if ($selectedBorrowerId > 0) {
+    $detailStmt = $conn->prepare("
+        SELECT
+          br.id,
+          br.requested_at,
+          br.approved_at,
+          br.borrow_date,
+          br.due_date,
+          br.due_at,
+          br.status,
+          u.fullname,
+          u.username,
+          u.email,
+          u.role,
+          b.title,
+          b.author,
+          b.qty_available
+        FROM borrows br
+        JOIN users u ON u.id = br.user_id
+        JOIN books b ON b.id = br.book_id
+        WHERE br.user_id = ?
+          AND br.status IN ('pending', 'borrowed', 'return_requested')
+        ORDER BY
+          br.status = 'return_requested' DESC,
+          br.status = 'pending' DESC,
+          br.due_date ASC,
+          br.id DESC
+    ");
+    if ($detailStmt) {
+        $detailStmt->bind_param('i', $selectedBorrowerId);
+        $detailStmt->execute();
+        $detailRows = $detailStmt->get_result();
+        while ($detailRows && ($detailRow = $detailRows->fetch_assoc())) {
+            if ($selectedBorrower === null) {
+                $selectedBorrower = [
+                    'fullname' => (string) ($detailRow['fullname'] ?? ''),
+                    'username' => (string) ($detailRow['username'] ?? ''),
+                    'email' => (string) ($detailRow['email'] ?? ''),
+                    'role' => (string) ($detailRow['role'] ?? ''),
+                ];
+            }
+            $selectedBorrowRecords[] = $detailRow;
+        }
+        $detailStmt->close();
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -272,11 +324,27 @@ $pageQuery = $_GET;
               $borrowerSearch = trim((string) ($borrower['username'] ?? '')) !== ''
                   ? (string) $borrower['username']
                   : (string) $borrower['fullname'];
+              $borrowerModalQuery = $pageQuery;
+              $borrowerModalQuery['borrower_id'] = (int) $borrower['id'];
               ?>
               <tr>
                 <td>
                   <strong class="label-block"><?php echo h((string) $borrower['fullname']); ?></strong>
                   <span class="muted"><?php echo h((string) $borrower['username']); ?><?php echo trim((string) ($borrower['email'] ?? '')) !== '' ? ' | ' . h((string) $borrower['email']) : ''; ?></span>
+                  <span class="inline-actions chips-row meta-top-sm">
+                    <?php if ((int) ($borrower['overdue_count'] ?? 0) > 0): ?>
+                      <span class="chip">Overdue</span>
+                    <?php endif; ?>
+                    <?php if ((int) ($borrower['due_today_count'] ?? 0) > 0): ?>
+                      <span class="chip">Due Today</span>
+                    <?php endif; ?>
+                    <?php if ((int) ($borrower['pending_return_count'] ?? 0) > 0): ?>
+                      <span class="chip">Pending Return</span>
+                    <?php endif; ?>
+                    <?php if ((int) ($borrower['pending_approval_count'] ?? 0) > 0): ?>
+                      <span class="chip">Pending Approval</span>
+                    <?php endif; ?>
+                  </span>
                 </td>
                 <td><span class="badge"><?php echo h(role_label((string) $borrower['role'])); ?></span></td>
                 <td><?php echo (int) ($borrower['active_borrow_count'] ?? 0); ?></td>
@@ -296,7 +364,10 @@ $pageQuery = $_GET;
                   <?php endif; ?>
                 </td>
                 <td>
-                  <a class="button secondary" href="manage_borrow_records.php?search=<?php echo urlencode($borrowerSearch); ?>">View Records</a>
+                  <div class="inline-actions">
+                    <a class="button secondary" href="borrowers.php?<?php echo h(http_build_query($borrowerModalQuery)); ?>">View Books</a>
+                    <a class="button secondary" href="manage_borrow_records.php?search=<?php echo urlencode($borrowerSearch); ?>">Records</a>
+                  </div>
                 </td>
               </tr>
             <?php endwhile; ?>
@@ -307,6 +378,84 @@ $pageQuery = $_GET;
   </div>
   </div>
 </div>
+<?php if ($selectedBorrowerId > 0): ?>
+  <div class="desk-modal" data-desk-modal>
+    <a class="desk-modal-backdrop" href="<?php echo h($closeHref); ?>" aria-label="Close borrower details"></a>
+    <div class="desk-modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="borrower-details-modal-title">
+      <div class="desk-modal-head">
+        <div>
+          <p class="muted eyebrow-compact">Borrower Details</p>
+          <h3 id="borrower-details-modal-title" class="heading-card">
+            <?php echo h((string) ($selectedBorrower['fullname'] ?? 'Borrower')); ?>
+          </h3>
+          <p class="muted">
+            <?php if ($selectedBorrower): ?>
+              <?php echo h(role_label((string) ($selectedBorrower['role'] ?? ''))); ?> |
+              <?php echo h((string) ($selectedBorrower['username'] ?? '')); ?>
+              <?php echo trim((string) ($selectedBorrower['email'] ?? '')) !== '' ? ' | ' . h((string) $selectedBorrower['email']) : ''; ?>
+            <?php else: ?>
+              This borrower has no current active, pending, or return-requested records.
+            <?php endif; ?>
+          </p>
+        </div>
+        <a class="button secondary" href="<?php echo h($closeHref); ?>">Close</a>
+      </div>
+
+      <?php if ($selectedBorrowRecords === []): ?>
+        <div class="empty-state">No current borrow records are available for this borrower.</div>
+      <?php else: ?>
+        <div class="table-wrap table-wrap-top">
+          <table>
+            <thead>
+              <tr>
+                <th>Borrow ID</th>
+                <th>Book</th>
+                <th>Author</th>
+                <th>Borrowed / Requested</th>
+                <th>Due Date</th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($selectedBorrowRecords as $record): ?>
+                <?php
+                $state = 'On time';
+                $waitingForStock = (string) ($record['status'] ?? '') === 'pending' && (int) ($record['qty_available'] ?? 0) <= 0;
+                if ((string) ($record['status'] ?? '') === 'pending') {
+                    $state = $waitingForStock ? 'Waiting for stock' : 'Pending approval';
+                } elseif ((string) ($record['status'] ?? '') === 'return_requested') {
+                    $state = 'Awaiting return confirmation';
+                } elseif ((string) ($record['due_date'] ?? '') < date('Y-m-d')) {
+                    $state = 'Overdue';
+                } elseif ((string) ($record['due_date'] ?? '') === date('Y-m-d')) {
+                    $state = 'Due today';
+                }
+                ?>
+                <tr>
+                  <td>#<?php echo (int) ($record['id'] ?? 0); ?></td>
+                  <td><strong class="label-block"><?php echo h((string) ($record['title'] ?? '')); ?></strong></td>
+                  <td><?php echo h((string) ($record['author'] ?? '')); ?></td>
+                  <td><?php echo h(format_display_datetime((string) (((string) ($record['status'] ?? '') === 'pending' ? ($record['requested_at'] ?? '') : ($record['approved_at'] ?? '')) ?: ($record['borrow_date'] ?? '')), '-')); ?></td>
+                  <td><?php echo (string) ($record['status'] ?? '') === 'pending' ? '-' : h(format_display_datetime((string) (($record['due_at'] ?? '') ?: ($record['due_date'] ?? '')), '-')); ?></td>
+                  <td>
+                    <span class="badge">
+                      <span class="status-dot <?php echo $state === 'Overdue' ? 'overdue' : ($state === 'Due today' ? 'due' : ($state === 'Waiting for stock' ? 'waiting_stock' : ((string) ($record['status'] ?? '') === 'pending' ? 'pending' : ((string) ($record['status'] ?? '') === 'return_requested' ? 'return_requested' : 'approved')))); ?>"></span>
+                      <?php echo h($state); ?>
+                    </span>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="inline-actions member-workspace-actions">
+          <a class="button" href="manage_borrow_records.php?search=<?php echo urlencode((string) ($selectedBorrower['username'] ?? $selectedBorrower['fullname'] ?? '')); ?>">Open Full Records</a>
+          <span class="muted">This modal only shows current active, pending, and return-requested records.</span>
+        </div>
+      <?php endif; ?>
+    </div>
+  </div>
+<?php endif; ?>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($ajaxPanelVersion); ?>"></script>
 </body>
