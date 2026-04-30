@@ -3935,6 +3935,44 @@ body.auth-page > .theme-toggle{
   margin-top:16px;
 }
 
+.borrower-quick-filters{
+  gap:8px;
+}
+
+.borrower-filter-chip{
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.borrower-filter-chip.is-active{
+  border-color:var(--brand);
+  color:var(--brand);
+  background:var(--brand-soft);
+}
+
+.borrower-row{
+  position:relative;
+  cursor:pointer;
+}
+
+.borrower-row:hover{
+  background:rgba(143,211,255,0.06);
+}
+
+.borrower-row:focus{
+  outline:2px solid var(--brand);
+  outline-offset:-2px;
+}
+
+.borrower-row.is-overdue{
+  box-shadow:inset 4px 0 0 rgba(255,127,127,0.82);
+  background:linear-gradient(90deg, rgba(255,127,127,0.1), transparent 42%);
+}
+
+.borrower-row.is-overdue:hover{
+  background:linear-gradient(90deg, rgba(255,127,127,0.14), rgba(143,211,255,0.06) 58%, transparent);
+}
+
 .inline-actions-spread{
   justify-content:space-between;
 }

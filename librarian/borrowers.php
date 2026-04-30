@@ -132,6 +132,40 @@ $pageQuery = $_GET;
 $closeQuery = $pageQuery;
 unset($closeQuery['borrower_id']);
 $closeHref = 'borrowers.php' . ($closeQuery !== [] ? '?' . http_build_query($closeQuery) : '');
+$quickFilterBase = $pageQuery;
+unset($quickFilterBase['role'], $quickFilterBase['status'], $quickFilterBase['page'], $quickFilterBase['borrower_id']);
+$quickFilters = [
+    [
+        'label' => 'All',
+        'role' => 'all',
+        'status' => 'all',
+        'active' => $roleFilter === 'all' && $statusFilter === 'all',
+    ],
+    [
+        'label' => 'Students',
+        'role' => 'student',
+        'status' => 'all',
+        'active' => $roleFilter === 'student' && $statusFilter === 'all',
+    ],
+    [
+        'label' => 'Faculty',
+        'role' => 'faculty',
+        'status' => 'all',
+        'active' => $roleFilter === 'faculty' && $statusFilter === 'all',
+    ],
+    [
+        'label' => 'Overdue',
+        'role' => $roleFilter,
+        'status' => 'overdue',
+        'active' => $statusFilter === 'overdue',
+    ],
+    [
+        'label' => 'Due Today',
+        'role' => $roleFilter,
+        'status' => 'due_today',
+        'active' => $statusFilter === 'due_today',
+    ],
+];
 $selectedBorrower = null;
 $selectedBorrowRecords = [];
 if ($selectedBorrowerId > 0) {
@@ -276,6 +310,21 @@ if ($selectedBorrowerId > 0) {
           <a class="button secondary" href="borrowers.php" data-ajax-filter-link>Reset</a>
         </div>
       </form>
+      <div class="inline-actions chips-row borrower-quick-filters flow-top-sm">
+        <?php foreach ($quickFilters as $quickFilter): ?>
+          <?php
+          $quickQuery = $quickFilterBase;
+          if ((string) $quickFilter['role'] !== 'all') {
+              $quickQuery['role'] = (string) $quickFilter['role'];
+          }
+          if ((string) $quickFilter['status'] !== 'all') {
+              $quickQuery['status'] = (string) $quickFilter['status'];
+          }
+          $quickHref = 'borrowers.php' . ($quickQuery !== [] ? '?' . http_build_query($quickQuery) : '');
+          ?>
+          <a class="chip borrower-filter-chip<?php echo !empty($quickFilter['active']) ? ' is-active' : ''; ?>" href="<?php echo h($quickHref); ?>" data-ajax-filter-link><?php echo h((string) $quickFilter['label']); ?></a>
+        <?php endforeach; ?>
+      </div>
 
       <div class="inline-actions flow-top-sm">
         <span class="muted">
@@ -326,8 +375,10 @@ if ($selectedBorrowerId > 0) {
                   : (string) $borrower['fullname'];
               $borrowerModalQuery = $pageQuery;
               $borrowerModalQuery['borrower_id'] = (int) $borrower['id'];
+              $borrowerModalHref = 'borrowers.php?' . http_build_query($borrowerModalQuery);
+              $hasOverdue = (int) ($borrower['overdue_count'] ?? 0) > 0;
               ?>
-              <tr>
+              <tr class="borrower-row<?php echo $hasOverdue ? ' is-overdue' : ''; ?>" data-row-href="<?php echo h($borrowerModalHref); ?>" tabindex="0" aria-label="View books for <?php echo h((string) $borrower['fullname']); ?>">
                 <td>
                   <strong class="label-block"><?php echo h((string) $borrower['fullname']); ?></strong>
                   <span class="muted"><?php echo h((string) $borrower['username']); ?><?php echo trim((string) ($borrower['email'] ?? '')) !== '' ? ' | ' . h((string) $borrower['email']) : ''; ?></span>
@@ -365,7 +416,7 @@ if ($selectedBorrowerId > 0) {
                 </td>
                 <td>
                   <div class="inline-actions">
-                    <a class="button secondary" href="borrowers.php?<?php echo h(http_build_query($borrowerModalQuery)); ?>">View Books</a>
+                    <a class="button secondary" href="<?php echo h($borrowerModalHref); ?>">View Books</a>
                     <a class="button secondary" href="manage_borrow_records.php?search=<?php echo urlencode($borrowerSearch); ?>">Records</a>
                   </div>
                 </td>
@@ -458,5 +509,26 @@ if ($selectedBorrowerId > 0) {
 <?php endif; ?>
 <script src="/librarymanage/assets/member_sidebar.js?v=<?php echo urlencode($memberSidebarVersion); ?>"></script>
 <script src="/librarymanage/assets/admin_ajax_panel.js?v=<?php echo urlencode($ajaxPanelVersion); ?>"></script>
+<script>
+document.addEventListener('click', function (event) {
+  var row = event.target.closest('[data-row-href]');
+  if (!row || event.target.closest('a, button, input, select, textarea')) {
+    return;
+  }
+  window.location.href = row.getAttribute('data-row-href');
+});
+
+document.addEventListener('keydown', function (event) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return;
+  }
+  var row = event.target.closest('[data-row-href]');
+  if (!row) {
+    return;
+  }
+  event.preventDefault();
+  window.location.href = row.getAttribute('data-row-href');
+});
+</script>
 </body>
 </html>
