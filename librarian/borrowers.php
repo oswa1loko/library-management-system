@@ -78,7 +78,7 @@ $borrowerSelectSql = "
       COALESCE(SUM(CASE WHEN br.status = 'return_requested' THEN 1 ELSE 0 END), 0) AS pending_return_count,
       MIN(CASE WHEN br.status IN ('borrowed', 'return_requested') THEN COALESCE(br.due_at, CONCAT(br.due_date, ' 23:59:59')) ELSE NULL END) AS next_due_at,
       MAX(COALESCE(br.approved_at, br.requested_at, br.borrow_date)) AS latest_activity_at,
-      GROUP_CONCAT(DISTINCT b.title ORDER BY br.due_date ASC, br.id DESC SEPARATOR '||') AS borrowed_titles
+      GROUP_CONCAT(b.title ORDER BY br.due_date ASC, br.id DESC SEPARATOR '||') AS borrowed_titles
     FROM borrows br
     JOIN users u ON u.id = br.user_id
     JOIN books b ON b.id = br.book_id
@@ -89,6 +89,10 @@ $borrowerSelectSql = "
 
 $countSql = "SELECT COUNT(*) AS total FROM ({$borrowerSelectSql}) borrower_rows";
 $countStmt = $conn->prepare($countSql);
+if (!$countStmt) {
+    http_response_code(500);
+    die('Borrowers page could not load its grouped count query. Please contact the system administrator.');
+}
 if ($types !== '') {
     $countStmt->bind_param($types, ...$params);
 }
@@ -113,6 +117,10 @@ $sql = $borrowerSelectSql . "
     LIMIT ? OFFSET ?
 ";
 $stmt = $conn->prepare($sql);
+if (!$stmt) {
+    http_response_code(500);
+    die('Borrowers page could not load its grouped borrower query. Please contact the system administrator.');
+}
 $queryParams = $params;
 $queryTypes = $types . 'ii';
 $queryParams[] = $perPage;
