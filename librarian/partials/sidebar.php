@@ -22,6 +22,10 @@ $sidebarPage = isset($sidebarPage) ? (string) $sidebarPage : 'dashboard';
       <span class="dashboard-icon icon-recent" aria-hidden="true"></span>
       <span class="member-sidebar-label">Return Requests</span>
     </a>
+    <a class="member-sidebar-link <?php echo $sidebarPage === 'borrowers' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/borrowers.php" data-tooltip="Borrowers">
+      <span class="dashboard-icon icon-ledger" aria-hidden="true"></span>
+      <span class="member-sidebar-label">Borrowers</span>
+    </a>
     <a class="member-sidebar-link <?php echo $sidebarPage === 'borrow_records' ? 'is-active' : ''; ?>" href="/librarymanage/librarian/manage_borrow_records.php" data-tooltip="Borrow Records">
       <span class="dashboard-icon icon-books" aria-hidden="true"></span>
       <span class="member-sidebar-label">Borrow Records</span>
