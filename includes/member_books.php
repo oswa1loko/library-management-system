@@ -530,7 +530,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <label for="modal_days">Days to borrow</label>
           <?php if ($role === 'student'): ?>
             <input id="modal_days" type="hidden" name="days" value="7">
-            <div class="empty-state">Student borrow duration is fixed at 7 days from librarian approval.</div>
+            <div class="empty-state">Librarian will approve student borrow duration for either 5 or 7 days.</div>
           <?php else: ?>
             <input id="modal_days" type="number" name="days" value="7" min="1" max="30">
           <?php endif; ?>
@@ -569,7 +569,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <li>Borrow requests are subject to librarian approval before pickup.</li>
           <li>Pending borrow requests expire automatically if not approved within 5 days.</li>
           <?php if ($role === 'student'): ?>
-            <li>Student approved borrows last 7 days from librarian approval.</li>
+            <li>Student approved borrows last 5 or 7 days, depending on the librarian's approval.</li>
           <?php endif; ?>
           <li>Students may only have one active borrowed or requested book at a time.</li>
           <li>Books must be handled carefully and returned in the same condition as received.</li>

@@ -14,7 +14,29 @@ $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 20;
 $today = date('Y-m-d');
 
-function approve_pending_borrow(mysqli $conn, int $borrowId): array
+function librarian_selected_student_borrow_days(): ?int
+{
+    $approvalDays = (int) ($_POST['approval_days'] ?? 0);
+    return in_array($approvalDays, [5, 7], true) ? $approvalDays : null;
+}
+
+function render_student_approval_days_control(string $role): void
+{
+    if ($role !== 'student') {
+        return;
+    }
+    ?>
+    <label class="approval-days-control">
+      <span class="muted">Approval duration</span>
+      <select name="approval_days">
+        <option value="7">7 days</option>
+        <option value="5">5 days</option>
+      </select>
+    </label>
+    <?php
+}
+
+function approve_pending_borrow(mysqli $conn, int $borrowId, ?int $studentApprovalDays = null): array
 {
     $borrowStmt = $conn->prepare("
         SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.request_batch, br.requested_at, u.role, b.title
@@ -39,7 +61,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
     }
 
     if ((string) $userRole === 'student') {
-        $borrowDays = 7;
+        $borrowDays = in_array((int) $studentApprovalDays, [5, 7], true) ? (int) $studentApprovalDays : 7;
     }
     $borrowDays = max(1, min((int) $borrowDays, 30));
     $approvedAt = date('Y-m-d H:i:s');
@@ -59,10 +81,10 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
 
     $approveStmt = $conn->prepare("
         UPDATE borrows
-        SET status = 'borrowed', borrow_date = ?, approved_at = ?, due_date = ?, due_at = ?, return_date = NULL, returned_at = NULL, return_requested_at = NULL
+        SET status = 'borrowed', borrow_date = ?, approved_at = ?, due_date = ?, due_at = ?, borrow_days = ?, return_date = NULL, returned_at = NULL, return_requested_at = NULL
         WHERE id = ? AND status = 'pending'
     ");
-    $approveStmt->bind_param('ssssi', $borrowDate, $approvedAt, $dueDate, $dueAt, $borrowId);
+    $approveStmt->bind_param('ssssii', $borrowDate, $approvedAt, $dueDate, $dueAt, $borrowDays, $borrowId);
     $approveStmt->execute();
 
     if ($approveStmt->affected_rows !== 1) {
@@ -81,6 +103,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         'book_title' => (string) $bookTitle,
         'approved_at' => $approvedAt,
         'borrow_date' => $borrowDate,
+        'borrow_days' => $borrowDays,
         'due_at' => $dueAt,
         'due_date' => $dueDate,
     ];
@@ -246,10 +269,11 @@ if (isset($_POST['mark_returned'])) {
 
 if (isset($_POST['approve_borrow'])) {
     $borrowId = (int) ($_POST['borrow_id'] ?? 0);
+    $studentApprovalDays = librarian_selected_student_borrow_days();
     $conn->begin_transaction();
 
     try {
-        $result = approve_pending_borrow($conn, $borrowId);
+        $result = approve_pending_borrow($conn, $borrowId, $studentApprovalDays);
         if (($result['ok'] ?? false) !== true) {
             throw new RuntimeException((string) ($result['reason'] ?? 'approve_failed'));
         }
@@ -281,6 +305,7 @@ if (isset($_POST['approve_borrow'])) {
             'book_id' => (int) $result['book_id'],
             'user_id' => (int) $result['user_id'],
             'borrow_date' => (string) $result['borrow_date'],
+            'borrow_days' => (int) ($result['borrow_days'] ?? 0),
             'due_date' => (string) $result['due_date'],
             'approval_email_queued' => $emailQueued,
             'approval_email_sent' => (int) ($emailDispatch['sent'] ?? 0) > 0,
@@ -306,6 +331,7 @@ if (isset($_POST['approve_borrow'])) {
 
 if (isset($_POST['approve_batch'])) {
     $requestBatch = trim((string) ($_POST['request_batch'] ?? ''));
+    $studentApprovalDays = librarian_selected_student_borrow_days();
 
     if ($requestBatch === '') {
         $msg = 'Request batch is missing.';
@@ -332,7 +358,7 @@ if (isset($_POST['approve_batch'])) {
 
             try {
                 foreach ($batchRows as $row) {
-                    $result = approve_pending_borrow($conn, (int) $row['id']);
+                    $result = approve_pending_borrow($conn, (int) $row['id'], $studentApprovalDays);
                     if (($result['ok'] ?? false) === true) {
                         $approved[] = $result;
                     } else {
@@ -381,6 +407,7 @@ if (isset($_POST['approve_batch'])) {
                         'book_id' => (int) $result['book_id'],
                         'user_id' => (int) $result['user_id'],
                         'borrow_date' => (string) $result['borrow_date'],
+                        'borrow_days' => (int) ($result['borrow_days'] ?? 0),
                         'due_date' => (string) $result['due_date'],
                         'request_batch' => $requestBatch,
                         'approval_email_queued' => $emailQueued,
@@ -1143,6 +1170,7 @@ if ($selectedPendingReturnBatch) {
               <?php else: ?>
                 <form method="post" class="inline-form" data-confirm="Approve this borrow request and release the book now?">
                   <input type="hidden" name="borrow_id" value="<?php echo (int) $item['borrow_id']; ?>">
+                  <?php render_student_approval_days_control((string) ($selectedPendingBatch['role'] ?? '')); ?>
                   <button type="submit" name="approve_borrow" value="1">Approve and Release</button>
                 </form>
               <?php endif; ?>
@@ -1152,6 +1180,7 @@ if ($selectedPendingReturnBatch) {
         <?php if ((int) ($selectedPendingBatch['actionable_items'] ?? 0) > 1): ?>
           <form method="post" class="inline-form flow-top-md" data-confirm="Approve all available requests in this batch now?">
             <input type="hidden" name="request_batch" value="<?php echo h($selectedPendingBatch['request_batch']); ?>">
+            <?php render_student_approval_days_control((string) ($selectedPendingBatch['role'] ?? '')); ?>
             <button type="submit" name="approve_batch" value="1">Approve <?php echo (int) $selectedPendingBatch['actionable_items']; ?> and Release</button>
           </form>
           <p class="muted meta-top-sm">Bulk approval releases only the requests that still have stock available.</p>

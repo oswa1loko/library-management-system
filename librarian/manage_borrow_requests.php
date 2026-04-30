@@ -14,6 +14,22 @@ $selectedRequestBatch = trim((string) ($_GET['request_batch'] ?? ''));
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 12;
 
+function render_student_approval_days_control(string $role): void
+{
+    if ($role !== 'student') {
+        return;
+    }
+    ?>
+    <label class="approval-days-control">
+      <span class="muted">Approval duration</span>
+      <select name="approval_days">
+        <option value="7">7 days</option>
+        <option value="5">5 days</option>
+      </select>
+    </label>
+    <?php
+}
+
 $pendingBatches = [];
 $pendingBatchSql = "
     SELECT
@@ -302,6 +318,7 @@ $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selecte
                     <form method="post" class="inline-form" data-confirm="Approve all requested copies of this book and release them now?">
                       <input type="hidden" name="request_batch" value="<?php echo h($batch['request_batch']); ?>">
                       <input type="hidden" name="book_id" value="<?php echo (int) $item['book_id']; ?>">
+                      <?php render_student_approval_days_control((string) ($batch['role'] ?? '')); ?>
                       <button type="submit" name="approve_borrow_group" value="1">Approve <?php echo (int) ($item['copy_count'] ?? 0); ?> Cop<?php echo (int) ($item['copy_count'] ?? 0) === 1 ? 'y' : 'ies'; ?></button>
                     </form>
                   <?php endif; ?>
@@ -312,6 +329,7 @@ $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selecte
               <div class="librarian-batch-primary-action flow-top-md">
                 <form method="post" class="inline-form" data-confirm="Approve all available requests in this batch now?">
                   <input type="hidden" name="request_batch" value="<?php echo h($batch['request_batch']); ?>">
+                  <?php render_student_approval_days_control((string) ($batch['role'] ?? '')); ?>
                   <button type="submit" name="approve_batch" value="1">Approve <?php echo (int) $batch['actionable_items']; ?> and Release</button>
                 </form>
                 <p class="muted meta-top-sm">Bulk approval releases all book groups in this batch that have enough stock for their requested copies.</p>
@@ -369,6 +387,7 @@ $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selecte
                 <form method="post" class="inline-form" data-confirm="Approve all requested copies of this book and release them now?">
                   <input type="hidden" name="request_batch" value="<?php echo h($selectedPendingBatch['request_batch']); ?>">
                   <input type="hidden" name="book_id" value="<?php echo (int) $item['book_id']; ?>">
+                  <?php render_student_approval_days_control((string) ($selectedPendingBatch['role'] ?? '')); ?>
                   <button type="submit" name="approve_borrow_group" value="1">Approve <?php echo (int) ($item['copy_count'] ?? 0); ?> Cop<?php echo (int) ($item['copy_count'] ?? 0) === 1 ? 'y' : 'ies'; ?></button>
                 </form>
               <?php endif; ?>
@@ -378,6 +397,7 @@ $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selecte
         <?php if ((int) ($selectedPendingBatch['actionable_items'] ?? 0) > 1): ?>
           <form method="post" class="inline-form flow-top-md" data-confirm="Approve all available requests in this batch now?">
             <input type="hidden" name="request_batch" value="<?php echo h($selectedPendingBatch['request_batch']); ?>">
+            <?php render_student_approval_days_control((string) ($selectedPendingBatch['role'] ?? '')); ?>
             <button type="submit" name="approve_batch" value="1">Approve <?php echo (int) $selectedPendingBatch['actionable_items']; ?> and Release</button>
           </form>
           <p class="muted meta-top-sm">Bulk approval releases all book groups in this batch that have enough stock for their requested copies.</p>

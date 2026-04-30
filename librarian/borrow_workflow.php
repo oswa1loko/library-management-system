@@ -1,6 +1,12 @@
 <?php
 
-function approve_pending_borrow(mysqli $conn, int $borrowId): array
+function librarian_selected_student_borrow_days(): ?int
+{
+    $approvalDays = (int) ($_POST['approval_days'] ?? 0);
+    return in_array($approvalDays, [5, 7], true) ? $approvalDays : null;
+}
+
+function approve_pending_borrow(mysqli $conn, int $borrowId, ?int $studentApprovalDays = null): array
 {
     $borrowStmt = $conn->prepare("
         SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.book_copy_id, br.request_batch, br.requested_at, u.role, b.title
@@ -29,7 +35,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
     }
 
     if ((string) $userRole === 'student') {
-        $borrowDays = 7;
+        $borrowDays = in_array((int) $studentApprovalDays, [5, 7], true) ? (int) $studentApprovalDays : 7;
     }
     $borrowDays = max(1, min((int) $borrowDays, 30));
     $approvedAt = date('Y-m-d H:i:s');
@@ -54,11 +60,11 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
 
     $approveStmt = $conn->prepare("
         UPDATE borrows
-        SET status = 'borrowed', book_copy_id = ?, borrow_date = ?, approved_at = ?, due_date = ?, due_at = ?, return_date = NULL, returned_at = NULL, return_requested_at = NULL
+        SET status = 'borrowed', book_copy_id = ?, borrow_date = ?, approved_at = ?, due_date = ?, due_at = ?, borrow_days = ?, return_date = NULL, returned_at = NULL, return_requested_at = NULL
         WHERE id = ? AND status = 'pending'
     ");
     $assignedCopyId = (int) ($assignedCopy['id'] ?? 0);
-    $approveStmt->bind_param('issssi', $assignedCopyId, $borrowDate, $approvedAt, $dueDate, $dueAt, $borrowId);
+    $approveStmt->bind_param('issssii', $assignedCopyId, $borrowDate, $approvedAt, $dueDate, $dueAt, $borrowDays, $borrowId);
     $approveStmt->execute();
 
     if ($approveStmt->affected_rows !== 1) {
@@ -79,6 +85,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         'book_title' => (string) $bookTitle,
         'approved_at' => $approvedAt,
         'borrow_date' => $borrowDate,
+        'borrow_days' => $borrowDays,
         'due_at' => $dueAt,
         'due_date' => $dueDate,
     ];
@@ -256,10 +263,11 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
 
     if (isset($_POST['approve_borrow'])) {
         $borrowId = (int) ($_POST['borrow_id'] ?? 0);
+        $studentApprovalDays = librarian_selected_student_borrow_days();
         $conn->begin_transaction();
 
         try {
-            $result = approve_pending_borrow($conn, $borrowId);
+            $result = approve_pending_borrow($conn, $borrowId, $studentApprovalDays);
             if (($result['ok'] ?? false) !== true) {
                 throw new RuntimeException((string) ($result['reason'] ?? 'approve_failed'));
             }
@@ -291,6 +299,7 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                 'book_id' => (int) $result['book_id'],
                 'user_id' => (int) $result['user_id'],
                 'borrow_date' => (string) $result['borrow_date'],
+                'borrow_days' => (int) ($result['borrow_days'] ?? 0),
                 'due_date' => (string) $result['due_date'],
                 'approval_email_queued' => $emailQueued,
                 'approval_email_sent' => (int) ($emailDispatch['sent'] ?? 0) > 0,
@@ -317,6 +326,7 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
     if (isset($_POST['approve_borrow_group'])) {
         $requestBatch = trim((string) ($_POST['request_batch'] ?? ''));
         $bookId = (int) ($_POST['book_id'] ?? 0);
+        $studentApprovalDays = librarian_selected_student_borrow_days();
 
         if ($requestBatch === '' || $bookId <= 0) {
             $msg = 'Borrow request group is missing.';
@@ -352,7 +362,7 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
 
                     try {
                         foreach ($groupRows as $row) {
-                            $result = approve_pending_borrow($conn, (int) $row['id']);
+                            $result = approve_pending_borrow($conn, (int) $row['id'], $studentApprovalDays);
                             if (($result['ok'] ?? false) !== true) {
                                 throw new RuntimeException((string) ($result['reason'] ?? 'approve_group_failed'));
                             }
@@ -388,6 +398,7 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                                 'book_id' => (int) $result['book_id'],
                                 'user_id' => (int) $result['user_id'],
                                 'borrow_date' => (string) $result['borrow_date'],
+                                'borrow_days' => (int) ($result['borrow_days'] ?? 0),
                                 'due_date' => (string) $result['due_date'],
                                 'request_batch' => $requestBatch,
                                 'approval_email_queued' => $emailQueued,
@@ -417,6 +428,7 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
 
     if (isset($_POST['approve_batch'])) {
         $requestBatch = trim((string) ($_POST['request_batch'] ?? ''));
+        $studentApprovalDays = librarian_selected_student_borrow_days();
 
         if ($requestBatch === '') {
             $msg = 'Request batch is missing.';
@@ -443,7 +455,7 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
 
                 try {
                     foreach ($batchRows as $row) {
-                        $result = approve_pending_borrow($conn, (int) $row['id']);
+                        $result = approve_pending_borrow($conn, (int) $row['id'], $studentApprovalDays);
                         if (($result['ok'] ?? false) === true) {
                             $approved[] = $result;
                         } else {
@@ -492,6 +504,7 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                             'book_id' => (int) $result['book_id'],
                             'user_id' => (int) $result['user_id'],
                             'borrow_date' => (string) $result['borrow_date'],
+                            'borrow_days' => (int) ($result['borrow_days'] ?? 0),
                             'due_date' => (string) $result['due_date'],
                             'request_batch' => $requestBatch,
                             'approval_email_queued' => $emailQueued,
