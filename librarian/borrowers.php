@@ -105,27 +105,26 @@ $totalPages = max(1, (int) ceil($totalRows / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
+$safeLimit = max(1, (int) $perPage);
+$safeOffset = max(0, (int) $offset);
 $sql = $borrowerSelectSql . "
     ORDER BY
       overdue_count DESC,
       due_today_count DESC,
       pending_return_count DESC,
-      next_due_at IS NULL,
       next_due_at ASC,
       latest_activity_at DESC,
-      fullname ASC
-    LIMIT ? OFFSET ?
+      u.fullname ASC
+    LIMIT {$safeLimit} OFFSET {$safeOffset}
 ";
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
     http_response_code(500);
     die('Borrowers page could not load its grouped borrower query. Please contact the system administrator.');
 }
-$queryParams = $params;
-$queryTypes = $types . 'ii';
-$queryParams[] = $perPage;
-$queryParams[] = $offset;
-$stmt->bind_param($queryTypes, ...$queryParams);
+if ($types !== '') {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $borrowers = $stmt->get_result();
 $pageQuery = $_GET;
