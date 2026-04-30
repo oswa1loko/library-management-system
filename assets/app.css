@@ -3936,7 +3936,16 @@ body.auth-page > .theme-toggle{
 }
 
 .borrower-quick-filters{
+  align-items:center;
   gap:8px;
+}
+
+.borrower-quick-label{
+  margin-right:2px;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.05em;
+  text-transform:uppercase;
 }
 
 .borrower-filter-chip{
@@ -3971,6 +3980,10 @@ body.auth-page > .theme-toggle{
 
 .borrower-row.is-overdue:hover{
   background:linear-gradient(90deg, rgba(255,127,127,0.14), rgba(143,211,255,0.06) 58%, transparent);
+}
+
+.admin-borrowers-toolbar{
+  grid-template-columns:minmax(280px, 1fr) minmax(170px, 210px) minmax(190px, 240px) auto;
 }
 
 .inline-actions-spread{

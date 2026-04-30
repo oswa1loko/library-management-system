@@ -256,7 +256,7 @@ if ($selectedBorrowerId > 0) {
         </div>
       </div>
 
-      <form method="get" class="toolbar flow-top-md borrow-records-toolbar" data-ajax-filter-form>
+      <form method="get" class="toolbar flow-top-md borrow-records-toolbar admin-borrowers-toolbar" data-ajax-filter-form>
         <div class="grow">
           <label for="search">Search</label>
           <input id="search" name="search" value="<?php echo h($search); ?>" placeholder="Borrower, username, email, or book" data-ajax-filter-search>
@@ -293,6 +293,7 @@ if ($selectedBorrowerId > 0) {
       </form>
 
       <div class="inline-actions chips-row borrower-quick-filters flow-top-sm">
+        <span class="muted borrower-quick-label">Quick filters</span>
         <?php foreach ($quickFilters as $quickFilter): ?>
           <?php
           $quickQuery = $quickFilterBase;
@@ -328,7 +329,7 @@ if ($selectedBorrowerId > 0) {
               <th>Overdue</th>
               <th>Next Due</th>
               <th>Balances</th>
-              <th>Books</th>
+              <th>Current Books</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -339,9 +340,9 @@ if ($selectedBorrowerId > 0) {
             <?php while ($borrower = $borrowers->fetch_assoc()): ?>
               <?php
               $titles = array_values(array_filter(explode('||', (string) ($borrower['borrowed_titles'] ?? ''))));
-              $titlePreview = implode(', ', array_slice($titles, 0, 3));
-              if (count($titles) > 3) {
-                  $titlePreview .= ' +' . (count($titles) - 3) . ' more';
+              $titlePreview = implode(', ', array_slice($titles, 0, 2));
+              if (count($titles) > 2) {
+                  $titlePreview .= ' +' . (count($titles) - 2) . ' more';
               }
               $borrowerModalQuery = $pageQuery;
               $borrowerModalQuery['borrower_id'] = (int) $borrower['id'];
