@@ -278,12 +278,13 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
             $memberRole = (string) ($result['user_role'] ?? '');
             $memberUserId = (int) ($result['user_id'] ?? 0);
             $bookTitle = trim((string) ($result['book_title'] ?? ''));
+            $approvedDays = max(1, (int) ($result['borrow_days'] ?? 0));
             if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
                 create_notification(
                     $conn,
                     $memberRole,
                     'Borrow Request Approved',
-                    'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
+                    'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian for ' . $approvedDays . ' day' . ($approvedDays === 1 ? '' : 's') . '.',
                     'info',
                     $memberUserId,
                     [
@@ -375,12 +376,13 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                         $memberRole = (string) ($approved[0]['user_role'] ?? '');
                         $memberUserId = (int) ($approved[0]['user_id'] ?? 0);
                         $bookTitle = trim((string) ($approved[0]['book_title'] ?? ''));
+                        $approvedDays = max(1, (int) ($approved[0]['borrow_days'] ?? 0));
                         if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
                             create_notification(
                                 $conn,
                                 $memberRole,
                                 'Borrow Request Approved',
-                                'Your borrow request for ' . ($requestedCopies === 1 ? '1 copy' : $requestedCopies . ' copies') . ' of ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
+                                'Your borrow request for ' . ($requestedCopies === 1 ? '1 copy' : $requestedCopies . ' copies') . ' of ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian for ' . $approvedDays . ' day' . ($approvedDays === 1 ? '' : 's') . '.',
                                 'info',
                                 $memberUserId,
                                 [
@@ -482,12 +484,13 @@ function handle_librarian_borrow_workflow(mysqli $conn): array
                         $memberRole = (string) ($result['user_role'] ?? '');
                         $memberUserId = (int) ($result['user_id'] ?? 0);
                         $bookTitle = trim((string) ($result['book_title'] ?? ''));
+                        $approvedDays = max(1, (int) ($result['borrow_days'] ?? 0));
                         if ($memberUserId > 0 && in_array($memberRole, ['student', 'faculty'], true)) {
                             create_notification(
                                 $conn,
                                 $memberRole,
                                 'Borrow Request Approved',
-                                'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian.',
+                                'Your borrow request for ' . ($bookTitle !== '' ? $bookTitle : 'your selected book') . ' was approved by the librarian for ' . $approvedDays . ' day' . ($approvedDays === 1 ? '' : 's') . '.',
                                 'info',
                                 $memberUserId,
                                 [
