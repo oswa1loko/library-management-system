@@ -57,7 +57,7 @@ if (isset($_POST['borrow'])) {
     } elseif ($requestedCopies > $requestedBookLimit) {
         $limitLabel = $requestedBookLimit === 1 ? '1 book copy' : $requestedBookLimit . ' book copies';
         $msg = $role === 'student'
-            ? 'Students can only request 1 book and cannot request again while they still have a pending borrow, borrowed book, return request, or unpaid penalty.'
+            ? 'Students can only request 1 book per submission. You may request another title, but the same title can only be requested again after it is returned and cleared.'
             : 'You can only request up to ' . $limitLabel . ' in this submission.';
         $msgType = 'error';
     } elseif ($apiToken === '') {
@@ -470,7 +470,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
                               ?>
                               <span class="badge"><?php echo h($unavailableBadge); ?></span>
                               <?php if ((int) ($book['blocked_for_active_borrow'] ?? 0) === 1): ?>
-                                <span class="muted">This title is already in your active borrow records.</span>
+                                <span class="muted">Return or clear this title first before borrowing it again.</span>
                               <?php endif; ?>
                               <?php if ((int) ($book['blocked_for_penalty'] ?? 0) === 1): ?>
                                 <span class="muted">Settle the unpaid penalty for this title before borrowing it again.</span>
@@ -571,7 +571,7 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
           <?php if ($role === 'student'): ?>
             <li>Student approved borrows last 5 or 7 days, depending on the librarian's approval.</li>
           <?php endif; ?>
-          <li>Students may only have one active borrowed or requested book at a time.</li>
+          <li>Students may request another title even with an active request, but the same title can only be borrowed again after it is returned and cleared.</li>
           <li>Books must be handled carefully and returned in the same condition as received.</li>
           <li>Available stock is reduced only after the librarian approves the request.</li>
         </ul>

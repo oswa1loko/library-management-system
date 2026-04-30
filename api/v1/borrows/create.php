@@ -48,19 +48,22 @@ if ((string) ($user['role'] ?? '') === 'student') {
         api_error('Students can only request 1 book at a time.', 409);
     }
 
+    $studentBookPlaceholders = implode(',', array_fill(0, count($bookIds), '?'));
+    $studentBookTypes = str_repeat('i', count($bookIds));
     $activeBorrowStmt = $conn->prepare("
         SELECT COUNT(*) AS active_count
         FROM borrows
         WHERE user_id = ?
+          AND book_id IN ($studentBookPlaceholders)
           AND status IN ('pending', 'borrowed', 'return_requested')
     ");
-    $activeBorrowStmt->bind_param('i', $user['id']);
+    $activeBorrowStmt->bind_param('i' . $studentBookTypes, $user['id'], ...$bookIds);
     $activeBorrowStmt->execute();
     $activeBorrowRow = $activeBorrowStmt->get_result()->fetch_assoc();
     $activeBorrowStmt->close();
 
     if ((int) ($activeBorrowRow['active_count'] ?? 0) > 0) {
-        api_error('Students cannot request another book while they still have a pending, borrowed, or return-requested book.', 409);
+        api_error('Students cannot request the same book while it is still pending, borrowed, or waiting for return confirmation.', 409);
     }
 
     $unpaidPenaltyStmt = $conn->prepare("
