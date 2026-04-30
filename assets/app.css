@@ -3982,6 +3982,13 @@ body.auth-page > .theme-toggle{
   background:linear-gradient(90deg, rgba(255,127,127,0.14), rgba(143,211,255,0.06) 58%, transparent);
 }
 
+.borrower-balance-breakdown{
+  display:block;
+  margin-top:4px;
+  font-size:13px;
+  line-height:1.45;
+}
+
 .admin-borrowers-toolbar{
   grid-template-columns:minmax(280px, 1fr) minmax(170px, 210px) minmax(190px, 240px) auto;
 }

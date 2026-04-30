@@ -371,7 +371,7 @@ if ($selectedBorrowerId > 0) {
                 <td><?php echo trim((string) ($borrower['next_due_at'] ?? '')) !== '' ? h(format_display_datetime((string) $borrower['next_due_at'])) : '-'; ?></td>
                 <td>
                   <strong class="label-block"><?php echo h(format_currency($penaltyBalance + $incidentBalance)); ?></strong>
-                  <span class="muted">Penalty <?php echo h(format_currency($penaltyBalance)); ?> | Incident <?php echo h(format_currency($incidentBalance)); ?></span>
+                  <span class="muted borrower-balance-breakdown">Penalty <?php echo h(format_currency($penaltyBalance)); ?> | Incident <?php echo h(format_currency($incidentBalance)); ?></span>
                 </td>
                 <td><span class="muted"><?php echo h($titlePreview !== '' ? $titlePreview : 'No active titles'); ?></span></td>
                 <td>
