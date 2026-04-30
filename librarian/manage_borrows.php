@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('librarian');
+expire_stale_pending_borrow_requests($conn);
 
 $msg = '';
 $msgType = 'success';
@@ -16,7 +17,7 @@ $today = date('Y-m-d');
 function approve_pending_borrow(mysqli $conn, int $borrowId): array
 {
     $borrowStmt = $conn->prepare("
-        SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.request_batch, u.role, b.title
+        SELECT br.user_id, br.book_id, br.borrow_days, br.status, br.request_batch, br.requested_at, u.role, b.title
         FROM borrows br
         JOIN users u ON u.id = br.user_id
         JOIN books b ON b.id = br.book_id
@@ -25,7 +26,7 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
     ");
     $borrowStmt->bind_param('i', $borrowId);
     $borrowStmt->execute();
-    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $requestBatch, $userRole, $bookTitle);
+    $borrowStmt->bind_result($userId, $bookId, $borrowDays, $borrowStatus, $requestBatch, $requestedAt, $userRole, $bookTitle);
     $found = $borrowStmt->fetch();
     $borrowStmt->close();
 
@@ -33,6 +34,13 @@ function approve_pending_borrow(mysqli $conn, int $borrowId): array
         return ['ok' => false, 'reason' => 'not_pending'];
     }
 
+    if (strtotime((string) $requestedAt) < strtotime('-5 days')) {
+        return ['ok' => false, 'reason' => 'expired'];
+    }
+
+    if ((string) $userRole === 'student') {
+        $borrowDays = 7;
+    }
     $borrowDays = max(1, min((int) $borrowDays, 30));
     $approvedAt = date('Y-m-d H:i:s');
     $borrowDate = date('Y-m-d', strtotime($approvedAt));

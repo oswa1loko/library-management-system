@@ -3035,6 +3035,34 @@ function create_notification(mysqli $conn, string $role, string $title, string $
     $stmt->close();
 }
 
+function expire_stale_pending_borrow_requests(mysqli $conn, ?int $userId = null): int
+{
+    $whereSql = "status = 'pending' AND requested_at < DATE_SUB(NOW(), INTERVAL 5 DAY)";
+    $types = '';
+    $params = [];
+
+    if ($userId !== null && $userId > 0) {
+        $whereSql .= ' AND user_id = ?';
+        $types = 'i';
+        $params[] = $userId;
+    }
+
+    $stmt = $conn->prepare("DELETE FROM borrows WHERE {$whereSql}");
+    if (!$stmt) {
+        return 0;
+    }
+
+    if ($types !== '') {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+    $expiredCount = max(0, (int) $stmt->affected_rows);
+    $stmt->close();
+
+    return $expiredCount;
+}
+
 function admin_notification_inbox_excluded_titles(): array
 {
     return [

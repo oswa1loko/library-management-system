@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
 require_role('admin');
+expire_stale_pending_borrow_requests($conn);
 
 $search = trim((string) ($_GET['search'] ?? ''));
 $roleFilter = trim((string) ($_GET['role'] ?? 'all'));

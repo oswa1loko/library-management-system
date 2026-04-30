@@ -258,6 +258,7 @@ $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selecte
           $totalCopies = array_sum(array_map(static fn(array $item): int => (int) ($item['copy_count'] ?? 0), $batch['items']));
           $batchStateClass = (int) ($batch['actionable_items'] ?? 0) > 0 ? 'is-actionable' : 'is-blocked';
           $batchStateLabel = (int) ($batch['actionable_items'] ?? 0) > 0 ? 'Ready To Release' : 'Waiting For Stock';
+          $expiresAt = date('Y-m-d H:i:s', strtotime((string) ($batch['created_at'] ?? 'now') . ' +5 days'));
           ?>
           <div class="panel librarian-batch-card librarian-batch-summary-card <?php echo h($batchStateClass); ?>">
             <div class="librarian-batch-head">
@@ -277,6 +278,7 @@ $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selecte
               </div>
               <div class="librarian-batch-meta">
                 <span class="chip">Requested <?php echo h(format_display_datetime($batch['created_at'], '-')); ?></span>
+                <span class="chip">Expires <?php echo h(format_display_datetime($expiresAt, '-')); ?></span>
               </div>
             </div>
             <div class="inline-actions chips-row batch-status-row">
@@ -348,6 +350,7 @@ $selectedPendingBatch = $selectedRequestBatch !== '' ? ($pendingBatches[$selecte
             <span class="chip"><?php echo (int) ($selectedPendingBatch['actionable_copies'] ?? 0); ?> ready to release</span>
             <span class="chip"><?php echo (int) ($selectedPendingBatch['waiting_stock_copies'] ?? 0); ?> waiting for stock</span>
             <span class="chip">Requested <?php echo h(format_display_datetime((string) ($selectedPendingBatch['created_at'] ?? ''), '-')); ?></span>
+            <span class="chip">Expires <?php echo h(format_display_datetime(date('Y-m-d H:i:s', strtotime((string) ($selectedPendingBatch['created_at'] ?? 'now') . ' +5 days')), '-')); ?></span>
           </div>
         </div>
         <div class="stack librarian-batch-list">

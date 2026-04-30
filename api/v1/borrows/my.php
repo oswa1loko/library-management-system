@@ -6,6 +6,7 @@ $user = api_require_login();
 
 global $conn;
 $limit = api_query_limit(30, 100);
+expire_stale_pending_borrow_requests($conn, (int) $user['id']);
 
 $stmt = $conn->prepare("
     SELECT br.id, br.book_id, br.request_batch, br.return_batch, b.title, b.author, br.borrow_date, br.due_date, br.return_date, br.status, br.created_at

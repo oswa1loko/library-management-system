@@ -13,6 +13,7 @@ function normalize_member_book_category(string $value): string
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $role = (string) $_SESSION['role'];
+expire_stale_pending_borrow_requests($conn, $userId);
 $msg = '';
 $msgType = 'success';
 $requestedBookLimit = $role === 'student' ? 1 : 5;
@@ -41,6 +42,9 @@ if (isset($_POST['borrow'])) {
     $requestedCopies = array_sum($bookQuantities);
     $days = (int) ($_POST['days'] ?? 7);
     $days = max(1, min($days, 30));
+    if ($role === 'student') {
+        $days = 7;
+    }
     $borrowAgreementAccepted = (string) ($_POST['borrow_agreement'] ?? '') === '1';
     $apiToken = ensure_member_api_token($conn, $userId);
 
@@ -524,7 +528,12 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
         </div>
         <div>
           <label for="modal_days">Days to borrow</label>
-          <input id="modal_days" type="number" name="days" value="7" min="1" max="30">
+          <?php if ($role === 'student'): ?>
+            <input id="modal_days" type="hidden" name="days" value="7">
+            <div class="empty-state">Student borrow duration is fixed at 7 days from librarian approval.</div>
+          <?php else: ?>
+            <input id="modal_days" type="number" name="days" value="7" min="1" max="30">
+          <?php endif; ?>
         </div>
         <div class="member-borrow-agreement" data-borrow-agreement-summary>
           <input id="borrow_agreement" type="hidden" name="borrow_agreement" value="0" data-borrow-agreement>
@@ -558,6 +567,10 @@ foreach (array_merge($availableBooks, $unavailableBooks) as $bookSuggestionRow) 
         <h4>Borrowing Rules</h4>
         <ul>
           <li>Borrow requests are subject to librarian approval before pickup.</li>
+          <li>Pending borrow requests expire automatically if not approved within 5 days.</li>
+          <?php if ($role === 'student'): ?>
+            <li>Student approved borrows last 7 days from librarian approval.</li>
+          <?php endif; ?>
           <li>Students may only have one active borrowed or requested book at a time.</li>
           <li>Books must be handled carefully and returned in the same condition as received.</li>
           <li>Available stock is reduced only after the librarian approves the request.</li>

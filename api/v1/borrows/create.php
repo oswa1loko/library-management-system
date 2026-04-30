@@ -9,6 +9,9 @@ global $conn;
 
 $days = (int) ($_POST['days'] ?? 7);
 $days = max(1, min($days, 30));
+if ((string) ($user['role'] ?? '') === 'student') {
+    $days = 7;
+}
 
 $bookIdsRaw = $_POST['book_ids'] ?? null;
 $bookQtyRaw = $_POST['book_qty'] ?? [];
@@ -39,6 +42,8 @@ foreach ($bookIds as $bookId) {
 $requestedCopies = array_sum($bookQuantities);
 
 if ((string) ($user['role'] ?? '') === 'student') {
+    expire_stale_pending_borrow_requests($conn, (int) $user['id']);
+
     if ($requestedCopies > 1) {
         api_error('Students can only request 1 book at a time.', 409);
     }

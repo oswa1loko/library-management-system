@@ -8,6 +8,7 @@ require_roles(['student', 'faculty']);
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $role = (string) $_SESSION['role'];
+expire_stale_pending_borrow_requests($conn, $userId);
 $msg = '';
 $msgType = 'success';
 $focusReturnBatch = trim((string) ($_GET['return_batch'] ?? ''));
