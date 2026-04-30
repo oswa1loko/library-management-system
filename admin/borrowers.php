@@ -370,6 +370,7 @@ if ($selectedBorrowerId > 0) {
                 <td><span class="badge"><span class="status-dot <?php echo $hasOverdue ? 'overdue' : 'approved'; ?>"></span><?php echo (int) ($borrower['overdue_count'] ?? 0); ?></span></td>
                 <td><?php echo trim((string) ($borrower['next_due_at'] ?? '')) !== '' ? h(format_display_datetime((string) $borrower['next_due_at'])) : '-'; ?></td>
                 <td>
+                  <span class="muted borrower-balance-label">Total Balance</span>
                   <strong class="label-block"><?php echo h(format_currency($penaltyBalance + $incidentBalance)); ?></strong>
                   <span class="muted borrower-balance-breakdown">Penalty <?php echo h(format_currency($penaltyBalance)); ?> | Incident <?php echo h(format_currency($incidentBalance)); ?></span>
                 </td>
