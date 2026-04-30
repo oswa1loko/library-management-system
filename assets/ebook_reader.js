@@ -14,10 +14,14 @@ const DESKTOP_BATCH_SIZE = 30;
 const MOBILE_BATCH_SIZE = 5;
 const MOBILE_LAYOUT_QUERY = '(max-width: 768px)';
 const SCREENSHOT_LIMIT = 5;
+const WATERMARK_OPACITY = 0.08;
+const WATERMARK_MAX_WIDTH_RATIO = 0.34;
+const WATERMARK_MAX_HEIGHT_RATIO = 0.28;
 
 async function renderReader(root) {
   const pdfUrl = root.dataset.pdfUrl || '';
   const pdfTitle = root.dataset.pdfTitle || 'this eBook';
+  const watermarkUrl = root.dataset.watermarkUrl || '';
   const stage = root.querySelector('[data-ebook-stage]');
   const loading = root.querySelector('[data-ebook-loading]');
   const pageLabel = root.querySelector('[data-ebook-page-label]');
@@ -52,6 +56,7 @@ async function renderReader(root) {
   const mobileLayout = window.matchMedia(MOBILE_LAYOUT_QUERY);
   let lastLayoutMode = mobileLayout.matches ? 'mobile' : 'desktop';
   const storageKey = `librarymanage.ebook.screenshotAttempts.${btoa(unescape(encodeURIComponent(pdfUrl))).slice(0, 80)}`;
+  let watermarkImagePromise = null;
 
   const isMobileLayout = () => mobileLayout.matches;
   const getPageShells = () => Array.from(stage.querySelectorAll('[data-page-number]'));
@@ -84,6 +89,51 @@ async function renderReader(root) {
     } catch (error) {
       // Storage can be unavailable in private browsing; in-memory tracking still applies.
     }
+  };
+
+  const loadWatermarkImage = () => {
+    if (!watermarkUrl) {
+      return Promise.resolve(null);
+    }
+
+    if (watermarkImagePromise) {
+      return watermarkImagePromise;
+    }
+
+    watermarkImagePromise = new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => resolve(null);
+      image.src = watermarkUrl;
+    });
+
+    return watermarkImagePromise;
+  };
+
+  const drawWatermark = async (context, canvas) => {
+    const image = await loadWatermarkImage();
+    if (!image || !context || !canvas.width || !canvas.height) {
+      return;
+    }
+
+    const imageRatio = image.naturalWidth / Math.max(image.naturalHeight, 1);
+    const maxWidth = canvas.width * WATERMARK_MAX_WIDTH_RATIO;
+    const maxHeight = canvas.height * WATERMARK_MAX_HEIGHT_RATIO;
+    let width = maxWidth;
+    let height = width / imageRatio;
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * imageRatio;
+    }
+
+    const x = (canvas.width - width) / 2;
+    const y = (canvas.height - height) / 2;
+
+    context.save();
+    context.globalAlpha = WATERMARK_OPACITY;
+    context.drawImage(image, x, y, width, height);
+    context.restore();
   };
 
   const ensurePrivacyOverlay = () => {
@@ -426,6 +476,7 @@ async function renderReader(root) {
         canvasContext: context,
         viewport,
       }).promise;
+      await drawWatermark(context, canvas);
 
       pageState.rendered = true;
       pageCard.setAttribute('data-ebook-rendered-page', 'true');

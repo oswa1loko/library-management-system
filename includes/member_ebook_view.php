@@ -99,6 +99,7 @@ if (!$ebook) {
           data-ebook-reader
           data-pdf-url="/librarymanage/ebook_stream.php?id=<?php echo (int) $ebook['id']; ?>"
           data-pdf-title="<?php echo h($ebook['title']); ?>"
+          data-watermark-url="/librarymanage/assets/images/regismarielogo.png"
         >
           <div class="ebook-reader-toolbar">
             <div class="ebook-reader-toolbar-group ebook-reader-toolbar-nav">
